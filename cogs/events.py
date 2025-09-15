@@ -4,90 +4,57 @@ import discord
 from discord.ext import commands
 import random
 
-from modules.emote_orchestrator import EmoteOrchestrator
-from modules.ai_handler import AIHandler
-from modules.personality_manager import PersonalityManager
-
 class EventsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = bot.config_manager.get_config()
-        print("✅ EventsCog: Initialized.")
+        # Modules are now attached to the bot object in main.py,
+        # so we access them via self.bot instead of creating new ones.
 
-        self.emote_handler = EmoteOrchestrator(bot)
-        self.personality_manager = PersonalityManager(self.config)
-        
-        openai_api_key = bot.config_manager.get_secret("OPENAI_API_KEY")
-        self.ai_handler = AIHandler(openai_api_key, self.emote_handler, self.personality_manager)
-        print("✅ EventsCog: All modules loaded.")
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        # This listener is in main.py now, but we'll leave this here in case.
-        # The main on_ready in main.py handles command syncing.
-        pass
+    @commands.Cog.listener("on_ready")
+    async def on_cog_ready(self):
+        # This event fires when the cog is loaded and ready.
+        print(f"✅ EventsCog is ready and listening for messages.")
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        # --- START DEBUGGING ---
-        print("\n--- New Message Detected ---")
-        print(f"1. Message from: {message.author} in channel {message.channel.id}")
-        
-        if message.author == self.bot.user:
-            print("2. 🔴 Bot message. Ignoring.")
+        # Ignore messages from the bot itself or other bots to prevent loops
+        if message.author.bot:
             return
 
-        print("2. ✅ Not a bot message.")
-        
+        # Let commands be processed by the bot framework, ignore for chat logic
         if message.content.startswith(self.bot.command_prefix):
-            print("3. 🔴 Message is a command. Ignoring for chat response.")
-            await self.bot.process_commands(message)
             return
 
-        print("3. ✅ Message is not a command.")
-
-        # Reload the config to ensure we have the latest channel settings
-        self.config = self.bot.config_manager.get_config()
-        active_channels_str = self.config.get('channel_settings', {}).keys()
-        active_channels_int = [int(ch_id) for ch_id in active_channels_str]
-        print(f"4. Checking channel... Current Channel ID: {message.channel.id}")
-        print(f"   Active Channel IDs from config: {active_channels_int}")
+        # Reload config to get the latest channel settings
+        config = self.bot.config_manager.get_config()
         
-        if message.channel.id not in active_channels_int:
-            print("5. 🔴 Channel is NOT active. Stopping.")
-            return
-
-        print("5. ✅ Channel is active.")
-
+        # --- Determine if the bot should respond ---
         is_mentioned = self.bot.user.mentioned_in(message)
-        rand_chance = self.config.get('random_reply_chance', 0.05)
-        should_respond = is_mentioned or (random.random() < rand_chance)
         
-        print(f"6. Checking response conditions...")
-        print(f"   Mentioned: {is_mentioned}")
-        print(f"   Random chance threshold: {rand_chance}")
+        active_channels_str = config.get('channel_settings', {}).keys()
+        active_channels_int = [int(ch_id) for ch_id in active_channels_str]
+        is_active_channel = message.channel.id in active_channels_int
 
-        if not should_respond:
-            print("7. 🔴 Response conditions not met. Stopping.")
-            return
-        
-        print("7. ✅ Response conditions met! Preparing to reply.")
-        
-        async with message.channel.typing():
-            print("8. Fetching message history...")
-            history = [msg async for msg in message.channel.history(limit=10)]
-            history.reverse()
+        rand_chance = config.get('random_reply_chance', 0.05)
+        is_random_reply = random.random() < rand_chance
 
-            print("9. Calling AI Handler to generate response...")
-            ai_response_text = await self.ai_handler.generate_response(message.channel, message.author, history)
+        # New Logic: Respond if mentioned anywhere, OR randomly in an active channel.
+        if is_mentioned or (is_active_channel and is_random_reply):
+            async with message.channel.typing():
+                history = [msg async for msg in message.channel.history(limit=10)]
+                history.reverse()
 
-            if ai_response_text:
-                print(f"10. ✅ AI Handler returned a response: '{ai_response_text[:50]}...'")
-                final_response = self.emote_handler.replace_emote_tags(ai_response_text)
-                print("11. Sending final message to Discord.")
-                await message.channel.send(final_response)
-            else:
-                print("10. 🔴 AI Handler returned nothing. Stopping.")
+                # Access the shared AI handler from the bot object
+                ai_response_text = await self.bot.ai_handler.generate_response(
+                    message.channel, 
+                    message.author, 
+                    history
+                )
+
+                if ai_response_text:
+                    # Access the shared emote handler for processing emotes
+                    final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
+                    await message.channel.send(final_response)
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))
