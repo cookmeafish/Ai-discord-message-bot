@@ -37,9 +37,7 @@ class AIHandler:
             f"Your purpose here is: {personality_config.get('purpose', 'general chat')}. "
             "Keep responses concise for chat. Do not use markdown.\n"
             f"{emote_instructions}\n"
-            # --- THIS IS THE NEW, FORCEFUL INSTRUCTION ---
             "IMPORTANT: Your response MUST NOT begin with your name and a colon. For example, never start with 'Dr. Fish v2: ' or 'AI-Bot: '."
-            # ----------------------------------------------
         )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
@@ -52,4 +50,20 @@ class AIHandler:
                 content = f"{msg.author.display_name}: {msg.content}"
                 messages_for_api.append({'role': 'user', 'content': content})
 
-        try
+        # --- This `try...except` block is now complete ---
+        try:
+            print("   (Inside AI Handler) Sending request to OpenAI...")
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages_for_api,
+                max_tokens=200,
+                temperature=0.7
+            )
+            print("   (Inside AI Handler) ✅ OpenAI request successful.")
+            return response.choices[0].message.content.strip()
+        except openai.APIError as e:
+            print(f"   (Inside AI Handler) 🔴 An OpenAI API error occurred: {e}")
+            return "Sorry, I'm having trouble connecting to my AI brain right now."
+        except Exception as e:
+            print(f"   (Inside AI Handler) 🔴 An unexpected error occurred: {e}")
+            return None
