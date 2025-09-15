@@ -28,8 +28,10 @@ class AIHandler:
             "Use them by wrapping their name in colons, like :smile:."
         )
 
+        # Updated system prompt to include the user's display name for context
         system_prompt = (
             f"You are a Discord bot. Your name is ALWAYS {bot_name}. Do not refer to yourself by any other name. "
+            f"The user you are currently speaking to is named '{author.display_name}'. You should be friendly and refer to them by their name when it feels natural. "
             f"Your personality is: {personality_config.get('personality_traits', 'helpful')}. "
             f"Your lore: {personality_config.get('lore', '')}. "
             f"Facts to remember: {personality_config.get('facts', '')}. "
@@ -43,11 +45,14 @@ class AIHandler:
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
         
         for msg in message_history:
+            # Use display_name (nickname) for all users in the history
+            user_name = msg.author.display_name
             if msg.author.id == self.emote_handler.bot.user.id:
-                cleaned_content = re.sub(r'^\w+:\s*', '', msg.content)
-                messages_for_api.append({'role': 'assistant', 'content': cleaned_content})
+                # For the bot's own messages, just add the content
+                messages_for_api.append({'role': 'assistant', 'content': msg.content})
             else:
-                content = f"{msg.author.display_name}: {msg.content}"
+                # For user messages, prepend their display name
+                content = f"{user_name}: {msg.content}"
                 messages_for_api.append({'role': 'user', 'content': content})
 
         try:
