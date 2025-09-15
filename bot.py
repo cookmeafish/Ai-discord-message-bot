@@ -1,9 +1,13 @@
+# bot.py
+
 import discord
 from discord.ext import commands
 import json
 import random
 import openai
 import os
+import asyncio
+from emote_orchestrator import EmoteOrchestrator # Import the new class
 
 def load_config():
     """Loads settings from the config file."""
@@ -16,24 +20,23 @@ def load_config():
 # Load configuration at startup
 config = load_config()
 if not config:
-    exit() # Exit if config fails to load
+    exit()
 
 # --- Intents Setup ---
-# The bot needs permissions (intents) to see messages, servers, etc.
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 intents.guilds = True
 intents.members = True
 
-# Use commands.Bot for command handling
+# --- Bot and Module Initialization ---
 bot = commands.Bot(command_prefix='!', intents=intents)
+emote_handler = EmoteOrchestrator(bot) # Create an instance of the new module
 
 # --- Helper Functions ---
 def get_channel_personality(channel_id):
     """Gets the specific personality for a channel, or the default one."""
     channel_id_str = str(channel_id)
-    # Check for channel-specific settings, otherwise fallback to default
     if channel_id_str in config['channel_settings']:
         return config['channel_settings'][channel_id_str]
     return config['default_personality']
@@ -46,12 +49,18 @@ def generate_ai_response(channel, author, message_history):
         print("ERROR: OpenAI API key not found in config.json")
         return None
     
-    # Initialize OpenAI client
     try:
         client = openai.OpenAI(api_key=config['openai_api_key'])
     except Exception as e:
         print(f"Failed to initialize OpenAI client: {e}")
         return None
+
+    # Get available emote names from our new handler
+    available_emotes = emote_handler.get_available_emote_names()
+    emote_instructions = (
+        f"You have access to custom server emotes. You can use them by wrapping their name in colons, for example: :smile:. "
+        f"Here are the emotes available to you: {available_emotes}. Use them to make your responses more expressive."
+    )
 
     # Construct the detailed system prompt
     system_prompt = (
@@ -59,24 +68,22 @@ def generate_ai_response(channel, author, message_history):
         f"Your personality is: {personality_config.get('personality_traits', 'helpful')}. "
         f"Background lore: {personality_config.get('lore', '')}. "
         f"Important facts to remember: {personality_config.get('facts', '')}. "
-        f"You are currently in the Discord channel named '{channel.name}'. "
         f"Your specific purpose in this channel is: {personality_config.get('purpose', 'general chat')}. "
-        "Engage with users naturally based on the conversation. Keep responses concise and suitable for a chat format. Do not use markdown."
+        "Engage with users naturally. Keep responses concise and suitable for a chat format. Do not use markdown.\n"
+        f"{emote_instructions}"
     )
 
-    # Format the message history for the API
     messages_for_api = [{'role': 'system', 'content': system_prompt}]
     for msg in message_history:
         role = 'assistant' if msg.author.id == bot.user.id else 'user'
         messages_for_api.append({'role': role, 'content': f"{msg.author.display_name}: {msg.content}"})
 
-    # Call the OpenAI API
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",  # Recommended model
+            model="gpt-4o",
             messages=messages_for_api,
-            max_tokens=200, # Control response length
-            temperature=0.7 # A bit of creativity
+            max_tokens=200,
+            temperature=0.7
         )
         return response.choices[0].message.content.strip()
     except openai.APIError as e:
@@ -90,54 +97,49 @@ def generate_ai_response(channel, author, message_history):
 @bot.event
 async def on_ready():
     print(f'Bot is ready! Logged in as {bot.user}')
+    emote_handler.load_emotes() # Load emotes using the new handler
     print('------')
 
 @bot.event
 async def on_message(message):
-    # Ignore messages from the bot itself
     if message.author == bot.user:
         return
 
-    # First, process any commands
     await bot.process_commands(message)
 
-    # If message is a command, don't also process it for a chat response
     if message.content.startswith(bot.command_prefix):
         return
 
-    # Check if the bot should be active in this channel
     active_channels_str = config['channel_settings'].keys()
     active_channels_int = [int(ch_id) for ch_id in active_channels_str]
     if message.channel.id not in active_channels_int:
         return
 
-    # Respond if mentioned or randomly based on configured chance
     should_respond = (bot.user.mentioned_in(message) or 
                       random.random() < config.get('random_reply_chance', 0.05))
 
     if should_respond:
         async with message.channel.typing():
-            # Fetch last 10 messages for context
             history = [msg async for msg in message.channel.history(limit=10)]
-            history.reverse() # Order from oldest to newest
+            history.reverse()
 
-            ai_response = generate_ai_response(message.channel, message.author, history)
+            ai_response_text = generate_ai_response(message.channel, message.author, history)
             
-            if ai_response:
-                await message.channel.send(ai_response)
+            if ai_response_text:
+                # Process the response using the new handler
+                final_response = emote_handler.replace_emote_tags(ai_response_text)
+                await message.channel.send(final_response)
 
-# --- Bot Commands ---
+# --- Bot Commands (Unchanged) ---
 @bot.command(name='ticket', help='Creates a new private support ticket. Usage: !ticket [reason]')
 @commands.has_permissions(manage_channels=True)
 async def create_ticket(ctx, *, reason: str = "No reason provided"):
-    """Creates a new private support ticket channel."""
     guild = ctx.guild
     category_name = "Support Tickets"
     category = discord.utils.get(guild.categories, name=category_name)
     if category is None:
         category = await guild.create_category(category_name)
 
-    # Permissions for the new channel
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
         ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True),
@@ -165,7 +167,6 @@ async def create_ticket(ctx, *, reason: str = "No reason provided"):
 @bot.command(name='close', help='Closes a ticket channel.')
 @commands.has_permissions(manage_channels=True)
 async def close_ticket(ctx):
-    """Closes and deletes a ticket channel."""
     if "ticket-" in ctx.channel.name:
         await ctx.send("This channel will be closed in 5 seconds...")
         await asyncio.sleep(5)
@@ -176,7 +177,6 @@ async def close_ticket(ctx):
 @bot.command(name='ban', help='Bans a user from the server. Usage: !ban @user [reason]')
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member: discord.Member, *, reason: str = "No reason provided"):
-    """Bans a member from the server."""
     try:
         await member.ban(reason=reason)
         await ctx.send(f"✅ {member.mention} has been banned. Reason: {reason}")
