@@ -2,6 +2,7 @@
 
 import openai
 import re
+# No longer need asyncio for a lock here
 from .emote_orchestrator import EmoteOrchestrator
 from .personality_manager import PersonalityManager
 
@@ -13,9 +14,12 @@ class AIHandler:
         self.client = openai.AsyncOpenAI(api_key=api_key)
         self.emote_handler = emote_handler
         self.personality_manager = personality_manager
+        # The lock has been moved to the event handler to prevent duplicate event processing
         print("✅ AI Handler: Initialized successfully.")
 
     async def generate_response(self, channel, author, message_history):
+        # The lock is no longer needed here. The events cog now prevents this
+        # function from being called multiple times for the same message.
         print("   (Inside AI Handler) Generating response...")
         personality_config = self.personality_manager.get_channel_personality(channel.id)
 
@@ -71,3 +75,4 @@ class AIHandler:
         except Exception as e:
             print(f"   (Inside AI Handler) 🔴 An unexpected error occurred: {e}")
             return None
+
