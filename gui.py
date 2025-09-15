@@ -7,6 +7,13 @@ import os
 import sys
 from dotenv import set_key, get_key
 
+# This makes sure the GUI can find your 'modules' folder to import from
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from modules.config_manager import ConfigManager
+
 CONFIG_FILE = 'config.json'
 ENV_FILE = '.env'
 
@@ -17,7 +24,8 @@ class BotGUI(ctk.CTk):
         self.geometry("850x650")
         self.bot_process = None
 
-        self.load_config()
+        self.config_manager = ConfigManager()
+        self.config = self.config_manager.get_config()
         self.load_secrets()
 
         # --- Main Layout ---
@@ -50,8 +58,6 @@ class BotGUI(ctk.CTk):
 
         # Default Personality Section
         ctk.CTkLabel(self.left_frame, text="Default Personality", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
-        
-        # --- "Bot Name" field has been removed ---
 
         ctk.CTkLabel(self.left_frame, text="Personality Traits:").pack(padx=10, anchor="w", pady=(5,0))
         self.default_traits_textbox = ctk.CTkTextbox(self.left_frame, height=50)
@@ -84,6 +90,7 @@ class BotGUI(ctk.CTk):
         self.active_channels_frame.pack(fill="x", padx=10)
         self.update_active_channels_display()
 
+
         # --- Bottom Frame (Controls) ---
         self.bottom_frame = ctk.CTkFrame(self, height=60)
         self.bottom_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="we")
@@ -98,6 +105,7 @@ class BotGUI(ctk.CTk):
         self.stop_button.pack(side="right")
         
     def update_active_channels_display(self):
+        self.config = self.config_manager.get_config()
         for widget in self.active_channels_frame.winfo_children():
             widget.destroy()
         settings = self.config.get('channel_settings', {})
@@ -118,50 +126,49 @@ class BotGUI(ctk.CTk):
         self.discord_token = get_key(ENV_FILE, "DISCORD_TOKEN") or ""
         self.openai_api_key = get_key(ENV_FILE, "OPENAI_API_KEY") or ""
 
-    def load_config(self):
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r') as f:
-                self.config = json.load(f)
-        else:
-            self.config = {
-                "random_reply_chance": 0.05,
-                "default_personality": {
-                    "personality_traits": "helpful, friendly, curious",
-                    "lore": "I am a helpful AI living on this Discord server.",
-                    "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
-                    "purpose": "To chat with users and assist with server tasks."
-                },
-                "channel_settings": {}
-            }
-
     def save_all_configs(self):
+        """Saves all settings from the GUI in a single, safe operation."""
+        # --- THIS IS THE CORRECTED LOGIC ---
+        
+        # 1. Save secrets to .env file first
         set_key(ENV_FILE, "DISCORD_TOKEN", self.token_entry.get())
         set_key(ENV_FILE, "OPENAI_API_KEY", self.openai_key_entry.get())
         print("✅ Secrets saved to .env file!")
 
-        try:
-            self.config['random_reply_chance'] = float(self.reply_chance_entry.get())
-        except ValueError:
-            self.config['random_reply_chance'] = 0.05
+        # 2. Get the current, most up-to-date config from the manager
+        new_config = self.config_manager.get_config()
 
-        self.config['default_personality'] = {
-            # --- The name field is no longer saved ---
+        # 3. Modify this in-memory dictionary with all our changes
+        try:
+            new_config['random_reply_chance'] = float(self.reply_chance_entry.get())
+        except ValueError:
+            new_config['random_reply_chance'] = 0.05
+
+        new_config['default_personality'] = {
             "personality_traits": self.default_traits_textbox.get("1.0", "end-1c"),
             "lore": self.default_lore_textbox.get("1.0", "end-1c"),
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks."
         }
         
+        # 4. Handle the channel ID setting
         channel_id = self.channel_id_entry.get()
         channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c")
-        if channel_id.isdigit():
-            if channel_id not in self.config.get('channel_settings', {}):
-                self.config.setdefault('channel_settings', {})[channel_id] = self.config['default_personality'].copy()
-            self.config['channel_settings'][channel_id]['purpose'] = channel_purpose
+        if channel_id.isdigit() and channel_purpose.strip():
+            # Ensure the nested dictionary exists
+            if 'channel_settings' not in new_config:
+                new_config['channel_settings'] = {}
+            
+            # Inherit from default personality
+            new_channel_setting = new_config['default_personality'].copy()
+            new_channel_setting['purpose'] = channel_purpose
+            new_config['channel_settings'][channel_id] = new_channel_setting
+            print(f"✅ Channel {channel_id} setting prepared.")
 
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(self.config, f, indent=4)
-        print("✅ Configuration saved to config.json!")
+        # 5. Save the entire, fully updated dictionary in one go
+        self.config_manager.update_config(new_config)
+        
+        # 6. Update the display to show the new state
         self.update_active_channels_display()
 
     def get_python_executable(self):

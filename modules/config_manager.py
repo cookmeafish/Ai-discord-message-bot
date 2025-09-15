@@ -6,28 +6,69 @@ from dotenv import load_dotenv
 
 class ConfigManager:
     """
-    Manages loading secrets from .env and settings from config.json.
+    Manages loading secrets from .env and reading/writing settings to config.json.
     """
     def __init__(self, config_path='config.json'):
-        # Load environment variables from .env file
         load_dotenv()
         self.config_path = config_path
         self.config = self._load_config()
 
     def _load_config(self):
-        """Loads settings from the config file."""
+        """Loads the config file from disk."""
         if not os.path.exists(self.config_path):
-            print(f"WARNING: {self.config_path} not found. Using default empty config.")
-            return {}
+            # Create a default config if it doesn't exist
+            default_config = {
+                "random_reply_chance": 0.05,
+                "default_personality": {
+                    "personality_traits": "helpful, friendly",
+                    "lore": "I am a helpful AI.",
+                    "facts": "I use OpenAI's API.",
+                    "purpose": "To chat with users."
+                },
+                "channel_settings": {}
+            }
+            self._save_config(default_config)
+            return default_config
         with open(self.config_path, 'r') as f:
             return json.load(f)
+
+    def _save_config(self, data):
+        """Saves the config data to the file."""
+        with open(self.config_path, 'w') as f:
+            json.dump(data, f, indent=4)
 
     def get_secret(self, key_name):
         """Gets a secret from environment variables."""
         return os.getenv(key_name)
 
     def get_config(self):
-        """Returns the loaded config.json data."""
-        # We can also inject the secrets here if needed, but it's safer
-        # to keep them separate.
+        """Returns the current configuration."""
         return self.config
+
+    def update_config(self, new_data):
+        """Updates the config with new data and saves it."""
+        self.config.update(new_data)
+        self._save_config(self.config)
+        print("✅ ConfigManager: Configuration updated and saved.")
+
+    def add_or_update_channel_setting(self, channel_id: str, purpose: str):
+        """Activates the bot in a channel with a specific purpose."""
+        if 'channel_settings' not in self.config:
+            self.config['channel_settings'] = {}
+        
+        # Inherit from default personality and set the new purpose
+        new_setting = self.config['default_personality'].copy()
+        new_setting['purpose'] = purpose
+        
+        self.config['channel_settings'][channel_id] = new_setting
+        self._save_config(self.config)
+        print(f"✅ ConfigManager: Activated channel {channel_id}.")
+
+    def remove_channel_setting(self, channel_id: str):
+        """Deactivates the bot in a channel."""
+        if 'channel_settings' in self.config and channel_id in self.config['channel_settings']:
+            del self.config['channel_settings'][channel_id]
+            self._save_config(self.config)
+            print(f"✅ ConfigManager: Deactivated channel {channel_id}.")
+            return True
+        return False

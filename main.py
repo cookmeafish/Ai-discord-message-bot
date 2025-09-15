@@ -11,39 +11,34 @@ async def main():
     config_manager = ConfigManager()
 
     intents = discord.Intents.default()
-    intents.messages = True
-    intents.message_content = True
-    intents.guilds = True
-    intents.members = True
+    # ... (rest of intents)
 
     bot = commands.Bot(command_prefix='!', intents=intents)
 
-    # --- THIS IS THE FIX ---
-    # Attach the entire manager object, not just the config dictionary.
     bot.config_manager = config_manager
-    # -----------------------
     
-    # --- FIX FOR THE __init__.py ERROR ---
-    # We will also update the loop to ignore special files.
+    # Load all cogs
     for filename in os.listdir('./cogs'):
-        if filename.endswith('.py') and not filename.startswith('__'): # <-- Added check
+        if filename.endswith('.py') and not filename.startswith('__'):
             try:
                 await bot.load_extension(f'cogs.{filename[:-3]}')
                 print(f'Successfully loaded cog: {filename}')
             except Exception as e:
                 print(f'Failed to load cog {filename}: {e}')
 
-    bot_token = config_manager.get_secret("DISCORD_TOKEN")
-    if not bot_token:
-        print("FATAL: DISCORD_TOKEN not found in .env file.")
-        return
+    # --- ADD THIS SECTION TO SYNC SLASH COMMANDS ---
+    @bot.event
+    async def on_ready():
+        print(f'Syncing slash commands...')
+        try:
+            synced = await bot.tree.sync()
+            print(f"Synced {len(synced)} command(s)")
+        except Exception as e:
+            print(f"Failed to sync slash commands: {e}")
+    # -----------------------------------------------
 
-    try:
-        await bot.start(bot_token)
-    except discord.errors.LoginFailure:
-        print("FATAL: Login failed. The provided Discord Bot Token is invalid.")
-    except Exception as e:
-        print(f"An error occurred while running the bot: {e}")
+    bot_token = config_manager.get_secret("DISCORD_TOKEN")
+    # ... (rest of main.py)
 
 if __name__ == '__main__':
     asyncio.run(main())
