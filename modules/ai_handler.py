@@ -50,7 +50,6 @@ class AIHandler:
                 content = f"{msg.author.display_name}: {msg.content}"
                 messages_for_api.append({'role': 'user', 'content': content})
 
-        # --- This `try...except` block is now complete ---
         try:
             print("   (Inside AI Handler) Sending request to OpenAI...")
             response = await self.client.chat.completions.create(

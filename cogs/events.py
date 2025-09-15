@@ -23,15 +23,15 @@ class EventsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'Bot is ready! Logged in as {self.bot.user}')
-        self.emote_handler.load_emotes()
-        print('------')
+        # This listener is in main.py now, but we'll leave this here in case.
+        # The main on_ready in main.py handles command syncing.
+        pass
 
     @commands.Cog.listener()
     async def on_message(self, message):
         # --- START DEBUGGING ---
         print("\n--- New Message Detected ---")
-        print(f"1. Message from: {message.author}")
+        print(f"1. Message from: {message.author} in channel {message.channel.id}")
         
         if message.author == self.bot.user:
             print("2. 🔴 Bot message. Ignoring.")
@@ -41,12 +41,13 @@ class EventsCog(commands.Cog):
         
         if message.content.startswith(self.bot.command_prefix):
             print("3. 🔴 Message is a command. Ignoring for chat response.")
-            # Let the bot process the command without stopping.
             await self.bot.process_commands(message)
             return
 
         print("3. ✅ Message is not a command.")
 
+        # Reload the config to ensure we have the latest channel settings
+        self.config = self.bot.config_manager.get_config()
         active_channels_str = self.config.get('channel_settings', {}).keys()
         active_channels_int = [int(ch_id) for ch_id in active_channels_str]
         print(f"4. Checking channel... Current Channel ID: {message.channel.id}")
