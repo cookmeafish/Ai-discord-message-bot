@@ -1,0 +1,53 @@
+# modules/ai_handler.py
+
+import openai
+from .emote_orchestrator import EmoteOrchestrator
+from .personality_manager import PersonalityManager
+
+class AIHandler:
+    def __init__(self, api_key: str, emote_handler: EmoteOrchestrator, personality_manager: PersonalityManager):
+        if not api_key:
+            raise ValueError("OpenAI API key is required.")
+        self.client = openai.AsyncOpenAI(api_key=api_key)
+        self.emote_handler = emote_handler
+        self.personality_manager = personality_manager
+
+    async def generate_response(self, channel, author, message_history):
+        personality_config = self.personality_manager.get_channel_personality(channel.id)
+
+        available_emotes = self.emote_handler.get_available_emote_names()
+        emote_instructions = (
+            f"You can use custom server emotes: {available_emotes}. "
+            "Use them by wrapping their name in colons, like :smile:."
+        )
+
+        system_prompt = (
+            f"You are a Discord bot named {personality_config.get('name', 'AI-Bot')}. "
+            f"Your personality is: {personality_config.get('personality_traits', 'helpful')}. "
+            f"Your lore: {personality_config.get('lore', '')}. "
+            f"Facts to remember: {personality_config.get('facts', '')}. "
+            f"You are in channel '{channel.name}'. "
+            f"Your purpose here is: {personality_config.get('purpose', 'general chat')}. "
+            "Keep responses concise for chat. Do not use markdown.\n"
+            f"{emote_instructions}"
+        )
+
+        messages_for_api = [{'role': 'system', 'content': system_prompt}]
+        for msg in message_history:
+            role = 'assistant' if msg.author.id == self.emote_handler.bot.user.id else 'user'
+            messages_for_api.append({'role': role, 'content': f"{msg.author.display_name}: {msg.content}"})
+
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages_for_api,
+                max_tokens=200,
+                temperature=0.7
+            )
+            return response.choices[0].message.content.strip()
+        except openai.APIError as e:
+            print(f"An OpenAI API error occurred: {e}")
+            return "Sorry, I'm having trouble connecting to my AI brain right now."
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
