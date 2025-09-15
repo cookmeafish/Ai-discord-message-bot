@@ -104,6 +104,15 @@ class BotGUI(ctk.CTk):
         self.stop_button = ctk.CTkButton(self.bottom_frame, text="Stop Bot", command=self.stop_bot, fg_color="#dc3545", hover_color="#c82333")
         self.stop_button.pack(side="right")
         
+        # Add a handler to ensure the bot process is killed when the GUI window is closed
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        """Called when the user closes the GUI window."""
+        print("GUI is closing, ensuring bot process is terminated...")
+        self.stop_bot()
+        self.destroy()
+        
     def update_active_channels_display(self):
         self.config = self.config_manager.get_config()
         for widget in self.active_channels_frame.winfo_children():
@@ -178,22 +187,51 @@ class BotGUI(ctk.CTk):
         if self.bot_process is None or self.bot_process.poll() is not None:
             print("Starting bot...")
             python_exec = self.get_python_executable()
-            self.bot_process = subprocess.Popen([python_exec, 'main.py'])
+            # Use CREATE_NO_WINDOW flag on Windows to prevent a new console window from appearing
+            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            self.bot_process = subprocess.Popen(
+                [python_exec, 'main.py'],
+                creationflags=creation_flags
+            )
             print(f"Bot process started with PID: {self.bot_process.pid}")
         else:
             print("Bot is already running.")
 
     def stop_bot(self):
-        if self.bot_process and self.bot_process.poll() is not None:
+        # poll() returns None if the process is still running.
+        if self.bot_process and self.bot_process.poll() is None:
             print("Stopping bot...")
-            self.bot_process.terminate()
-            self.bot_process.wait()
+            # Use taskkill on Windows for more reliable process tree termination
+            if sys.platform == "win32":
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/PID", str(self.bot_process.pid), "/T"],
+                        check=True,
+                        capture_output=True # Hides the output from the console
+                    )
+                    print("Bot process tree terminated successfully on Windows.")
+                except subprocess.CalledProcessError as e:
+                    print(f"Failed to terminate bot process with taskkill: {e.stderr.decode()}")
+                except FileNotFoundError:
+                    print("taskkill command not found. Falling back to terminate().")
+                    self.bot_process.terminate() # Fallback if taskkill isn't available
+            else:
+                # Original logic for non-Windows systems (Linux, macOS)
+                self.bot_process.terminate()
+                try:
+                    self.bot_process.wait(timeout=5)
+                    print("Bot process stopped.")
+                except subprocess.TimeoutExpired:
+                    print("Bot process did not terminate gracefully, killing it.")
+                    self.bot_process.kill()
+                    print("Bot process killed.")
+
             self.bot_process = None
-            print("Bot process stopped.")
         else:
-            print("Bot is not running.")
+            print("Bot is not running or has already stopped.")
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("dark")
     app = BotGUI()
     app.mainloop()
+

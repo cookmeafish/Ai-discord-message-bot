@@ -6,7 +6,7 @@ import random
 import asyncio
 
 class EventsCog(commands.Cog):
-    # This is now a class variable, not an instance variable.
+    # This is a class variable, not an instance variable.
     # This creates a SINGLE, shared set across all potential instances of this cog,
     # which is a more robust way to prevent race conditions from duplicate events.
     _processing_messages = set()
@@ -27,19 +27,24 @@ class EventsCog(commands.Cog):
         if message.author.bot:
             return
             
+        # First, we let the bot process any potential commands in the message.
+        # This is non-blocking and allows commands to be triggered.
+        await self.bot.process_commands(message)
+
+        # To prevent the bot from sending a chat reply to a message that was a command,
+        # we get its context and check if a valid command was found.
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            return # It was a command, so we don't proceed with chat logic.
+
         # Check the class-level set to see if this message ID is already being processed.
+        # This lock prevents race conditions from duplicate Discord gateway events.
         if message.id in EventsCog._processing_messages:
             return
 
         # Add the message ID to the class-level set to "lock" it.
         EventsCog._processing_messages.add(message.id)
         try:
-            # Check for command prefix. If it's a command, let the bot's
-            # command handler deal with it and do not proceed with chat logic.
-            if message.content.startswith(self.bot.command_prefix):
-                await self.bot.process_commands(message)
-                return
-
             # --- Determine if the bot should respond to the chat message ---
             config = self.bot.config_manager.get_config()
             
@@ -72,8 +77,8 @@ class EventsCog(commands.Cog):
         
         finally:
             # IMPORTANT: Always remove the message ID from the shared set to "unlock" it
-            # after processing is complete.
-            EventsCog._processing_messages.remove(message.id)
+            # after processing is complete. Use discard() for safety.
+            EventsCog._processing_messages.discard(message.id)
 
 
 async def setup(bot):
