@@ -2,26 +2,31 @@
 
 import openai
 import re
-# No longer need asyncio for a lock here
 from .emote_orchestrator import EmoteOrchestrator
-from .personality_manager import PersonalityManager
+# We no longer import the old PersonalityManager
 
 class AIHandler:
-    def __init__(self, api_key: str, emote_handler: EmoteOrchestrator, personality_manager: PersonalityManager):
+    # The __init__ method no longer accepts a personality_manager
+    def __init__(self, api_key: str, emote_handler: EmoteOrchestrator):
         if not api_key:
             print("🔴 AI Handler Error: OpenAI API key is missing!")
             raise ValueError("OpenAI API key is required.")
         self.client = openai.AsyncOpenAI(api_key=api_key)
         self.emote_handler = emote_handler
-        self.personality_manager = personality_manager
-        # The lock has been moved to the event handler to prevent duplicate event processing
+        # The self.personality_manager attribute is removed.
         print("✅ AI Handler: Initialized successfully.")
 
     async def generate_response(self, channel, author, message_history):
-        # The lock is no longer needed here. The events cog now prevents this
-        # function from being called multiple times for the same message.
         print("   (Inside AI Handler) Generating response...")
-        personality_config = self.personality_manager.get_channel_personality(channel.id)
+        
+        # --- TEMPORARY PERSONALITY LOGIC ---
+        # This is a placeholder. Instead of using the old manager, we now get the config
+        # directly through the bot instance attached to the emote_handler.
+        # This will be replaced by a call to the db_manager once it's built.
+        config = self.emote_handler.bot.config_manager.get_config()
+        channel_id_str = str(channel.id)
+        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+        # --- END OF TEMPORARY LOGIC ---
 
         bot_name = channel.guild.me.display_name
         print(f"   (Inside AI Handler) Detected bot's current name as: {bot_name}")
@@ -32,7 +37,6 @@ class AIHandler:
             "Use them by wrapping their name in colons, like :smile:."
         )
 
-        # Updated system prompt to include the user's display name for context
         system_prompt = (
             f"You are a Discord bot. Your name is ALWAYS {bot_name}. Do not refer to yourself by any other name. "
             f"The user you are currently speaking to is named '{author.display_name}'. You should be friendly and refer to them by their name when it feels natural. "
@@ -49,13 +53,10 @@ class AIHandler:
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
         
         for msg in message_history:
-            # Use display_name (nickname) for all users in the history
             user_name = msg.author.display_name
             if msg.author.id == self.emote_handler.bot.user.id:
-                # For the bot's own messages, just add the content
                 messages_for_api.append({'role': 'assistant', 'content': msg.content})
             else:
-                # For user messages, prepend their display name
                 content = f"{user_name}: {msg.content}"
                 messages_for_api.append({'role': 'user', 'content': content})
 
@@ -75,4 +76,3 @@ class AIHandler:
         except Exception as e:
             print(f"   (Inside AI Handler) 🔴 An unexpected error occurred: {e}")
             return None
-
