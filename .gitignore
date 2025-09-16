@@ -1,4 +1,8 @@
 Notes
 .env
 .vs
-__pycache__
+pycache/
+
+Database files
+*.db
+*.db-journal

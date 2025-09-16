@@ -130,6 +130,7 @@ A set of secure, admin-only slash commands for live management of the bot's data
 
 This document will serve as the guiding document for the bot's development.
 
+
 ## 4. Project File Structure & Component Mapping
 
 This section maps the conceptual components defined above to the final, physical file structure of the project. This is the definitive guide for the repository's organization.
