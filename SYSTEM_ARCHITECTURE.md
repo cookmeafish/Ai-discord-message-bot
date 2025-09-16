@@ -129,3 +129,117 @@ A set of secure, admin-only slash commands for live management of the bot's data
     
 
 This document will serve as the guiding document for the bot's development.
+
+## 4. Project File Structure & Component Mapping
+
+This section maps the conceptual components defined above to the final, physical file structure of the project. This is the definitive guide for the repository's organization.
+
+```
+/
+├── 📂 cogs/
+│   ├── 📄 __init__.py
+│   ├── 📄 admin.py
+│   ├── 📄 events.py
+│   ├── 📄 memory_tasks.py
+│   ├── 📄 moderation.py
+│   ├── 📄 settings.py
+│   └── 📄 utility.py
+|
+├── 📂 database/
+│   ├── 📄 __init__.py
+│   ├── 📄 db_manager.py
+│   └── 📄 schemas.py
+|
+├── 📂 modules/
+│   ├── 📄 __init__.py
+│   ├── 📄 ai_handler.py
+│   ├── 📄 config_manager.py
+│   ├── 📄 emote_orchestrator.py
+│   └── 📄 logging_manager.py
+|
+├── 📂 tests/
+│   ├── 📄 __init__.py
+│   └── 📄 (Unit tests for modules and cogs)
+|
+├── 📜 .env
+├── 📜 .gitignore
+├── 📜 config.json
+├── 📜 gui.py
+├── 📜 main.py
+├── 📜 README.md
+├── 📜 requirements.txt
+└── 📜 SYSTEM_ARCHITECTURE.md
+
+```
+
+### 4.1. `cogs/` Directory
+
+Houses Discord-facing logic, including commands and event listeners.
+
+-   `__init__.py`: Marks the directory as a Python package, allowing cogs to be imported correctly.
+    
+-   `admin.py`: Implements the **Real-Time Administration Interface (3.6)**.
+    
+-   `events.py`: Implements the **Core Interaction Handler (3.1)**. Contains the primary `on_message` event listener and the global `on_command_error` listener for centralized error handling.
+    
+-   `memory_tasks.py`: Implements the **Proactive Engagement Subsystem (3.3)** and the **Automated Memory Consolidation Process (3.4)** using `tasks.loop`.
+    
+-   `moderation.py`: Implements the **Moderation Module (3.5)**.
+    
+-   `settings.py`: Contains bot-level settings commands, like activating or deactivating the bot.
+    
+-   `utility.py`: Implements the **Utility Module (3.5)** for features like polls, user info, and the support ticket system.
+    
+
+### 4.2. `database/` Directory
+
+The central component for all data persistence logic.
+
+-   `__init__.py`: Marks the directory as a Python package, enabling imports of the manager and schemas.
+    
+-   `db_manager.py`: The sole interface for the database. Contains all functions for data manipulation (e.g., `getUser`, `addFact`). All other parts of the bot interact with the database through this manager.
+    
+-   `schemas.py`: Defines the database table structures (e.g., via ORM classes or SQL statements) as described in section 3.2.
+    
+
+### 4.3. `modules/` Directory
+
+Contains core helper classes not directly tied to Discord's API.
+
+-   `__init__.py`: Marks the directory as a Python package so these helper modules can be imported.
+    
+-   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text.
+    
+-   `config_manager.py`: Manages the loading of `config.json` and `.env` files.
+    
+-   `emote_orchestrator.py`: Manages the loading and replacement of custom server emotes.
+    
+-   `logging_manager.py`: A dedicated module to handle structured logging for debugging and monitoring.
+    
+
+### 4.4. `tests/` Directory
+
+A dedicated folder for housing unit tests and integration tests.
+
+-   `__init__.py`: Marks the directory as a Python package, which is often required by testing frameworks.
+    
+-   Contains test files for the various components of the bot to ensure stability and reliability.
+    
+
+### 4.5. Root Directory Files
+
+-   `.env`: Stores sensitive credentials.
+    
+-   `.gitignore`: Specifies files/directories to be ignored by Git (e.g., `.env`, `__pycache__/`, `Notes/`).
+    
+-   `config.json`: Stores non-sensitive, user-configurable settings.
+    
+-   `gui.py`: The optional graphical user interface for configuration and startup.
+    
+-   `main.py`: The primary entry point for the application, responsible for initializing managers and loading cogs.
+    
+-   `README.md`: The user-facing guide for setup and basic features.
+    
+-   `requirements.txt`: Lists all Python package dependencies.
+    
+-   `SYSTEM_ARCHITECTURE.md`: This document.
