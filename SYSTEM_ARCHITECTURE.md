@@ -47,7 +47,7 @@ All persistent data is stored in and retrieved from a relational database.
         
     -   `Lore`: (e.g., "Is a fish that can go on land and use Discord.").
         
-    -   `Facts & Quirks`: (e.g., "Dreams of being cooked at a 5-star restaurant.").
+    -   `Facts & Quirks`: (e.g., "Dreams of being cooked at a 5-star restaurant," or "Mourns its cousin Fred, who was tragically eaten by a shark instead of being properly cooked and served.").
         
 -   **Structured Long-Term Memory Schema:** A table of user-associated memory objects, each containing:
     
@@ -71,6 +71,12 @@ All persistent data is stored in and retrieved from a relational database.
         
     -   `Formality`: Integer (-5 to +5).
         
+-   **Global State Schema:** A simple key-value table to store global bot states, such as the "Daily Mood."
+    
+    -   `state_key`: (e.g., "daily_mood_anger").
+        
+    -   `state_value`: The current integer value for that mood.
+        
 -   **Short-Term Message Log:** A table containing the full log of messages from the last 24 hours. This serves as the high-resolution, rolling buffer for the Core Interaction Handler.
     
 -   **Message Archive:** A permanent, long-term table for all messages after they have been processed by the memory consolidation system. This serves as the bot's complete historical record.
@@ -88,7 +94,7 @@ This component allows the bot to initiate conversation, governed by strict rules
     
     -   **Contextual Engagement:** The system analyzes the last several messages and generates a relevant, on-topic comment.
         
-    -   **Novel Engagement:** The system generates a message on a random topic, influenced by the global "Day Mood."
+    -   **Status-Based Engagement:** The system retrieves its current dynamic status message (e.g., "Pondering the existence of sharks.") and generates a message for the channel that expands on that thought, influenced by the global "Day Mood."
         
 
 ### 3.4. Automated Memory Consolidation Process
@@ -108,7 +114,24 @@ A daily, automated background process that converts short-term message data into
 6.  **Archive & Reset:** After processing, the system moves the 24 hours of messages from the Short-Term Message Log into the permanent **Message Archive** and then clears the Short-Term Message Log. This completes the cycle, leaving the short-term buffer empty and ready for the next 24-hour period.
     
 
-### 3.5. Ancillary Functionality Modules
+### 3.5. Dynamic Status Subsystem
+
+An automated process that periodically updates the bot's Discord presence to reflect a dynamic, "thoughtful" status.
+
+-   **Scheduled Event:** A task runs at a regular interval (once everyday after converting the short memory to long term.).
+    
+-   **Status Generation:**
+    
+    1.  The system queries the database to retrieve the bot's core identity (`lore`, `facts`, `traits`) and the current global mood integers (e.g., `daily_mood_anger`) from the **Global State Schema**.
+        
+    2.  This context is passed to the AI handler with a specific prompt (e.g., "Generate a short, passive thought or status message for a Discord bot pondering its existence...").
+        
+    3.  The AI generates a random, flavorful status text that aligns with its personality and current mood.
+        
+-   **Status Update:** The bot's Discord presence (e.g., "Playing: Pondering the existence of sharks.") will be updated with the newly generated text.
+    
+
+### 3.6. Ancillary Functionality Modules
 
 Standard bot features will be implemented as separate, modular components.
 
@@ -119,17 +142,16 @@ Standard bot features will be implemented as separate, modular components.
 -   **Utility Module:** Tools such as polls, user info, and server stats.
     
 
-### 3.6. Real-Time Administration Interface
+### 3.7. Real-Time Administration Interface
 
 A set of secure, admin-only slash commands for live management of the bot's database.
 
--   **Functionality:** Provides commands to create, read, update, and delete records for the Bot's Identity, User Memories, and Relationship Metrics.
+-   **Functionality:** Provides commands to create, read, update, and delete records for the Bot's Identity, User Memories, Relationship Metrics, and Global State.
     
 -   **Instantaneous Effect:** Due to the system's Real-Time Data Reliance directive, any changes made via this interface will be reflected in the bot's very next interaction.
     
 
 This document will serve as the guiding document for the bot's development.
-
 
 ## 4. Project File Structure & Component Mapping
 
@@ -171,6 +193,9 @@ This section maps the conceptual components defined above to the final, physical
 ├── 📜 requirements.txt
 └── 📜 SYSTEM_ARCHITECTURE.md
 
+
+
+
 ```
 
 ### 4.1. `cogs/` Directory
@@ -179,17 +204,17 @@ Houses Discord-facing logic, including commands and event listeners.
 
 -   `__init__.py`: Marks the directory as a Python package, allowing cogs to be imported correctly.
     
--   `admin.py`: Implements the **Real-Time Administration Interface (3.6)**.
+-   `admin.py`: Implements the **Real-Time Administration Interface (3.7)**.
     
 -   `events.py`: Implements the **Core Interaction Handler (3.1)**. Contains the primary `on_message` event listener and the global `on_command_error` listener for centralized error handling.
     
--   `memory_tasks.py`: Implements the **Proactive Engagement Subsystem (3.3)** and the **Automated Memory Consolidation Process (3.4)** using `tasks.loop`.
+-   `memory_tasks.py`: Implements the **Proactive Engagement Subsystem (3.3)**, the **Automated Memory Consolidation Process (3.4)**, and the **Dynamic Status Subsystem (3.5)** using `tasks.loop`.
     
--   `moderation.py`: Implements the **Moderation Module (3.5)**.
+-   `moderation.py`: Implements the **Moderation Module (3.6)**.
     
 -   `settings.py`: Contains bot-level settings commands, like activating or deactivating the bot.
     
--   `utility.py`: Implements the **Utility Module (3.5)** for features like polls, user info, and the support ticket system.
+-   `utility.py`: Implements the **Utility Module (3.6)** for features like polls, user info, and the support ticket system.
     
 
 ### 4.2. `database/` Directory
