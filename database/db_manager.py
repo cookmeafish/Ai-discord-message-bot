@@ -2,6 +2,7 @@
 import sqlite3
 import os
 from . import schemas
+import datetime
 
 # Define the location for the database file
 DB_FOLDER = "database"
@@ -38,14 +39,26 @@ class DBManager:
         """Returns the active database connection."""
         return self.conn
 
-    # --- You will add more methods here for interacting with the data ---
-    # Example:
-    # def get_user_facts(self, user_id):
-    #     cursor = self.conn.cursor()
-    #     cursor.execute("SELECT fact FROM long_term_memory WHERE user_id = ?", (user_id,))
-    #     facts = cursor.fetchall()
-    #     cursor.close()
-    #     return [fact[0] for fact in facts]
+    # --- MODIFIED: Method to log messages with directed status ---
+    def log_message(self, message, directed_at_bot=False):
+        """Logs a message to the short_term_message_log table."""
+        query = """
+        INSERT INTO short_term_message_log (message_id, user_id, channel_id, content, timestamp, directed_at_bot)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """
+        timestamp = message.created_at.isoformat()
+        # Convert boolean to integer (1 for True, 0 for False) for the database
+        directed_flag = 1 if directed_at_bot else 0
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (message.id, message.author.id, message.channel.id, message.content, timestamp, directed_flag))
+            self.conn.commit()
+            cursor.close()
+        except sqlite3.IntegrityError:
+            pass
+        except Exception as e:
+            print(f"🔴 DATABASE ERROR: Failed to log message {message.id}: {e}")
 
     def close(self):
         """Closes the database connection."""

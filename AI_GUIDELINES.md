@@ -20,39 +20,35 @@ Your primary role is to act as an expert programmer and a diligent architect for
 
 ## 2. Code Modification and Comparison
 
-When you are asked to modify code or provide a comparison, you must follow these rules to ensure clarity.
+When you are asked to modify code or show differences, you must follow these rules to ensure clarity.
 
--   **Highlight Changes, Don't Edit Directly**: When showing the difference between the original and updated code, do not simply provide the new file. You must explicitly state what was changed. Use clear "before" and "after" snippets and use comments or descriptive text to highlight the exact lines that were added, removed, or modified.
+-   **Clearly Mark All Changes**: When presenting updated code, you must not just show the final version. Instead, present a single, unified code block that uses comments to explicitly mark every new or altered line. This provides a clear, at-a-glance view of the modifications.
     
-    **Example Format**: "In `cogs/events.py`, I've added a check to see if a message is a reply to the bot.
+-   **Use a Consistent Commenting Scheme**:
     
-    **Before:**
+    -   For purely **added** lines that don't replace existing code, use `#new code`.
+        
+    -   For purely **deleted** lines that are not replaced, use `#deleted code`.
+        
+    -   For **modified** lines, which are represented as a deletion and an immediate addition, use `#modified code` on both the deleted (`-`) and added (`+`) lines.
+        
+-   **Employ Color-Coded Diffs**: Whenever possible, use `diff` syntax within your code blocks. This will automatically color-code additions (green) and deletions (red), making the changes even easier to spot. Lines starting with `+` are additions, and lines with `-` are deletions. A modification is represented by a `-` line followed immediately by a `+` line. Unchanged lines have no prefix.
     
-    Python
+    **Example Format**: "In `cogs/events.py`, I've added a check to see if a message is a reply to the bot:"
     
     ```
-    is_mentioned = self.bot.user.mentioned_in(message)
+    ... (surrounding code for context) ...
+      is_mentioned = self.bot.user.mentioned_in(message)
     
-    if is_mentioned or (is_active_channel and is_random_reply):
+    + is_reply_to_bot = False # new code
+    + if message.reference and message.reference.resolved: # new code
+    +     if message.reference.resolved.author.id == self.bot.user.id: # new code
+    +         is_reply_to_bot = True # new code
+    
+    - if is_mentioned or (is_active_channel and is_random_reply): # modified code
+    + if is_mentioned or is_reply_to_bot or (is_active_channel and is_random_reply): # modified code
         # ...
-    
-    ```
-    
-    **After:**
-    
-    Python
-    
-    ```
-    is_mentioned = self.bot.user.mentioned_in(message)
-    
-    is_reply_to_bot = False
-    if message.reference and message.reference.resolved:
-        if message.reference.resolved.author.id == self.bot.user.id:
-            is_reply_to_bot = True
-    
-    if is_mentioned or is_reply_to_bot or (is_active_channel and is_random_reply):
-        # ...
-    ```"
+    ... (surrounding code for context) ...
     
     
     ```

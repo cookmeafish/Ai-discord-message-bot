@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 import random
 import asyncio
-import logging # --- ADDED ---
+import logging 
 
 class EventsCog(commands.Cog):
     _processing_messages = set()
@@ -20,7 +20,20 @@ class EventsCog(commands.Cog):
     async def on_message(self, message):
         if message.author.bot:
             return
+
+        # --- MODIFIED: Check if the message is directed at the bot ---
+        is_mentioned = self.bot.user.mentioned_in(message)
+        is_reply_to_bot = False
+        if message.reference and message.reference.resolved:
+            if message.reference.resolved.author.id == self.bot.user.id:
+                is_reply_to_bot = True
         
+        was_directed_at_bot = is_mentioned or is_reply_to_bot
+        
+        # Log every message and include whether it was directed at the bot
+        self.bot.db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
+        # --- END MODIFICATION ---
+
         ctx = await self.bot.get_context(message)
         
         if ctx.valid:
@@ -33,14 +46,14 @@ class EventsCog(commands.Cog):
         EventsCog._processing_messages.add(message.id)
         try:
             config = self.bot.config_manager.get_config()
-            is_mentioned = self.bot.user.mentioned_in(message)
             active_channels_str = config.get('channel_settings', {}).keys()
             active_channels_int = [int(ch_id) for ch_id in active_channels_str]
             is_active_channel = message.channel.id in active_channels_int
             rand_chance = config.get('random_reply_chance', 0.05)
             is_random_reply = random.random() < rand_chance
 
-            if is_mentioned or (is_active_channel and is_random_reply):
+            # The trigger condition now uses the pre-calculated 'was_directed_at_bot'
+            if was_directed_at_bot or (is_active_channel and is_random_reply):
                 async with message.channel.typing():
                     history = [msg async for msg in message.channel.history(limit=10)]
                     history.reverse()
@@ -52,17 +65,13 @@ class EventsCog(commands.Cog):
                     )
 
                     if ai_response_text:
-                        # --- MODIFIED FOR LOGGING ---
                         logging.info("="*60)
                         logging.info(f"Raw response from AI:\n{ai_response_text}")
-                        # --- END MODIFIED ---
 
                         final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
-
-                        # --- MODIFIED FOR LOGGING ---
+                        
                         logging.info(f"Final message being sent to Discord:\n{final_response}")
                         logging.info("="*60)
-                        # --- END MODIFIED ---
 
                         await message.channel.send(final_response)
         

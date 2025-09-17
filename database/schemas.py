@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS short_term_message_log (
     user_id INTEGER NOT NULL,
     channel_id INTEGER NOT NULL,
     content TEXT,
-    timestamp TEXT NOT NULL
+    timestamp TEXT NOT NULL,
+    directed_at_bot INTEGER NOT NULL DEFAULT 0 -- --- ADDED: 1 for True, 0 for False ---
 );
 """
 
