@@ -1,4 +1,3 @@
-diff
 # cogs/events.py
 
 import discord
@@ -15,14 +14,13 @@ class EventsCog(commands.Cog):
 
     @commands.Cog.listener("on_ready")
     async def on_cog_ready(self):
-        print(f"✅ EventsCog is ready and listening for messages.")
+        print("EventsCog is ready and listening for messages.")
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
 
-        # --- MODIFIED: Check if the message is directed at the bot ---
         is_mentioned = self.bot.user.mentioned_in(message)
         is_reply_to_bot = False
         if message.reference and message.reference.resolved:
@@ -31,9 +29,7 @@ class EventsCog(commands.Cog):
         
         was_directed_at_bot = is_mentioned or is_reply_to_bot
         
-        # Log every message and include whether it was directed at the bot
         self.bot.db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
-        # --- END MODIFICATION ---
 
         ctx = await self.bot.get_context(message)
         
@@ -53,24 +49,17 @@ class EventsCog(commands.Cog):
             rand_chance = config.get('random_reply_chance', 0.05)
             is_random_reply = random.random() < rand_chance
 
-            # The trigger condition now uses the pre-calculated 'was_directed_at_bot'
             if was_directed_at_bot or (is_active_channel and is_random_reply):
                 async with message.channel.typing():
--                     history = self.bot.db_manager.get_short_term_memory(message.channel.id) # modified code
-+                     short_term_memory = self.bot.db_manager.get_short_term_memory(message.channel.id) # new code
-+                     recent_messages = [msg async for msg in message.channel.history(limit=10)] # new code
-+                     recent_messages.reverse() # new code
--                     ai_response_text = await self.bot.ai_handler.generate_response( # modified code
--                         message.channel, # modified code
--                         message.author, # modified code
--                         history, # modified code
--                         message # Pass the current message along as well # modified code
--                     ) # modified code
-+                     ai_response_text = await self.bot.ai_handler.generate_response( # new code
-+                         message=message, # new code
-+                         short_term_memory=short_term_memory, # new code
-+                         recent_messages=recent_messages # new code
-+                     ) # new code
+                    short_term_memory = self.bot.db_manager.get_short_term_memory(message.channel.id)
+                    recent_messages = [msg async for msg in message.channel.history(limit=10)]
+                    recent_messages.reverse()
+
+                    ai_response_text = await self.bot.ai_handler.generate_response(
+                        message=message,
+                        short_term_memory=short_term_memory,
+                        recent_messages=recent_messages
+                    )
 
                     if ai_response_text:
                         logging.info("="*60)
@@ -95,7 +84,6 @@ class EventsCog(commands.Cog):
         else:
             print(f"An unhandled error occurred in command '{ctx.command}': {error}")
             await ctx.send("Sorry, something went wrong while running that command.", ephemeral=True)
-
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))
