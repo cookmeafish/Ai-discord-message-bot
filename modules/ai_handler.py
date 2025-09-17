@@ -31,6 +31,8 @@ class AIHandler:
         personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
 
         bot_name = channel.guild.me.display_name
+        bot_id = self.emote_handler.bot.user.id
+        bot_mention_string = f'<@{bot_id}>'
         print(f"   (Inside AI Handler) Detected bot's current name as: {bot_name}")
 
         available_emotes = self.emote_handler.get_available_emote_names()
@@ -41,7 +43,7 @@ class AIHandler:
 
         system_prompt = (
             f"You are a Discord bot. Your name is ALWAYS {bot_name}. Do not refer to yourself by any other name. "
-            f"The user you are currently speaking to is named '{author.display_name}'. You should be friendly and refer to them by their name when it feels natural. "
+            f"The user you are currently speaking to is named '{author.display_name}'. Only refer to them by name if the context of the conversation requires it for clarity. Avoid using their name in every message to make the conversation feel more natural. "
             f"Your personality is: {personality_config.get('personality_traits', 'helpful')}. "
             f"Your lore: {personality_config.get('lore', '')}. "
             f"Facts to remember: {personality_config.get('facts', '')}. "
@@ -57,9 +59,13 @@ class AIHandler:
         for msg in message_history:
             user_name = msg.author.display_name
             
+            # --- PRE-PROCESSING STEP ---
+            # Replace the bot's own ID-based mention with its user-friendly name for the AI
+            processed_content = msg.content.replace(bot_mention_string, f'@{bot_name}')
+
             # --- SANITIZATION STEP ---
-            # Sanitize the content of every message before sending it to the AI.
-            sanitized_content = self._sanitize_content_for_ai(msg.content)
+            # Sanitize emotes from the already processed content
+            sanitized_content = self._sanitize_content_for_ai(processed_content)
             # --- END SANITIZATION ---
             
             if msg.author.id == self.emote_handler.bot.user.id:
