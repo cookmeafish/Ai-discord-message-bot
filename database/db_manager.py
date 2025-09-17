@@ -1,8 +1,10 @@
+diff
 # database/db_manager.py
 import sqlite3
 import os
 from . import schemas
-import datetime
+- import datetime
++ import datetime # modified code
 
 # Define the location for the database file
 DB_FOLDER = "database"
@@ -60,6 +62,46 @@ class DBManager:
         except Exception as e:
             print(f"🔴 DATABASE ERROR: Failed to log message {message.id}: {e}")
 
++     def get_short_term_memory(self, current_channel_id): # new code
++         """ # new code
++         Retrieves messages from the last 24 hours across all channels, # new code
++         prioritizing messages from the current channel and those directed at the bot. # new code
++         """ # new code
++         query = """ # new code
++         SELECT user_id, channel_id, content, timestamp, directed_at_bot # new code
++         FROM short_term_message_log # new code
++         WHERE timestamp >= ? # new code
++         ORDER BY # new code
++             CASE WHEN channel_id = ? THEN 0 ELSE 1 END, -- Prioritize current channel # new code
++             CASE WHEN directed_at_bot = 1 THEN 0 ELSE 1 END, -- Prioritize directed messages # new code
++             timestamp DESC # new code
++         LIMIT 50 -- Limit the number of messages to avoid overloading the context # new code
++         """ # new code
++         twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat() # new code
++  # new code
++         try: # new code
++             cursor = self.conn.cursor() # new code
++             cursor.execute(query, (twenty_four_hours_ago, current_channel_id)) # new code
++             rows = cursor.fetchall() # new code
++             cursor.close() # new code
++  # new code
++             # Reverse the order to have the oldest messages first # new code
++             rows.reverse() # new code
++  # new code
++             memory = [] # new code
++             for row in rows: # new code
++                 memory.append({ # new code
++                     "author_id": row[0], # new code
++                     "channel_id": row[1], # new code
++                     "content": row[2], # new code
++                     "timestamp": row[3], # new code
++                     "directed_at_bot": bool(row[4]) # new code
++                 }) # new code
++             return memory # new code
++         except Exception as e: # new code
++             print(f"🔴 DATABASE ERROR: Failed to get short term memory: {e}") # new code
++             return [] # new code
++  # new code
     def close(self):
         """Closes the database connection."""
         if self.conn:

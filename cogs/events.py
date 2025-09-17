@@ -1,3 +1,4 @@
+diff
 # cogs/events.py
 
 import discord
@@ -55,14 +56,21 @@ class EventsCog(commands.Cog):
             # The trigger condition now uses the pre-calculated 'was_directed_at_bot'
             if was_directed_at_bot or (is_active_channel and is_random_reply):
                 async with message.channel.typing():
-                    history = [msg async for msg in message.channel.history(limit=10)]
-                    history.reverse()
-
-                    ai_response_text = await self.bot.ai_handler.generate_response(
-                        message.channel, 
-                        message.author, 
-                        history
-                    )
+-                     history = self.bot.db_manager.get_short_term_memory(message.channel.id) # modified code
++                     short_term_memory = self.bot.db_manager.get_short_term_memory(message.channel.id) # new code
++                     recent_messages = [msg async for msg in message.channel.history(limit=10)] # new code
++                     recent_messages.reverse() # new code
+-                     ai_response_text = await self.bot.ai_handler.generate_response( # modified code
+-                         message.channel, # modified code
+-                         message.author, # modified code
+-                         history, # modified code
+-                         message # Pass the current message along as well # modified code
+-                     ) # modified code
++                     ai_response_text = await self.bot.ai_handler.generate_response( # new code
++                         message=message, # new code
++                         short_term_memory=short_term_memory, # new code
++                         recent_messages=recent_messages # new code
++                     ) # new code
 
                     if ai_response_text:
                         logging.info("="*60)
