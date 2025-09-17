@@ -66,7 +66,19 @@ class EventsCog(commands.Cog):
                     )
 
                     if ai_response_text:
+                        # --- ADDED DEBUGGING ---
+                        print("\n" + "="*60)
+                        print(f"DEBUG: Raw response from AI:\n{ai_response_text}")
+                        print("."*60)
+                        # --- END DEBUGGING ---
+
                         final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
+
+                        # --- ADDED DEBUGGING ---
+                        print(f"DEBUG: Final message being sent to Discord:\n{final_response}")
+                        print("="*60 + "\n")
+                        # --- END DEBUGGING ---
+
                         await message.channel.send(final_response)
         
         finally:
@@ -92,4 +104,3 @@ class EventsCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))
-

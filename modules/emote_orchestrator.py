@@ -61,11 +61,23 @@ class EmoteOrchestrator:
         Returns:
             str: The processed string with emote tags replaced.
         """
-        # This regex finds all words enclosed in colons, e.g., :smile:
-        emote_tags = re.findall(r':(\w+):', text)
-        for tag in emote_tags:
+        def replace_match(match):
+            tag = match.group(1)
             emote = self.get_emote(tag)
+
+            # --- ADDED DEBUGGING ---
+            print(f"DEBUG: Matched tag=':{tag}:', Found emote='{emote}', Name='{getattr(emote, 'name', 'N/A')}', ID='{getattr(emote, 'id', 'N/A')}'")
+            # --- END DEBUGGING ---
+
             if emote:
-                # Replace the tag (e.g., :smile:) with the emote's string representation
-                text = text.replace(f':{tag}:', str(emote))
-        return text
+                # Manually build the emote string for maximum reliability
+                if emote.animated:
+                    return f'<a:{emote.name}:{emote.id}>'
+                else:
+                    return f'<:{emote.name}:{emote.id}>'
+            else:
+                # If emote is not found, return the original tag e.g. :smile:
+                return match.group(0)
+
+        # This regex finds all words enclosed in colons, e.g., :smile:
+        return re.sub(r':(\w+):', replace_match, text)
