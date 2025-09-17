@@ -1,10 +1,8 @@
-diff
 # database/db_manager.py
 import sqlite3
 import os
 from . import schemas
-- import datetime
-+ import datetime # modified code
+import datetime
 
 # Define the location for the database file
 DB_FOLDER = "database"
@@ -31,9 +29,9 @@ class DBManager:
                 # The "IF NOT EXISTS" clause prevents errors on subsequent runs
                 cursor.execute(table_sql)
             self.conn.commit()
-            print("✅ Database initialized and tables verified successfully.")
+            print("Database initialized and tables verified successfully.")
         except Exception as e:
-            print(f"🔴 DATABASE ERROR: Failed to initialize tables: {e}")
+            print(f"DATABASE ERROR: Failed to initialize tables: {e}")
         finally:
             cursor.close()
 
@@ -41,7 +39,6 @@ class DBManager:
         """Returns the active database connection."""
         return self.conn
 
-    # --- MODIFIED: Method to log messages with directed status ---
     def log_message(self, message, directed_at_bot=False):
         """Logs a message to the short_term_message_log table."""
         query = """
@@ -49,7 +46,6 @@ class DBManager:
         VALUES (?, ?, ?, ?, ?, ?)
         """
         timestamp = message.created_at.isoformat()
-        # Convert boolean to integer (1 for True, 0 for False) for the database
         directed_flag = 1 if directed_at_bot else 0
 
         try:
@@ -58,50 +54,50 @@ class DBManager:
             self.conn.commit()
             cursor.close()
         except sqlite3.IntegrityError:
-            pass
+            pass # Ignore if the message is already logged
         except Exception as e:
-            print(f"🔴 DATABASE ERROR: Failed to log message {message.id}: {e}")
+            print(f"DATABASE ERROR: Failed to log message {message.id}: {e}")
 
-+     def get_short_term_memory(self, current_channel_id): # new code
-+         """ # new code
-+         Retrieves messages from the last 24 hours across all channels, # new code
-+         prioritizing messages from the current channel and those directed at the bot. # new code
-+         """ # new code
-+         query = """ # new code
-+         SELECT user_id, channel_id, content, timestamp, directed_at_bot # new code
-+         FROM short_term_message_log # new code
-+         WHERE timestamp >= ? # new code
-+         ORDER BY # new code
-+             CASE WHEN channel_id = ? THEN 0 ELSE 1 END, -- Prioritize current channel # new code
-+             CASE WHEN directed_at_bot = 1 THEN 0 ELSE 1 END, -- Prioritize directed messages # new code
-+             timestamp DESC # new code
-+         LIMIT 50 -- Limit the number of messages to avoid overloading the context # new code
-+         """ # new code
-+         twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat() # new code
-+  # new code
-+         try: # new code
-+             cursor = self.conn.cursor() # new code
-+             cursor.execute(query, (twenty_four_hours_ago, current_channel_id)) # new code
-+             rows = cursor.fetchall() # new code
-+             cursor.close() # new code
-+  # new code
-+             # Reverse the order to have the oldest messages first # new code
-+             rows.reverse() # new code
-+  # new code
-+             memory = [] # new code
-+             for row in rows: # new code
-+                 memory.append({ # new code
-+                     "author_id": row[0], # new code
-+                     "channel_id": row[1], # new code
-+                     "content": row[2], # new code
-+                     "timestamp": row[3], # new code
-+                     "directed_at_bot": bool(row[4]) # new code
-+                 }) # new code
-+             return memory # new code
-+         except Exception as e: # new code
-+             print(f"🔴 DATABASE ERROR: Failed to get short term memory: {e}") # new code
-+             return [] # new code
-+  # new code
+    def get_short_term_memory(self, current_channel_id):
+        """
+        Retrieves messages from the last 24 hours across all channels,
+        prioritizing messages from the current channel and those directed at the bot.
+        """
+        query = """
+        SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
+        FROM short_term_message_log
+        WHERE timestamp >= ?
+        ORDER BY
+            CASE WHEN channel_id = ? THEN 0 ELSE 1 END, -- Prioritize current channel
+            CASE WHEN directed_at_bot = 1 THEN 0 ELSE 1 END, -- Prioritize directed messages
+            timestamp DESC
+        LIMIT 50
+        """
+        twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (twenty_four_hours_ago, current_channel_id))
+            rows = cursor.fetchall()
+            cursor.close()
+
+            rows.reverse()
+
+            memory = []
+            for row in rows:
+                memory.append({
+                    "message_id": row[0],
+                    "author_id": row[1],
+                    "channel_id": row[2],
+                    "content": row[3],
+                    "timestamp": row[4],
+                    "directed_at_bot": bool(row[5])
+                })
+            return memory
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get short term memory: {e}")
+            return []
+
     def close(self):
         """Closes the database connection."""
         if self.conn:

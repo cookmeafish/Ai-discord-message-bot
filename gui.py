@@ -6,8 +6,9 @@ import subprocess
 import os
 import sys
 from dotenv import set_key, get_key
+import threading
+import queue
 
-# This makes sure the GUI can find your 'modules' folder to import from
 project_root = os.path.dirname(os.path.abspath(__file__))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
@@ -21,42 +22,36 @@ class BotGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Discord Bot Control Panel")
-        self.geometry("850x650")
+        self.geometry("850x750")
         self.bot_process = None
 
         self.config_manager = ConfigManager()
         self.config = self.config_manager.get_config()
         self.load_secrets()
 
-        # --- Main Layout ---
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # --- Left Frame (Global & Default Personality) ---
         self.left_frame = ctk.CTkFrame(self, width=350)
         self.left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nswe")
 
         ctk.CTkLabel(self.left_frame, text="Global Settings", font=("Roboto", 18, "bold")).pack(pady=(10, 15))
 
-        # Bot Token
         ctk.CTkLabel(self.left_frame, text="Discord Bot Token:").pack(padx=10, anchor="w")
         self.token_entry = ctk.CTkEntry(self.left_frame, width=320, show="*")
         self.token_entry.pack(padx=10, pady=(0, 10))
         self.token_entry.insert(0, self.discord_token)
 
-        # OpenAI API Key
         ctk.CTkLabel(self.left_frame, text="OpenAI API Key:").pack(padx=10, anchor="w")
         self.openai_key_entry = ctk.CTkEntry(self.left_frame, width=320, show="*")
         self.openai_key_entry.pack(padx=10, pady=(0, 10))
         self.openai_key_entry.insert(0, self.openai_api_key)
 
-        # Random Reply Chance
         ctk.CTkLabel(self.left_frame, text="Random Reply Chance (e.g., 0.05 for 5%):").pack(padx=10, anchor="w")
         self.reply_chance_entry = ctk.CTkEntry(self.left_frame, width=320)
         self.reply_chance_entry.pack(padx=10, pady=(0, 20))
         self.reply_chance_entry.insert(0, str(self.config.get('random_reply_chance', 0.05)))
 
-        # Default Personality Section
         ctk.CTkLabel(self.left_frame, text="Default Personality", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
 
         ctk.CTkLabel(self.left_frame, text="Personality Traits:").pack(padx=10, anchor="w", pady=(5,0))
@@ -69,7 +64,6 @@ class BotGUI(ctk.CTk):
         self.default_lore_textbox.pack(fill="x", padx=10, pady=2)
         self.default_lore_textbox.insert("1.0", self.config.get('default_personality', {}).get('lore', 'I am a helpful AI living on this Discord server.'))
 
-        # --- Right Frame (Channel-Specific Settings) ---
         self.right_frame = ctk.CTkFrame(self)
         self.right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nswe")
         
@@ -82,16 +76,19 @@ class BotGUI(ctk.CTk):
         
         ctk.CTkLabel(self.right_frame, text="Channel-Specific Purpose/Instructions:").pack(padx=10, anchor="w", pady=(10,0))
         self.channel_purpose_textbox = ctk.CTkTextbox(self.right_frame, height=100)
-        self.channel_purpose_textbox.pack(fill="x", expand=True, padx=10, pady=2)
+        self.channel_purpose_textbox.pack(fill="x", padx=10, pady=2)
         self.channel_purpose_textbox.insert("1.0", "Example: Strictly answer user questions based on the server rules. Be formal and direct.")
 
         ctk.CTkLabel(self.right_frame, text="Currently Active Channels:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
-        self.active_channels_frame = ctk.CTkScrollableFrame(self.right_frame, height=150)
+        self.active_channels_frame = ctk.CTkScrollableFrame(self.right_frame, height=100)
         self.active_channels_frame.pack(fill="x", padx=10)
         self.update_active_channels_display()
 
+        ctk.CTkLabel(self.right_frame, text="Bot Console Output:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
+        self.log_textbox = ctk.CTkTextbox(self.right_frame, height=150)
+        self.log_textbox.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        self.log_textbox.configure(state="disabled")
 
-        # --- Bottom Frame (Controls) ---
         self.bottom_frame = ctk.CTkFrame(self, height=60)
         self.bottom_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="we")
 
@@ -104,11 +101,30 @@ class BotGUI(ctk.CTk):
         self.stop_button = ctk.CTkButton(self.bottom_frame, text="Stop Bot", command=self.stop_bot, fg_color="#dc3545", hover_color="#c82333")
         self.stop_button.pack(side="right")
         
-        # Add a handler to ensure the bot process is killed when the GUI window is closed
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        self.output_queue = queue.Queue()
+        self.after(100, self.process_log_queue)
+
+    def process_log_queue(self):
+        try:
+            while True:
+                line = self.output_queue.get_nowait()
+                if line:
+                    self.log_textbox.configure(state="normal")
+                    self.log_textbox.insert("end", line)
+                    self.log_textbox.see("end")
+                    self.log_textbox.configure(state="disabled")
+        except queue.Empty:
+            pass
+        self.after(100, self.process_log_queue)
+
+    def _stream_reader(self, stream):
+        for line in iter(stream.readline, ''):
+            self.output_queue.put(line)
+        stream.close()
+
     def on_closing(self):
-        """Called when the user closes the GUI window."""
         print("GUI is closing, ensuring bot process is terminated...")
         self.stop_bot()
         self.destroy()
@@ -136,18 +152,12 @@ class BotGUI(ctk.CTk):
         self.openai_api_key = get_key(ENV_FILE, "OPENAI_API_KEY") or ""
 
     def save_all_configs(self):
-        """Saves all settings from the GUI in a single, safe operation."""
-        # --- THIS IS THE CORRECTED LOGIC ---
-        
-        # 1. Save secrets to .env file first
         set_key(ENV_FILE, "DISCORD_TOKEN", self.token_entry.get())
         set_key(ENV_FILE, "OPENAI_API_KEY", self.openai_key_entry.get())
-        print("✅ Secrets saved to .env file!")
+        print("Secrets saved to .env file!")
 
-        # 2. Get the current, most up-to-date config from the manager
         new_config = self.config_manager.get_config()
 
-        # 3. Modify this in-memory dictionary with all our changes
         try:
             new_config['random_reply_chance'] = float(self.reply_chance_entry.get())
         except ValueError:
@@ -160,24 +170,18 @@ class BotGUI(ctk.CTk):
             "purpose": "To chat with users and assist with server tasks."
         }
         
-        # 4. Handle the channel ID setting
         channel_id = self.channel_id_entry.get()
         channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c")
         if channel_id.isdigit() and channel_purpose.strip():
-            # Ensure the nested dictionary exists
             if 'channel_settings' not in new_config:
                 new_config['channel_settings'] = {}
             
-            # Inherit from default personality
             new_channel_setting = new_config['default_personality'].copy()
             new_channel_setting['purpose'] = channel_purpose
             new_config['channel_settings'][channel_id] = new_channel_setting
-            print(f"✅ Channel {channel_id} setting prepared.")
+            print(f"Channel {channel_id} setting prepared.")
 
-        # 5. Save the entire, fully updated dictionary in one go
         self.config_manager.update_config(new_config)
-        
-        # 6. Update the display to show the new state
         self.update_active_channels_display()
 
     def get_python_executable(self):
@@ -185,48 +189,56 @@ class BotGUI(ctk.CTk):
 
     def start_bot(self):
         if self.bot_process is None or self.bot_process.poll() is not None:
-            print("Starting bot...")
+            self.log_textbox.configure(state="normal")
+            self.log_textbox.delete("1.0", "end")
+            self.log_textbox.insert("end", "Attempting to start bot...\n")
+            self.log_textbox.configure(state="disabled")
+
             python_exec = self.get_python_executable()
-            # Use CREATE_NO_WINDOW flag on Windows to prevent a new console window from appearing
             creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            
             self.bot_process = subprocess.Popen(
-                [python_exec, 'main.py'],
+                [python_exec, '-u', 'main.py'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
                 creationflags=creation_flags
             )
+            
+            threading.Thread(target=self._stream_reader, args=(self.bot_process.stdout,), daemon=True).start()
+            threading.Thread(target=self._stream_reader, args=(self.bot_process.stderr,), daemon=True).start()
+
             print(f"Bot process started with PID: {self.bot_process.pid}")
         else:
+            self.log_textbox.configure(state="normal")
+            self.log_textbox.insert("end", "Bot is already running.\n")
+            self.log_textbox.configure(state="disabled")
             print("Bot is already running.")
 
     def stop_bot(self):
-        # poll() returns None if the process is still running.
         if self.bot_process and self.bot_process.poll() is None:
             print("Stopping bot...")
-            # Use taskkill on Windows for more reliable process tree termination
             if sys.platform == "win32":
                 try:
                     subprocess.run(
                         ["taskkill", "/F", "/PID", str(self.bot_process.pid), "/T"],
                         check=True,
-                        capture_output=True # Hides the output from the console
+                        capture_output=True
                     )
                     print("Bot process tree terminated successfully on Windows.")
-                except subprocess.CalledProcessError as e:
-                    print(f"Failed to terminate bot process with taskkill: {e.stderr.decode()}")
-                except FileNotFoundError:
-                    print("taskkill command not found. Falling back to terminate().")
-                    self.bot_process.terminate() # Fallback if taskkill isn't available
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    self.bot_process.kill()
             else:
-                # Original logic for non-Windows systems (Linux, macOS)
                 self.bot_process.terminate()
                 try:
                     self.bot_process.wait(timeout=5)
-                    print("Bot process stopped.")
                 except subprocess.TimeoutExpired:
-                    print("Bot process did not terminate gracefully, killing it.")
                     self.bot_process.kill()
-                    print("Bot process killed.")
 
             self.bot_process = None
+            self.log_textbox.configure(state="normal")
+            self.log_textbox.insert("end", "\n--- Bot Stopped ---\n")
+            self.log_textbox.configure(state="disabled")
         else:
             print("Bot is not running or has already stopped.")
 
@@ -234,4 +246,3 @@ if __name__ == "__main__":
     ctk.set_appearance_mode("dark")
     app = BotGUI()
     app.mainloop()
-

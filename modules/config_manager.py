@@ -16,7 +16,6 @@ class ConfigManager:
     def _load_config(self):
         """Loads the config file from disk."""
         if not os.path.exists(self.config_path):
-            # Create a default config if it doesn't exist
             default_config = {
                 "random_reply_chance": 0.05,
                 "default_personality": {
@@ -49,26 +48,25 @@ class ConfigManager:
         """Updates the config with new data and saves it."""
         self.config.update(new_data)
         self._save_config(self.config)
-        print("✅ ConfigManager: Configuration updated and saved.")
+        print("ConfigManager: Configuration updated and saved.")
 
     def add_or_update_channel_setting(self, channel_id: str, purpose: str):
         """Activates the bot in a channel with a specific purpose."""
         if 'channel_settings' not in self.config:
             self.config['channel_settings'] = {}
         
-        # Inherit from default personality and set the new purpose
         new_setting = self.config['default_personality'].copy()
         new_setting['purpose'] = purpose
         
         self.config['channel_settings'][channel_id] = new_setting
         self._save_config(self.config)
-        print(f"✅ ConfigManager: Activated channel {channel_id}.")
+        print(f"ConfigManager: Activated channel {channel_id}.")
 
     def remove_channel_setting(self, channel_id: str):
         """Deactivates the bot in a channel."""
         if 'channel_settings' in self.config and channel_id in self.config['channel_settings']:
             del self.config['channel_settings'][channel_id]
             self._save_config(self.config)
-            print(f"✅ ConfigManager: Deactivated channel {channel_id}.")
+            print(f"ConfigManager: Deactivated channel {channel_id}.")
             return True
         return False
