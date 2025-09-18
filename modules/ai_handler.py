@@ -20,7 +20,7 @@ class AIHandler:
         """
         return re.sub(r'<a?:(\w+):\d+>', r':\1:', content)
 
-    async def generate_response(self, message, short_term_memory, recent_messages):
+    async def generate_response(self, message, short_term_memory):
         print("   (Inside AI Handler) Generating response...")
         
         channel = message.channel
@@ -62,64 +62,39 @@ class AIHandler:
 
         channel_id_to_name = {ch.id: ch.name for ch in channel.guild.channels if hasattr(ch, 'name')}
 
-        combined_context = {}
+        # Sort the memory by timestamp to ensure chronological order
+        sorted_memory = sorted(short_term_memory, key=lambda x: x["timestamp"])
 
-        for msg_data in short_term_memory:
-            combined_context[msg_data["message_id"]] = {
-                "is_bot": msg_data["author_id"] == bot_id,
-                "author_id": msg_data["author_id"],
-                "channel_id": msg_data["channel_id"],
-                "content": msg_data["content"],
-                "timestamp": msg_data["timestamp"],
-                "source": "memory"
-            }
-
-        for msg in recent_messages:
-            if msg.id == message.id:
-                continue
-            combined_context[msg.id] = {
-                "is_bot": msg.author.id == bot_id,
-                "author_id": msg.author.id,
-                "channel_id": msg.channel.id,
-                "content": msg.content,
-                "timestamp": msg.created_at.isoformat(),
-                "source": "recent"
-            }
-
-        sorted_context = sorted(combined_context.values(), key=lambda x: x["timestamp"])
-
-        # Build the final message list, merging consecutive user messages
-        for msg_data in sorted_context:
+        # Build the final message list from the database memory
+        for msg_data in sorted_memory:
             sanitized_content = self._sanitize_content_for_ai(
                 msg_data["content"].replace(bot_mention_string, f'@{bot_name}')
             )
 
-            if msg_data["is_bot"]:
+            if msg_data["author_id"] == bot_id:
                 messages_for_api.append({'role': 'assistant', 'content': sanitized_content})
             else:
                 user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
-                source_prefix = "[Memory] " if msg_data["source"] == "memory" else ""
                 channel_prefix = ""
                 if msg_data["channel_id"] != channel.id:
                     channel_name = channel_id_to_name.get(msg_data["channel_id"], "unknown-channel")
                     channel_prefix = f"[In #{channel_name}] "
                 
-                full_prefix = f"{source_prefix}{channel_prefix}"
-                final_content = f"{full_prefix}{user_name}: {sanitized_content}\n"
+                final_content = f"{channel_prefix}{user_name}: {sanitized_content}\n"
                 
-                if messages_for_api[-1]['role'] == 'user':
+                if messages_for_api and messages_for_api[-1]['role'] == 'user':
                     messages_for_api[-1]['content'] += final_content
                 else:
                     messages_for_api.append({'role': 'user', 'content': final_content})
 
-        # Add the current triggering message, merging if necessary
+        # Add the current triggering message
         current_user_name = author.display_name
         current_sanitized_content = self._sanitize_content_for_ai(
             message.content.replace(bot_mention_string, f'@{bot_name}')
         )
         current_final_content = f"{current_user_name}: {current_sanitized_content}"
 
-        if messages_for_api[-1]['role'] == 'user':
+        if messages_for_api and messages_for_api[-1]['role'] == 'user':
             messages_for_api[-1]['content'] += f"\n{current_final_content}"
         else:
             messages_for_api.append({'role': 'user', 'content': current_final_content})

@@ -51,14 +51,12 @@ class EventsCog(commands.Cog):
 
             if was_directed_at_bot or (is_active_channel and is_random_reply):
                 async with message.channel.typing():
-                    short_term_memory = self.bot.db_manager.get_short_term_memory(message.channel.id)
-                    recent_messages = [msg async for msg in message.channel.history(limit=10)]
-                    recent_messages.reverse()
+                    # Simplified to use the database as the single source of truth for short-term memory
+                    short_term_memory = self.bot.db_manager.get_short_term_memory()
 
                     ai_response_text = await self.bot.ai_handler.generate_response(
                         message=message,
-                        short_term_memory=short_term_memory,
-                        recent_messages=recent_messages
+                        short_term_memory=short_term_memory
                     )
 
                     if ai_response_text:

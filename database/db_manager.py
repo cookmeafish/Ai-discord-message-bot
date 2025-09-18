@@ -14,11 +14,11 @@ class DBManager:
     def __init__(self):
         # Ensure the 'database' directory exists.
         os.makedirs(DB_FOLDER, exist_ok=True)
-        
+
         # Connect to the database. If the file doesn't exist,
         # sqlite3 will create it automatically.
         self.conn = sqlite3.connect(DB_PATH)
-        
+
         self._initialize_database()
 
     def _initialize_database(self):
@@ -58,30 +58,22 @@ class DBManager:
         except Exception as e:
             print(f"DATABASE ERROR: Failed to log message {message.id}: {e}")
 
-    def get_short_term_memory(self, current_channel_id):
+    def get_short_term_memory(self):
         """
-        Retrieves messages from the last 24 hours across all channels,
-        prioritizing messages from the current channel and those directed at the bot.
+        Retrieves all messages from the last 24 hours across all channels.
         """
         query = """
         SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
         FROM short_term_message_log
         WHERE timestamp >= ?
-        ORDER BY
-            CASE WHEN channel_id = ? THEN 0 ELSE 1 END, -- Prioritize current channel
-            CASE WHEN directed_at_bot = 1 THEN 0 ELSE 1 END, -- Prioritize directed messages
-            timestamp DESC
-        LIMIT 50
         """
         twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
 
         try:
             cursor = self.conn.cursor()
-            cursor.execute(query, (twenty_four_hours_ago, current_channel_id))
+            cursor.execute(query, (twenty_four_hours_ago,))
             rows = cursor.fetchall()
             cursor.close()
-
-            rows.reverse()
 
             memory = []
             for row in rows:
@@ -97,6 +89,36 @@ class DBManager:
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get short term memory: {e}")
             return []
+
+    def get_long_term_memory(self, user_id):
+        """Retrieves long-term memory facts for a given user."""
+        query = "SELECT fact FROM long_term_memory WHERE user_id = ?"
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (user_id,))
+            rows = cursor.fetchall()
+            cursor.close()
+            return [row[0] for row in rows]
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get long term memory for user {user_id}: {e}")
+            return []
+
+    def add_long_term_memory(self, user_id, fact):
+        """Adds a new long-term memory fact for a user."""
+        query = """
+        INSERT INTO long_term_memory (user_id, fact, first_mentioned_timestamp, last_mentioned_timestamp)
+        VALUES (?, ?, ?, ?)
+        """
+        now = datetime.datetime.utcnow().isoformat()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (user_id, fact, now, now))
+            self.conn.commit()
+            cursor.close()
+            print(f"Successfully added long-term memory for user {user_id}")
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to add long-term memory for user {user_id}: {e}")
+
 
     def close(self):
         """Closes the database connection."""
