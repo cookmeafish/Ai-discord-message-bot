@@ -51,7 +51,6 @@ class EventsCog(commands.Cog):
 
             if was_directed_at_bot or (is_active_channel and is_random_reply):
                 async with message.channel.typing():
-                    # Simplified to use the database as the single source of truth for short-term memory
                     short_term_memory = self.bot.db_manager.get_short_term_memory()
 
                     ai_response_text = await self.bot.ai_handler.generate_response(
@@ -60,15 +59,11 @@ class EventsCog(commands.Cog):
                     )
 
                     if ai_response_text:
-                        logging.info("="*60)
-                        logging.info(f"Raw response from AI:\n{ai_response_text}")
-
                         final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
-                        
-                        logging.info(f"Final message being sent to Discord:\n{final_response}")
-                        logging.info("="*60)
-
                         await message.channel.send(final_response)
+                    else:
+                        # Failsafe to prevent silence
+                        await message.channel.send("I'm not sure how to respond to that.")
         
         finally:
             EventsCog._processing_messages.discard(message.id)
