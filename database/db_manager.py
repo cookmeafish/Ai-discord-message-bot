@@ -104,18 +104,25 @@ class DBManager:
             return []
 
     def add_long_term_memory(self, user_id, fact):
-        """Adds a new long-term memory fact for a user."""
-        query = """
+        """Adds a new long-term memory fact for a user, avoiding duplicates."""
+        # First, check if a similar fact already exists
+        check_query = "SELECT id FROM long_term_memory WHERE user_id = ? AND fact = ?"
+        insert_query = """
         INSERT INTO long_term_memory (user_id, fact, first_mentioned_timestamp, last_mentioned_timestamp)
         VALUES (?, ?, ?, ?)
         """
         now = datetime.datetime.utcnow().isoformat()
         try:
             cursor = self.conn.cursor()
-            cursor.execute(query, (user_id, fact, now, now))
-            self.conn.commit()
+            cursor.execute(check_query, (user_id, fact))
+            if cursor.fetchone() is None:
+                # Fact doesn't exist, so insert it
+                cursor.execute(insert_query, (user_id, fact, now, now))
+                self.conn.commit()
+                print(f"DATABASE: Saved new fact for user {user_id}: '{fact}'")
+            else:
+                print(f"DATABASE: Fact already exists for user {user_id}, not saving duplicate.")
             cursor.close()
-            print(f"Successfully added long-term memory for user {user_id}")
         except Exception as e:
             print(f"DATABASE ERROR: Failed to add long-term memory for user {user_id}: {e}")
 

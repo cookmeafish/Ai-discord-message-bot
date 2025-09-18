@@ -2,6 +2,7 @@
 
 import openai
 import re
+import json
 from .emote_orchestrator import EmoteOrchestrator
 
 class AIHandler:
@@ -21,8 +22,6 @@ class AIHandler:
         return re.sub(r'<a?:(\w+):\d+>', r':\1:', content)
 
     async def generate_response(self, message, short_term_memory):
-        print("   (Inside AI Handler) Generating response...")
-        
         channel = message.channel
         author = message.author
         
@@ -33,90 +32,96 @@ class AIHandler:
         bot_name = channel.guild.me.display_name
         bot_id = self.emote_handler.bot.user.id
         bot_mention_string = f'<@{bot_id}>'
-        print(f"   (Inside AI Handler) Detected bot's current name as: {bot_name}")
-
+        
         available_emotes = self.emote_handler.get_available_emote_names()
         emote_instructions = (
             f"You can use custom server emotes: {available_emotes}. "
             "Use them by wrapping their name in colons, like :smile:."
         )
 
+        long_term_memory_facts = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
+        long_term_memory_prompt = ""
+        if long_term_memory_facts:
+            facts_str = "; ".join(long_term_memory_facts)
+            long_term_memory_prompt = f"Background information you know about '{author.display_name}': {facts_str}. Do not bring these up unless the conversation is directly related. Use them as subtle context."
+
         system_prompt = (
-            f"You are a Discord bot. Your name is ALWAYS {bot_name}. Do not refer to yourself by any other name. "
-            f"The user you are currently speaking to is named '{author.display_name}'. Only refer to them by name if the context of the conversation requires it for clarity. Avoid using their name in every message to make the conversation feel more natural. "
+            f"You are a Discord bot named {bot_name}. "
             f"Your personality is: {personality_config.get('personality_traits', 'helpful')}. "
-            f"Your lore: {personality_config.get('lore', '')}. "
-            f"Facts to remember: {personality_config.get('facts', '')}. "
-            f"You are in channel '{channel.name}'. "
-            f"Your purpose here is: {personality_config.get('purpose', 'general chat')}.\n"
-            "You will be given a conversation history. Messages marked with [Memory] are from a broader 24-hour context across different channels. Prioritize the most recent messages for immediate context, but use the [Memory] messages to maintain awareness of other conversations."
-            "Keep responses concise for chat. Do not use markdown.\n"
+            "CONVERSATIONAL RULES:\n"
+            "1.  **PRIORITIZE THE LATEST MESSAGE**: Your primary goal is to respond *only* to the user's most recent message. Do not respond to older messages in the history.\n"
+            "2.  **BE CONCISE**: Match the user's energy. If they write one sentence, you should write one sentence. Avoid over-explaining. Keep it brief and casual.\n"
+            "3.  **AVOID USING NAMES**: Do not use the user's name in your reply unless it's absolutely necessary for clarity (e.g., if multiple people are talking to you at once).\n"
+            f"{long_term_memory_prompt}\n"
             f"{emote_instructions}\n"
-            "IMPORTANT: Your response MUST NOT begin with your name and a colon. For example, never start with 'Dr. Fish v2: ' or 'AI-Bot: '."
+            "IMPORTANT: Your response MUST NOT begin with your name and a colon (e.g., 'Dr. Fish v2: ').\n"
+            "After your main response, if you learned a new, significant, and memorable fact about the user (like a preference or personal detail), add it on a new line in this exact format: ```json\n{\"new_fact\": \"The fact you learned\"}```"
         )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
         
         user_id_to_name = {member.id: member.display_name for member in channel.guild.members}
         user_id_to_name[self.emote_handler.bot.user.id] = bot_name
-
         channel_id_to_name = {ch.id: ch.name for ch in channel.guild.channels if hasattr(ch, 'name')}
 
-        # Sort the memory by timestamp to ensure chronological order
         sorted_memory = sorted(short_term_memory, key=lambda x: x["timestamp"])
 
-        # Build the final message list from the database memory
         for msg_data in sorted_memory:
             sanitized_content = self._sanitize_content_for_ai(
                 msg_data["content"].replace(bot_mention_string, f'@{bot_name}')
             )
-
-            if msg_data["author_id"] == bot_id:
-                messages_for_api.append({'role': 'assistant', 'content': sanitized_content})
-            else:
-                user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
+            role = "assistant" if msg_data["author_id"] == bot_id else "user"
+            user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
+            
+            final_content = ""
+            if role == "user":
                 channel_prefix = ""
                 if msg_data["channel_id"] != channel.id:
                     channel_name = channel_id_to_name.get(msg_data["channel_id"], "unknown-channel")
                     channel_prefix = f"[In #{channel_name}] "
-                
                 final_content = f"{channel_prefix}{user_name}: {sanitized_content}\n"
-                
-                if messages_for_api and messages_for_api[-1]['role'] == 'user':
-                    messages_for_api[-1]['content'] += final_content
-                else:
-                    messages_for_api.append({'role': 'user', 'content': final_content})
+            else:
+                final_content = sanitized_content
 
-        # Add the current triggering message
-        current_user_name = author.display_name
-        current_sanitized_content = self._sanitize_content_for_ai(
-            message.content.replace(bot_mention_string, f'@{bot_name}')
-        )
-        current_final_content = f"{current_user_name}: {current_sanitized_content}"
+            if role == 'user' and messages_for_api and messages_for_api[-1]['role'] == 'user':
+                messages_for_api[-1]['content'] += final_content
+            else:
+                messages_for_api.append({'role': role, 'content': final_content})
 
-        if messages_for_api and messages_for_api[-1]['role'] == 'user':
-            messages_for_api[-1]['content'] += f"\n{current_final_content}"
-        else:
-            messages_for_api.append({'role': 'user', 'content': current_final_content})
-
-        # Clean up trailing newlines from content
         for msg in messages_for_api:
             if msg.get('role') == 'user':
                 msg['content'] = msg['content'].strip()
 
         try:
-            print("   (Inside AI Handler) Sending request to OpenAI...")
             response = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages_for_api,
-                max_tokens=200,
+                max_tokens=150,  # Reduced max tokens to encourage shorter responses
                 temperature=0.7
             )
-            print("   (Inside AI Handler) OpenAI request successful.")
-            return response.choices[0].message.content.strip()
+            ai_response_text = response.choices[0].message.content.strip()
+            main_response = ai_response_text
+            
+            try:
+                if "```json" in ai_response_text:
+                    json_block_start = ai_response_text.find("```json")
+                    json_block_end = ai_response_text.find("```", json_block_start + 1)
+                    json_string = ai_response_text[json_block_start + 7 : json_block_end].strip()
+                    main_response = ai_response_text[:json_block_start].strip()
+                    
+                    parsed_json = json.loads(json_string)
+                    if "new_fact" in parsed_json:
+                        fact = parsed_json["new_fact"]
+                        self.emote_handler.bot.db_manager.add_long_term_memory(author.id, fact)
+            except Exception as e:
+                print(f"AI HANDLER: Could not parse or save new fact from AI response. Error: {e}")
+                pass
+
+            return main_response
+
         except openai.APIError as e:
-            print(f"   (Inside AI Handler) An OpenAI API error occurred: {e}")
+            print(f"AI HANDLER ERROR: An OpenAI API error occurred: {e}")
             return "Sorry, I'm having trouble connecting to my AI brain right now."
         except Exception as e:
-            print(f"   (Inside AI Handler) An unexpected error occurred: {e}")
+            print(f"AI HANDLER ERROR: An unexpected error occurred: {e}")
             return None
