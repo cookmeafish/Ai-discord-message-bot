@@ -58,12 +58,10 @@ class EventsCog(commands.Cog):
                         short_term_memory=short_term_memory
                     )
 
+                    # Only send a message if the AI generated a response.
                     if ai_response_text:
                         final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
                         await message.channel.send(final_response)
-                    else:
-                        # Failsafe to prevent silence
-                        await message.channel.send("I'm not sure how to respond to that.")
         
         finally:
             EventsCog._processing_messages.discard(message.id)

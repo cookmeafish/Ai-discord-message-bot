@@ -56,40 +56,42 @@ class AIHandler:
         channel = message.channel
         author = message.author
         
+        config = self.emote_handler.bot.config_manager.get_config()
+        channel_id_str = str(channel.id)
+        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+
         bot_name = channel.guild.me.display_name
         bot_id = self.emote_handler.bot.user.id
         bot_mention_string = f'<@{bot_id}>'
+        
+        available_emotes = self.emote_handler.get_available_emote_names()
         
         long_term_memory_facts = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
         if long_term_memory_facts:
             facts_str = "; ".join(long_term_memory_facts)
-            user_profile_prompt = f"Background info on '{author.display_name}': {facts_str}."
+            user_profile_prompt = f"--- USER PROFILE for '{author.display_name}' ---\n- Known facts: {facts_str}\n\n"
 
         system_prompt = (
-            f"You are {bot_name}, a chill and very concise Discord bot. You chat like a real person texting.\n"
-            "Your main goal is to match the user's message length. If they send one word, you reply with one or two words.\n"
-            "**CRITICAL RULE: NEVER start your response with your name and a colon (e.g., 'Dr. Fish:').**\n\n"
-            "The user's messages will be prefixed with a timestamp like '[5 minutes ago]'. Only refer to these timestamps if the user asks 'when' something happened.\n\n"
-            f"Now, continue the conversation below. {user_profile_prompt}"
+            f"You are {bot_name}, a chill, low-energy Discord bot. Your personality is very concise and casual.\n\n"
+            f"--- YOUR PERSONA ---\n"
+            f"- Your Traits: {personality_config.get('personality_traits', 'helpful')}\n\n"
+            f"{user_profile_prompt}"
+            "--- CRITICAL RULES ---\n"
+            "1. **BE CONCISE AND CHILL**: Your main goal is to be a low-energy chatbot. Match the user's message length. If they send one word, reply with one or two words or an emote. NEVER ask follow-up questions.\n"
+            "2. **HANDLE CONTEXT CORRECTLY**: The USER PROFILE is about the user, NOT you. Do not confuse facts between users. Only mention facts if the user's message is directly related.\n"
+            "3. **TIME IS INTERNAL CONTEXT**: The user's messages have timestamps like '[5 minutes ago]'. Do NOT mention them. Only use them to answer if the user asks 'when'.\n"
+            "4. **NO NAME PREFIX**: NEVER start your response with your name and a colon.\n"
         )
 
-        messages_for_api = [
-            {'role': 'system', 'content': system_prompt},
-            # Few-shot examples
-            {'role': 'user', 'content': 'Mistel Fish: wassup'},
-            {'role': 'assistant', 'content': 'not much, u?'},
-            {'role': 'user', 'content': 'Mistel Fish: its goood tho'},
-            {'role': 'assistant', 'content': 'lol true'},
-            {'role': 'user', 'content': 'Mistel Fish: yes'},
-            {'role': 'assistant', 'content': '👍'}
-        ]
+        messages_for_api = [{'role': 'system', 'content': system_prompt}]
         
         user_id_to_name = {member.id: member.display_name for member in channel.guild.members}
+        user_id_to_name[self.emote_handler.bot.user.id] = bot_name
+        
+        relevant_memory = sorted(short_term_memory, key=lambda x: x["timestamp"])[-15:]
 
-        sorted_memory = sorted(short_term_memory, key=lambda x: x["timestamp"])
-
-        for msg_data in sorted_memory:
+        for msg_data in relevant_memory:
             sanitized_content = self._sanitize_content_for_ai(
                 msg_data["content"].replace(bot_mention_string, f'@{bot_name}')
             )
@@ -106,11 +108,20 @@ class AIHandler:
 
             messages_for_api.append({'role': role, 'content': content.strip()})
 
+        # Dynamically adjust max_tokens
+        user_message_length = len(message.content.split())
+        if user_message_length <= 3:
+            max_tokens = 25
+        elif user_message_length <= 10:
+            max_tokens = 50
+        else:
+            max_tokens = 80
+
         try:
             response = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages_for_api,
-                max_tokens=60,
+                max_tokens=max_tokens,
                 temperature=0.7
             )
             ai_response_text = response.choices[0].message.content.strip()
