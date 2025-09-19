@@ -67,23 +67,19 @@ class AIHandler:
         available_emotes = self.emote_handler.get_available_emote_names()
         
         long_term_memory_facts = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
-        long_term_memory_prompt = ""
+        user_profile_prompt = ""
         if long_term_memory_facts:
             facts_str = "; ".join(long_term_memory_facts)
-            long_term_memory_prompt = f"--- CONTEXT ---\nUse these facts for subtle background context ONLY if directly relevant: {facts_str}"
+            user_profile_prompt = f"Background info on '{author.display_name}': {facts_str}."
 
         system_prompt = (
-            f"You are {bot_name}, a casual Discord bot.\n"
-            "--- CORE RULES ---\n"
-            "1. **MATCH THE USER'S STYLE & LENGTH**: Your main goal is to be a natural conversationalist. **Mirror the user's message length.** If they send one word, you should reply with one or two words or a single emote. If they send a sentence, you can reply with a sentence. NEVER be significantly more verbose than the user.\n"
-            "2. **FOCUS ON THE CURRENT MESSAGE**: Respond only to the user's most recent message.\n"
-            "3. **BE CASUAL, NOT A THERAPIST**: Your tone is casual and friendly. Do not give unsolicited advice, express deep concern, or act like a therapist.\n"
-            "4. **AVOID USING NAMES**: Do not use the user's name.\n\n"
-            f"--- PERSONA ---\n- Traits: {personality_config.get('personality_traits', 'helpful')}\n\n"
-            f"{long_term_memory_prompt}\n\n"
-            "--- TECHNICAL INSTRUCTIONS ---\n"
-            "The conversation history is prefixed with relative timestamps (e.g., '[5 minutes ago]'). **Do not mention these timestamps in your replies unless the user specifically asks 'when' something happened.** Use them only as internal context to answer direct questions about time.\n"
-            f"Use these emotes to add personality: {available_emotes}"
+            f"You are {bot_name}, a chill, low-energy Discord bot. Your main goal is to be a natural, concise conversationalist. "
+            f"Your personality traits are: {personality_config.get('personality_traits', 'helpful')}. "
+            f"{user_profile_prompt}\n\n"
+            "--- CRITICAL RULES ---\n"
+            "1. **DO NOT CONFUSE IDENTITIES**: The background info provided is about the user, NOT you. Pay close attention to the names in the chat history to keep track of who said what. Do not claim another user's facts as your own.\n"
+            "2. **BE CONCISE & AVOID QUESTIONS**: Keep replies short and match the user's energy. Do not ask follow-up questions like 'what about you?'.\n"
+            "3. **TIME CONTEXT IS INTERNAL**: The chat history has timestamps like '[5 minutes ago]'. Do NOT mention these timestamps. Use them ONLY as internal context if the user asks WHEN something happened.\n"
         )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
@@ -102,25 +98,30 @@ class AIHandler:
             
             relative_time = self._get_relative_time(msg_data.get("timestamp"))
             time_prefix = f"[{relative_time}] " if relative_time else ""
-
+            
             final_content = sanitized_content
             if role == "user":
                 user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
-                channel_prefix = ""
-                if msg_data["channel_id"] != channel.id:
-                    channel_name = channel_id_to_name.get(msg_data["channel_id"], "unknown-channel")
-                    channel_prefix = f"[In #{channel_name}] "
-                final_content = f"{time_prefix}{channel_prefix}{user_name}: {sanitized_content}"
-            else: # For assistant's own messages
+                final_content = f"{time_prefix}{user_name}: {sanitized_content}"
+            else:
                 final_content = f"{time_prefix}{sanitized_content}"
 
+
             messages_for_api.append({'role': role, 'content': final_content.strip()})
+            
+        user_message_length = len(message.content.split())
+        if user_message_length <= 2:
+            max_tokens = 20
+        elif user_message_length <= 5:
+            max_tokens = 40
+        else:
+            max_tokens = 80
 
         try:
             response = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages_for_api,
-                max_tokens=80,
+                max_tokens=max_tokens,
                 temperature=0.7
             )
             ai_response_text = response.choices[0].message.content.strip()
