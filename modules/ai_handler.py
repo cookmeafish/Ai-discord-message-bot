@@ -56,15 +56,9 @@ class AIHandler:
         channel = message.channel
         author = message.author
         
-        config = self.emote_handler.bot.config_manager.get_config()
-        channel_id_str = str(channel.id)
-        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
-
         bot_name = channel.guild.me.display_name
         bot_id = self.emote_handler.bot.user.id
         bot_mention_string = f'<@{bot_id}>'
-        
-        available_emotes = self.emote_handler.get_available_emote_names()
         
         long_term_memory_facts = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
@@ -73,20 +67,25 @@ class AIHandler:
             user_profile_prompt = f"Background info on '{author.display_name}': {facts_str}."
 
         system_prompt = (
-            f"You are {bot_name}, a chill, low-energy Discord bot. Your main goal is to be a natural, concise conversationalist. "
-            f"Your personality traits are: {personality_config.get('personality_traits', 'helpful')}. "
-            f"{user_profile_prompt}\n\n"
-            "--- CRITICAL RULES ---\n"
-            "1. **DO NOT CONFUSE IDENTITIES**: The background info provided is about the user, NOT you. Pay close attention to the names in the chat history to keep track of who said what. Do not claim another user's facts as your own.\n"
-            "2. **BE CONCISE & AVOID QUESTIONS**: Keep replies short and match the user's energy. Do not ask follow-up questions like 'what about you?'.\n"
-            "3. **TIME CONTEXT IS INTERNAL**: The chat history has timestamps like '[5 minutes ago]'. Do NOT mention these timestamps. Use them ONLY as internal context if the user asks WHEN something happened.\n"
+            f"You are {bot_name}, a chill and very concise Discord bot. You chat like a real person texting.\n"
+            "Your main goal is to match the user's message length. If they send one word, you reply with one or two words.\n"
+            "**CRITICAL RULE: NEVER start your response with your name and a colon (e.g., 'Dr. Fish:').**\n\n"
+            "The user's messages will be prefixed with a timestamp like '[5 minutes ago]'. Only refer to these timestamps if the user asks 'when' something happened.\n\n"
+            f"Now, continue the conversation below. {user_profile_prompt}"
         )
 
-        messages_for_api = [{'role': 'system', 'content': system_prompt}]
+        messages_for_api = [
+            {'role': 'system', 'content': system_prompt},
+            # Few-shot examples
+            {'role': 'user', 'content': 'Mistel Fish: wassup'},
+            {'role': 'assistant', 'content': 'not much, u?'},
+            {'role': 'user', 'content': 'Mistel Fish: its goood tho'},
+            {'role': 'assistant', 'content': 'lol true'},
+            {'role': 'user', 'content': 'Mistel Fish: yes'},
+            {'role': 'assistant', 'content': '👍'}
+        ]
         
         user_id_to_name = {member.id: member.display_name for member in channel.guild.members}
-        user_id_to_name[self.emote_handler.bot.user.id] = bot_name
-        channel_id_to_name = {ch.id: ch.name for ch in channel.guild.channels if hasattr(ch, 'name')}
 
         sorted_memory = sorted(short_term_memory, key=lambda x: x["timestamp"])
 
@@ -94,34 +93,24 @@ class AIHandler:
             sanitized_content = self._sanitize_content_for_ai(
                 msg_data["content"].replace(bot_mention_string, f'@{bot_name}')
             )
-            role = "assistant" if msg_data["author_id"] == bot_id else "user"
             
-            relative_time = self._get_relative_time(msg_data.get("timestamp"))
-            time_prefix = f"[{relative_time}] " if relative_time else ""
-            
-            final_content = sanitized_content
-            if role == "user":
-                user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
-                final_content = f"{time_prefix}{user_name}: {sanitized_content}"
+            if msg_data["author_id"] == bot_id:
+                role = "assistant"
+                content = sanitized_content
             else:
-                final_content = f"{time_prefix}{sanitized_content}"
+                role = "user"
+                user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
+                relative_time = self._get_relative_time(msg_data.get("timestamp"))
+                time_prefix = f"[{relative_time}] " if relative_time else ""
+                content = f"{time_prefix}{user_name}: {sanitized_content}"
 
-
-            messages_for_api.append({'role': role, 'content': final_content.strip()})
-            
-        user_message_length = len(message.content.split())
-        if user_message_length <= 2:
-            max_tokens = 20
-        elif user_message_length <= 5:
-            max_tokens = 40
-        else:
-            max_tokens = 80
+            messages_for_api.append({'role': role, 'content': content.strip()})
 
         try:
             response = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages_for_api,
-                max_tokens=max_tokens,
+                max_tokens=60,
                 temperature=0.7
             )
             ai_response_text = response.choices[0].message.content.strip()
