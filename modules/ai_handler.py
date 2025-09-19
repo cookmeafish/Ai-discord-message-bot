@@ -3,6 +3,8 @@
 import openai
 import re
 import json
+import datetime
+from dateutil import parser
 from .emote_orchestrator import EmoteOrchestrator
 
 class AIHandler:
@@ -13,6 +15,35 @@ class AIHandler:
         self.client = openai.AsyncOpenAI(api_key=api_key)
         self.emote_handler = emote_handler
         print("AI Handler: Initialized successfully.")
+
+    def _get_relative_time(self, timestamp_str: str) -> str:
+        """Calculates a human-readable relative time string from an ISO timestamp."""
+        if not timestamp_str:
+            return ""
+        try:
+            past_time = parser.isoparse(timestamp_str)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            delta = now - past_time
+            
+            seconds = int(delta.total_seconds())
+
+            if seconds < 10:
+                return "just now"
+            elif seconds < 60:
+                return f"{seconds} seconds ago"
+            elif seconds < 3600:
+                minutes = int(seconds / 60)
+                return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+            elif seconds < 86400:
+                hours = int(seconds / 3600)
+                return f"{hours} hour{'s' if hours > 1 else ''} ago"
+            elif seconds < 172800:
+                return "yesterday"
+            else:
+                days = int(seconds / 86400)
+                return f"{days} days ago"
+        except (ValueError, TypeError):
+            return ""
 
     def _sanitize_content_for_ai(self, content: str) -> str:
         """
@@ -51,7 +82,8 @@ class AIHandler:
             f"--- PERSONA ---\n- Traits: {personality_config.get('personality_traits', 'helpful')}\n\n"
             f"{long_term_memory_prompt}\n\n"
             "--- TECHNICAL INSTRUCTIONS ---\n"
-            f"- **CRITICAL EMOTE RULE**: You MUST enclose emote names in colons. To use the 'fishstrong' emote, you MUST write ':fishstrong:'. Never write the name of an emote as plain text. Your available emotes are: {available_emotes}"
+            "The conversation history is prefixed with relative timestamps (e.g., '[5 minutes ago]'). **Do not mention these timestamps in your replies unless the user specifically asks 'when' something happened.** Use them only as internal context to answer direct questions about time.\n"
+            f"Use these emotes to add personality: {available_emotes}"
         )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
@@ -68,6 +100,9 @@ class AIHandler:
             )
             role = "assistant" if msg_data["author_id"] == bot_id else "user"
             
+            relative_time = self._get_relative_time(msg_data.get("timestamp"))
+            time_prefix = f"[{relative_time}] " if relative_time else ""
+
             final_content = sanitized_content
             if role == "user":
                 user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
@@ -75,7 +110,9 @@ class AIHandler:
                 if msg_data["channel_id"] != channel.id:
                     channel_name = channel_id_to_name.get(msg_data["channel_id"], "unknown-channel")
                     channel_prefix = f"[In #{channel_name}] "
-                final_content = f"{channel_prefix}{user_name}: {sanitized_content}"
+                final_content = f"{time_prefix}{channel_prefix}{user_name}: {sanitized_content}"
+            else: # For assistant's own messages
+                final_content = f"{time_prefix}{sanitized_content}"
 
             messages_for_api.append({'role': role, 'content': final_content.strip()})
 

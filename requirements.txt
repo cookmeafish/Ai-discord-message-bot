@@ -2,3 +2,4 @@ customtkinter
 discord.py
 openai
 python-dotenv
+python-dateutil
