@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS long_term_memory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     fact TEXT NOT NULL,
+    source_user_id INTEGER,
+    source_nickname TEXT,
     category TEXT,
     first_mentioned_timestamp TEXT NOT NULL,
     last_mentioned_timestamp TEXT NOT NULL,

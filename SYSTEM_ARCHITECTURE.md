@@ -1,4 +1,5 @@
 
+```
 # System Architecture: Advanced AI Discord Bot
 
 ## 1. Introduction
@@ -52,13 +53,11 @@ All persistent data is stored in and retrieved from a relational database.
 -   **Structured Long-Term Memory Schema:** A table of user-associated memory objects, each containing:
     
     -   `Fact`: The summarized piece of information.
-        
+    -   `source_user_id`: The Discord ID of the user who provided the fact.
+    -   `source_nickname`: The display name of the user who provided the fact at the time.
     -   `Category`: The general topic of the fact.
-        
     -   `FirstMentioned_Timestamp`: The timestamp of the initial recording.
-        
     -   `LastMentioned_Timestamp`: The timestamp of the most recent reinforcement.
-        
     -   `ReferenceCount`: An integer counter.
         
 -   **Per-User Relationship Metrics Schema:** A table linking the bot to each user, containing:
@@ -157,44 +156,10 @@ This document will serve as the guiding document for the bot's development.
 
 This section maps the conceptual components defined above to the final, physical file structure of the project. This is the definitive guide for the repository's organization.
 
+
 ```
-/
-├── 📂 cogs/
-│   ├── 📄 __init__.py
-│   ├── 📄 admin.py
-│   ├── 📄 events.py
-│   ├── 📄 memory_tasks.py
-│   ├── 📄 moderation.py
-│   ├── 📄 settings.py
-│   └── 📄 utility.py
-|
-├── 📂 database/
-│   ├── 📄 __init__.py
-│   ├── 📄 db_manager.py
-│   └── 📄 schemas.py
-|
-├── 📂 modules/
-│   ├── 📄 __init__.py
-│   ├── 📄 ai_handler.py
-│   ├── 📄 config_manager.py
-│   ├── 📄 emote_orchestrator.py
-│   └── 📄 logging_manager.py
-|
-├── 📂 tests/
-│   ├── 📄 __init__.py
-│   └── 📄 (Unit tests for modules and cogs)
-|
-├── 📜 .env
-├── 📜 .gitignore
-├── 📜 config.json
-├── 📜 gui.py
-├── 📜 main.py
-├── 📜 README.md
-├── 📜 requirements.txt
-└── 📜 SYSTEM_ARCHITECTURE.md
 
-
-
+/ ├── 📂 cogs/ │ ├── 📄 **init**.py │ ├── 📄 admin.py │ ├── 📄 events.py │ ├── 📄 memory_tasks.py │ ├── 📄 moderation.py │ ├── 📄 settings.py │ └── 📄 utility.py | ├── 📂 database/ │ ├── 📄 **init**.py │ ├── 📄 db_manager.py │ └── 📄 schemas.py | ├── 📂 modules/ │ ├── 📄 **init**.py │ ├── 📄 ai_handler.py │ ├── 📄 config_manager.py │ ├── 📄 emote_orchestrator.py │ └── 📄 logging_manager.py | ├── 📂 tests/ │ ├── 📄 **init**.py │ └── 📄 (Unit tests for modules and cogs) | ├── 📜 .env ├── 📜 .gitignore ├── 📜 config.json ├── 📜 gui.py ├── 📜 main.py ├── 📜 README.md ├── 📜 requirements.txt └── 📜 SYSTEM_ARCHITECTURE.md
 
 ```
 
@@ -269,3 +234,4 @@ A dedicated folder for housing unit tests and integration tests.
 -   `requirements.txt`: Lists all Python package dependencies.
     
 -   `SYSTEM_ARCHITECTURE.md`: This document.
+```

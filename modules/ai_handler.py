@@ -29,7 +29,7 @@ class AIHandler:
 You are an expert intent classification model. Analyze the last message from the user ({message.author.id}) in the context of the recent conversation history. Your primary goal is to accurately determine the user's intent.
 
 Follow these strict rules for classification:
-- **memory_storage**: The user is stating a fact and wants the bot to remember it for later (e.g., "my favorite color is blue", "just so you know, charlie kirk died").
+- **memory_storage**: The user is stating a fact and wants the bot to remember it for later (e.g., "my favorite color is blue", "just so you know, my cat is named Whiskers").
 - **memory_correction**: ONLY classify as this if the user's message DIRECTLY CONTRADICTS a statement made by the bot in the provided conversation history. If there is no bot statement to correct, this is the wrong category.
 - **factual_question**: Use for questions about verifiable, real-world facts.
 - **memory_recall**: Use when the user is asking the bot to remember or state a known fact about a user or the past.
@@ -77,11 +77,17 @@ Based on the rules and the last user message, what is the user's primary intent?
 
         bot_name = channel.guild.me.display_name
         
-        long_term_memory_facts = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
+        long_term_memory_entries = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
-        if long_term_memory_facts:
-            facts_str = "; ".join(long_term_memory_facts)
-            user_profile_prompt = f"--- Known facts about '{author.display_name}' ---\n- {facts_str}\n\n"
+        if long_term_memory_entries:
+            facts_str_list = []
+            for fact, source_id, source_name in long_term_memory_entries:
+                # If the source is unknown, don't mention it.
+                source_info = f" (Source: {source_name})" if source_name else ""
+                facts_str_list.append(f"Fact: '{fact}'{source_info}")
+            
+            facts_str = "\n- ".join(facts_str_list)
+            user_profile_prompt = f"--- Known Facts ---\n- {facts_str}\n\n"
 
         # --- Dynamic System Prompt based on Intent ---
         system_prompt = ""
@@ -89,7 +95,7 @@ Based on the rules and the last user message, what is the user's primary intent?
             extraction_prompt = f"""
 The user wants you to remember a fact about them or the world. Analyze the user's message and extract the core piece of information as a concise statement.
 - If the user says 'my favorite color is blue', the fact is 'My favorite color is blue'.
-- If the user says 'charlie kirk died', the fact is 'Charlie Kirk died'.
+- If the user says 'my cat is named Whiskers', the fact is 'My cat is named Whiskers'.
 - If the user says 'remember that I work as a software engineer', the fact is 'I work as a software engineer'.
 
 User message: "{message.content}"
@@ -97,6 +103,7 @@ User message: "{message.content}"
 Respond with ONLY the extracted fact.
 """
             try:
+                # First, extract and save the fact
                 response = await self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[{'role': 'system', 'content': extraction_prompt}],
@@ -104,11 +111,29 @@ Respond with ONLY the extracted fact.
                     temperature=0.0
                 )
                 extracted_fact = response.choices[0].message.content.strip()
-                if extracted_fact:
-                    self.emote_handler.bot.db_manager.add_long_term_memory(author.id, extracted_fact)
-                    return f"Got it, I'll remember that."
-                else:
+                if not extracted_fact:
                     return "I'm not sure what you want me to remember from that."
+                
+                self.emote_handler.bot.db_manager.add_long_term_memory(
+                    author.id, extracted_fact, author.id, author.display_name
+                )
+                
+                # Now, generate a natural response to having learned the fact
+                response_prompt = f"""
+You are {bot_name}, a chill Discord bot. You just learned a new fact from the user: '{extracted_fact}'.
+Acknowledge this new information with a short, natural, human-like response. Your response should be related to the fact.
+For example, if you learned 'my favorite food is tamales', you could say 'my mouth is watering just thinking about it' or 'tamales are the best'.
+- Your Traits: {personality_config.get('personality_traits', 'helpful')}
+- BE BRIEF. Do not ask questions. Do not say "I'll remember that".
+"""
+                response = await self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{'role': 'system', 'content': response_prompt}],
+                    max_tokens=40,
+                    temperature=0.7
+                )
+                return response.choices[0].message.content.strip()
+
             except Exception as e:
                 print(f"AI HANDLER ERROR: Could not process memory storage: {e}")
                 return "Sorry, I had trouble trying to remember that."
@@ -118,10 +143,10 @@ Respond with ONLY the extracted fact.
                 f"You are {bot_name}, a casual Discord chatbot. A user has asked you a real-world factual question. "
                 f"{user_profile_prompt}"
                 "You must first determine the nature of the question.\n"
-                "1. If the user has told you a fact about this topic before (check the 'Known facts' section), use that information to answer.\n"
-                "2. If the question is about general, established knowledge (e.g., historical facts, scientific concepts, geography), answer it briefly and accurately.\n"
-                "3. If the question is about a recent event, the current status of a living person, or any real-time information that you don't have a known fact for, you MUST respond casually that you don't know. For example, use short, natural phrases like 'idk', 'I don't know yet', 'I wouldn't know', or 'no idea'.\n"
-                "Under NO circumstances should you invent an answer to these types of questions."
+                "1. Review the 'Known Facts' provided. **If a fact has a Source, you MUST use it to answer questions like 'who told you that?'.**\n"
+                "2. Use logical reasoning based on these facts to answer. For example, if you know a cafe 'closed down', you must infer that it is not 'open'.\n"
+                "3. If you don't have a known fact, you MUST respond that you don't know (e.g., 'idk', 'no idea').\n"
+                "Under NO circumstances should you invent an answer."
             )
         elif intent == "memory_correction":
             system_prompt = (
@@ -137,14 +162,20 @@ Respond with ONLY the extracted fact.
                 "--- CRITICAL RULES ---\n"
                 "1. **BE BRIEF AND NATURAL**: Your replies should be very short and sound like a real person. Avoid robotic phrases.\n"
                 "2. **NO FOLLOW-UP QUESTIONS**: You must not ask any questions.\n"
-                "3. **USE MEMORY WISELY**: Only mention facts from the user profile if they are directly relevant to the current topic.\n"
+                "3. **USE MEMORY WISELY**: If a fact has a Source, you know who told you. Only mention facts if they are relevant.\n"
                 "4. **NO NAME PREFIX**: NEVER start your response with your name and a colon.\n"
             )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
         for msg_data in short_term_memory[-10:]:
             role = "assistant" if msg_data["author_id"] == self.emote_handler.bot.user.id else "user"
-            content = f'{message.guild.get_member(msg_data["author_id"]).display_name}: {msg_data["content"]}'
+            author_name = "User"
+            if message.guild:
+                member = message.guild.get_member(msg_data["author_id"])
+                if member:
+                    author_name = member.display_name
+            
+            content = f'{author_name}: {msg_data["content"]}'
             messages_for_api.append({'role': role, 'content': content})
 
         try:
