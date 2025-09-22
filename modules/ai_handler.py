@@ -16,116 +16,111 @@ class AIHandler:
         self.emote_handler = emote_handler
         print("AI Handler: Initialized successfully.")
 
-    def _get_relative_time(self, timestamp_str: str) -> str:
-        """Calculates a human-readable relative time string from an ISO timestamp."""
-        if not timestamp_str:
-            return ""
+    async def _classify_intent(self, message, short_term_memory):
+        """Step 1: Classify the user's intent."""
+        
+        recent_messages = short_term_memory[-5:]
+        
+        conversation_history = "\n".join(
+            [f'{msg["author_id"]}: {msg["content"]}' for msg in recent_messages]
+        )
+        
+        intent_prompt = f"""
+        You are an intent classification model. Analyze the last message from the user ({message.author.id}) in the context of the recent conversation history.
+        Classify the user's intent into one of the following categories:
+        - "casual_chat": The user is making small talk, reacting, or having a general conversation.
+        - "memory_recall": The user is asking the bot to remember a known fact about them or the past.
+        - "memory_correction": The user is correcting a fact the bot previously stated.
+        - "factual_question": The user is asking a verifiable, real-world factual question.
+
+        Conversation History:
+        {conversation_history}
+
+        Last User Message:
+        {message.author.id}: {message.content}
+
+        Based on the last user message, what is the user's primary intent? Respond with ONLY the intent category name.
+        """
+        
         try:
-            past_time = parser.isoparse(timestamp_str)
-            now = datetime.datetime.now(datetime.timezone.utc)
-            delta = now - past_time
-            
-            seconds = int(delta.total_seconds())
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{'role': 'system', 'content': intent_prompt}],
+                max_tokens=15,
+                temperature=0.0
+            )
+            intent = response.choices[0].message.content.strip().lower()
 
-            if seconds < 10:
-                return "just now"
-            elif seconds < 60:
-                return f"{seconds} seconds ago"
-            elif seconds < 3600:
-                minutes = int(seconds / 60)
-                return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
-            elif seconds < 86400:
-                hours = int(seconds / 3600)
-                return f"{hours} hour{'s' if hours > 1 else ''} ago"
-            elif seconds < 172800:
-                return "yesterday"
+            if intent in ["casual_chat", "memory_recall", "memory_correction", "factual_question"]:
+                print(f"AI Handler: Classified intent as '{intent}'")
+                return intent
             else:
-                days = int(seconds / 86400)
-                return f"{days} days ago"
-        except (ValueError, TypeError):
-            return ""
-
-    def _sanitize_content_for_ai(self, content: str) -> str:
-        """
-        Sanitizes message content before sending it to the AI.
-        - Replaces custom Discord emote strings back to their simple :name: format.
-        """
-        return re.sub(r'<a?:(\w+):\d+>', r':\1:', content)
+                print(f"AI Handler: Intent classification failed, defaulting to 'casual_chat'. Raw response: {intent}")
+                return "casual_chat"
+        except Exception as e:
+            print(f"AI HANDLER ERROR: Could not classify intent: {e}")
+            return "casual_chat"
 
     async def generate_response(self, message, short_term_memory):
+        """Step 2: Generate a response based on the classified intent."""
+        
+        intent = await self._classify_intent(message, short_term_memory)
+        
         channel = message.channel
         author = message.author
         
         config = self.emote_handler.bot.config_manager.get_config()
         channel_id_str = str(channel.id)
-        
-        channel_settings = config.get('channel_settings', {})
-        default_personality = config.get('default_personality', {})
-        personality_config = channel_settings.get(channel_id_str, default_personality)
+        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
 
         bot_name = channel.guild.me.display_name
-        bot_id = self.emote_handler.bot.user.id
-        bot_mention_string = f'<@{bot_id}>'
         
         long_term_memory_facts = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
         if long_term_memory_facts:
             facts_str = "; ".join(long_term_memory_facts)
-            user_profile_prompt = f"--- USER PROFILE for '{author.display_name}' ---\n- Known facts: {facts_str}\n\n"
+            user_profile_prompt = f"--- Known facts about '{author.display_name}' ---\n- {facts_str}\n\n"
 
-        system_prompt = (
-            f"You are {bot_name}, a chill, low-energy Discord bot. Your personality is very concise and casual.\n\n"
-            f"--- YOUR PERSONA ---\n"
-            f"- Your Traits: {personality_config.get('personality_traits', 'helpful')}\n\n"
-            f"{user_profile_prompt}"
-            "--- CRITICAL RULES ---\n"
-            "1. **BE EXTREMELY CONCISE AND LOW-ENERGY**: Your replies MUST be very short, often just a few words or an emote. NEVER be overly conversational.\n"
-            "2. **NO FOLLOW-UP QUESTIONS**: You MUST NOT ask the user any questions. Just respond to what they say.\n"
-            "3. **AVOID REPETITION**: Vary your phrasing. Do not start every response with similar phrases like 'Sounds like...'.\n"
-            "4. **HANDLE CONTEXT CORRECTLY**: The USER PROFILE is about the user, NOT you. Only mention facts if the user's message is directly related.\n"
-            "5. **TIME IS INTERNAL CONTEXT**: The user's messages have timestamps. Do NOT mention them unless asked.\n"
-            "6. **NO NAME PREFIX**: NEVER start your response with your name and a colon.\n"
-        )
+        # --- Dynamic System Prompt based on Intent ---
+        system_prompt = ""
+        if intent == "factual_question":
+            system_prompt = (
+                f"You are {bot_name}, a casual Discord chatbot. A user has asked you a real-world factual question. "
+                "You must first determine the nature of the question.\n"
+                "1. If the question is about general, established knowledge (e.g., historical facts, scientific concepts, geography), answer it briefly and accurately.\n"
+                "2. If the question is about a recent event, the current status of a living person, or any real-time information, you MUST respond casually that you don't know. For example, use short, natural phrases like 'idk', 'I don't know yet', 'I wouldn't know', or 'no idea'.\n"
+                "Under NO circumstances should you invent an answer to these types of questions."
+            )
+        elif intent == "memory_correction":
+            system_prompt = (
+                f"You are {bot_name}, a chill Discord bot. The user is correcting a fact you previously got wrong. "
+                "Acknowledge the correction gracefully. Be very brief. "
+                "Example responses: 'oh, my bad', 'got it, thanks', 'my mistake'."
+            )
+        else: # Covers "casual_chat" and "memory_recall"
+            system_prompt = (
+                f"You are {bot_name}, a chill, low-energy Discord bot. Your personality is very concise and casual.\n\n"
+                f"- Your Traits: {personality_config.get('personality_traits', 'helpful')}\n\n"
+                f"{user_profile_prompt if intent == 'memory_recall' else ''}"
+                "--- CRITICAL RULES ---\n"
+                "1. **BE BRIEF AND NATURAL**: Your replies should be very short and sound like a real person. Avoid robotic phrases.\n"
+                "2. **NO FOLLOW-UP QUESTIONS**: You must not ask any questions.\n"
+                "3. **USE MEMORY WISELY**: Only mention facts from the user profile if they are directly relevant to the current topic.\n"
+                "4. **NO NAME PREFIX**: NEVER start your response with your name and a colon.\n"
+            )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
-        
-        user_id_to_name = {member.id: member.display_name for member in channel.guild.members}
-        user_id_to_name[self.emote_handler.bot.user.id] = bot_name
-        
-        relevant_memory = sorted(short_term_memory, key=lambda x: x["timestamp"])[-15:]
-
-        for msg_data in relevant_memory:
-            sanitized_content = self._sanitize_content_for_ai(
-                msg_data["content"].replace(bot_mention_string, f'@{bot_name}')
-            )
-            
-            role = "assistant" if msg_data["author_id"] == bot_id else "user"
-            
-            if role == "user":
-                user_name = user_id_to_name.get(msg_data["author_id"], "Unknown User")
-                relative_time = self._get_relative_time(msg_data.get("timestamp"))
-                time_prefix = f"[{relative_time}] " if relative_time else ""
-                content = f"{time_prefix}{user_name}: {sanitized_content}"
-            else:
-                content = sanitized_content
-
-            messages_for_api.append({'role': role, 'content': content.strip()})
-
-        # Dynamically adjust max_tokens to enforce short responses
-        user_message_length = len(message.content.split())
-        if user_message_length <= 3:
-            max_tokens = 25
-        elif user_message_length <= 10:
-            max_tokens = 50
-        else:
-            max_tokens = 80
+        for msg_data in short_term_memory[-10:]:
+            role = "assistant" if msg_data["author_id"] == self.emote_handler.bot.user.id else "user"
+            content = msg_data["content"]
+            messages_for_api.append({'role': role, 'content': content})
 
         try:
             response = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages_for_api,
-                max_tokens=max_tokens,
-                temperature=0.6 # Lowered temperature to make the bot more focused and less chatty
+                max_tokens=60,
+                temperature=0.7
             )
             ai_response_text = response.choices[0].message.content.strip()
             return ai_response_text if ai_response_text else None

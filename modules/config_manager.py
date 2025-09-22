@@ -19,10 +19,8 @@ class ConfigManager:
             default_config = {
                 "random_reply_chance": 0.05,
                 "default_personality": {
-                    "personality_traits": "helpful, friendly",
-                    "lore": "I am a helpful AI.",
-                    "facts": "I use OpenAI's API.",
-                    "purpose": "To chat with users."
+                    "personality_traits": "chill, low-energy, concise, casual",
+                    "purpose": "To hang out and chat with users."
                 },
                 "channel_settings": {}
             }
@@ -50,17 +48,34 @@ class ConfigManager:
         self._save_config(self.config)
         print("ConfigManager: Configuration updated and saved.")
 
-    def add_or_update_channel_setting(self, channel_id: str, purpose: str):
-        """Activates the bot in a channel with a specific purpose."""
+    def add_or_update_channel_setting(self, channel_id: str, purpose: str = None, random_reply_chance: float = None):
+        """Activates the bot in a channel, copying the default personality and allowing overrides."""
         if 'channel_settings' not in self.config:
             self.config['channel_settings'] = {}
         
         new_setting = self.config['default_personality'].copy()
-        new_setting['purpose'] = purpose
+        
+        if purpose:
+            new_setting['purpose'] = purpose
+        
+        if random_reply_chance is not None:
+            new_setting['random_reply_chance'] = random_reply_chance
+        else:
+            new_setting['random_reply_chance'] = self.config.get('random_reply_chance', 0.05)
         
         self.config['channel_settings'][channel_id] = new_setting
         self._save_config(self.config)
         print(f"ConfigManager: Activated channel {channel_id}.")
+        return new_setting
+
+    def update_channel_personality(self, channel_id: str, new_traits: str):
+        """Updates the personality traits for a specific active channel."""
+        if 'channel_settings' in self.config and channel_id in self.config['channel_settings']:
+            self.config['channel_settings'][channel_id]['personality_traits'] = new_traits
+            self._save_config(self.config)
+            print(f"ConfigManager: Updated personality for channel {channel_id}.")
+            return True
+        return False
 
     def remove_channel_setting(self, channel_id: str):
         """Deactivates the bot in a channel."""

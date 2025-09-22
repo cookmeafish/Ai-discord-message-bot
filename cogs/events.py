@@ -21,6 +21,21 @@ class EventsCog(commands.Cog):
         if message.author.bot:
             return
 
+        config = self.bot.config_manager.get_config()
+        active_channels_str = config.get('channel_settings', {}).keys()
+        active_channels_int = [int(ch_id) for ch_id in active_channels_str]
+        
+        if message.channel.id not in active_channels_int:
+            # Still process commands in inactive channels
+            if message.content.startswith('!'):
+                 await self.bot.process_commands(message)
+            return
+
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            await self.bot.process_commands(message)
+            return
+
         is_mentioned = self.bot.user.mentioned_in(message)
         is_reply_to_bot = False
         if message.reference and message.reference.resolved:
@@ -29,36 +44,25 @@ class EventsCog(commands.Cog):
         
         was_directed_at_bot = is_mentioned or is_reply_to_bot
         
-        self.bot.db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
-
-        ctx = await self.bot.get_context(message)
-        
-        if ctx.valid:
-            await self.bot.process_commands(message)
-            return
+        if was_directed_at_bot:
+            self.bot.db_manager.log_message(message, directed_at_bot=True)
 
         if message.id in EventsCog._processing_messages:
             return
-
         EventsCog._processing_messages.add(message.id)
+
         try:
-            config = self.bot.config_manager.get_config()
-            active_channels_str = config.get('channel_settings', {}).keys()
-            active_channels_int = [int(ch_id) for ch_id in active_channels_str]
-            is_active_channel = message.channel.id in active_channels_int
-            rand_chance = config.get('random_reply_chance', 0.05)
+            channel_config = config.get('channel_settings', {}).get(str(message.channel.id), {})
+            rand_chance = channel_config.get('random_reply_chance', config.get('random_reply_chance', 0.0))
             is_random_reply = random.random() < rand_chance
 
-            if was_directed_at_bot or (is_active_channel and is_random_reply):
+            if was_directed_at_bot or is_random_reply:
                 async with message.channel.typing():
                     short_term_memory = self.bot.db_manager.get_short_term_memory()
-
                     ai_response_text = await self.bot.ai_handler.generate_response(
                         message=message,
                         short_term_memory=short_term_memory
                     )
-
-                    # Only send a message if the AI generated a response.
                     if ai_response_text:
                         final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
                         await message.channel.send(final_response)
