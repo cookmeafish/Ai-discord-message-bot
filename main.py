@@ -9,74 +9,81 @@ import asyncio
 from modules.config_manager import ConfigManager
 from modules.emote_orchestrator import EmoteOrchestrator
 from modules.ai_handler import AIHandler
+from modules.logging_manager import get_logger
 from database.db_manager import DBManager
 
 async def main():
-    # 1. Initialize Managers first
+    # 1. Initialize logging first
+    logger = get_logger()
+    logger.info("Starting bot initialization...")
+    
+    # 2. Initialize Managers
     config_manager = ConfigManager()
     db_manager = DBManager()
 
-    # 2. Setup Intents
+    # 3. Setup Intents
     intents = discord.Intents.default()
     intents.messages = True
     intents.message_content = True
     intents.guilds = True
     intents.members = True
 
-    # 3. Create Bot instance
+    # 4. Create Bot instance
     bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
-    # 4. Initialize and attach handlers and managers
-    print("Initializing modules...")
+    # 5. Initialize and attach handlers and managers
+    logger.info("Initializing modules...")
     bot.config_manager = config_manager
     bot.db_manager = db_manager
     bot.emote_handler = EmoteOrchestrator(bot)
     
     openai_api_key = config_manager.get_secret("OPENAI_API_KEY")
     bot.ai_handler = AIHandler(openai_api_key, bot.emote_handler)
-    print("All modules initialized.")
+    logger.info("All modules initialized.")
 
-    # 5. Load all cogs
-    print("Loading cogs...")
+    # 6. Load all cogs
+    logger.info("Loading cogs...")
     for filename in os.listdir('./cogs'):
         if filename.endswith('.py') and not filename.startswith('__'):
             try:
                 await bot.load_extension(f'cogs.{filename[:-3]}')
-                print(f'Successfully loaded cog: {filename}')
+                logger.info(f'Successfully loaded cog: {filename}')
             except Exception as e:
-                print(f'Failed to load cog {filename}: {e}')
+                logger.error(f'Failed to load cog {filename}: {e}')
 
-    # 6. Define the on_ready event for setup tasks
+    # 7. Define the on_ready event for setup tasks
     @bot.event
     async def on_ready():
-        print('------')
-        print(f'Bot is logged in as {bot.user}')
+        logger.info('------')
+        logger.info(f'Bot is logged in as {bot.user}')
         
         bot.emote_handler.load_emotes()
         
-        print(f'Syncing slash commands...')
+        logger.info(f'Syncing slash commands...')
         try:
             synced = await bot.tree.sync()
-            print(f"Synced {len(synced)} command(s)")
+            logger.info(f"Synced {len(synced)} command(s)")
         except Exception as e:
-            print(f"Failed to sync slash commands: {e}")
-        print('------ Bot is Ready ------')
+            logger.error(f"Failed to sync slash commands: {e}")
+        logger.info('------ Bot is Ready ------')
 
-    # 7. Get the bot token and run the bot
+    # 8. Get the bot token and run the bot
     bot_token = config_manager.get_secret("DISCORD_TOKEN")
     if not bot_token:
-        print("FATAL: DISCORD_TOKEN not found in .env file. Please set it via the GUI.")
+        logger.critical("DISCORD_TOKEN not found in .env file. Please set it via the GUI.")
         return
         
     try:
         await bot.start(bot_token)
     except discord.errors.LoginFailure:
-        print("FATAL: Login failed. The provided Discord Bot Token is invalid.")
+        logger.critical("Login failed. The provided Discord Bot Token is invalid.")
     except Exception as e:
-        print(f"An unexpected error occurred while running the bot: {e}")
+        logger.critical(f"An unexpected error occurred while running the bot: {e}", exc_info=True)
 
 if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nBot shutdown requested by user.")
+
+
