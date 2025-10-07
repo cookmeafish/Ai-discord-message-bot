@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS nicknames (
 BOT_IDENTITY_TABLE = """
 CREATE TABLE IF NOT EXISTS bot_identity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT NOT NULL, -- 'trait', 'lore', 'fact'
+    category TEXT NOT NULL,
     content TEXT NOT NULL
 );
 """
@@ -57,6 +57,16 @@ CREATE TABLE IF NOT EXISTS relationship_metrics (
 );
 """
 
+# --- Global State Schema (ADDED) ---
+
+GLOBAL_STATE_TABLE = """
+CREATE TABLE IF NOT EXISTS global_state (
+    state_key TEXT PRIMARY KEY,
+    state_value TEXT NOT NULL,
+    last_updated TEXT NOT NULL
+);
+"""
+
 # --- Logging & Archiving ---
 
 SHORT_TERM_MESSAGE_LOG_TABLE = """
@@ -66,7 +76,7 @@ CREATE TABLE IF NOT EXISTS short_term_message_log (
     channel_id INTEGER NOT NULL,
     content TEXT,
     timestamp TEXT NOT NULL,
-    directed_at_bot INTEGER NOT NULL DEFAULT 0 -- --- ADDED: 1 for True, 0 for False ---
+    directed_at_bot INTEGER NOT NULL DEFAULT 0
 );
 """
 
@@ -87,6 +97,11 @@ ALL_TABLES = [
     BOT_IDENTITY_TABLE,
     LONG_TERM_MEMORY_TABLE,
     RELATIONSHIP_METRICS_TABLE,
+    GLOBAL_STATE_TABLE,
     SHORT_TERM_MESSAGE_LOG_TABLE,
     MESSAGE_ARCHIVE_TABLE
 ]
+
+
+
+

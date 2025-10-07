@@ -1,5 +1,3 @@
-
-```
 # System Architecture: Advanced AI Discord Bot
 
 ## 1. Introduction
@@ -26,6 +24,15 @@ These are the core, non-negotiable principles that must govern the AI's behavior
 This component is responsible for processing incoming messages and generating responses.
 
 -   **Trigger Agnostic Activation:** The handler will activate when the bot is directly mentioned (`@Bot`), when a user replies to one of its messages, or when contextual inference determines the bot is being addressed.
+    
+-   **Intent Classification System:** Before generating a response, the system classifies the user's intent into one of five categories:
+    -   **memory_storage**: User is stating a fact to be remembered
+    -   **memory_correction**: User is correcting a previous bot statement
+    -   **factual_question**: User is asking for verifiable information
+    -   **memory_recall**: User is asking the bot to recall stored information
+    -   **casual_chat**: Default category for general conversation
+    
+    This classification allows the bot to tailor its response strategy and maintain context awareness.
     
 -   **Context Aggregation for Response Formulation:** To formulate its response, the handler will aggregate context from two sources:
     
@@ -83,6 +90,8 @@ All persistent data is stored in and retrieved from a relational database.
 
 ### 3.3. Proactive Engagement Subsystem
 
+**STATUS: NOT YET IMPLEMENTED - Planned for future development**
+
 This component allows the bot to initiate conversation, governed by strict rules.
 
 -   **Scheduled Event:** A task runs every 30 minutes.
@@ -97,6 +106,8 @@ This component allows the bot to initiate conversation, governed by strict rules
         
 
 ### 3.4. Automated Memory Consolidation Process
+
+**STATUS: NOT YET IMPLEMENTED - Planned for future development**
 
 A daily, automated background process that converts short-term message data into long-term structured memory.
 
@@ -114,6 +125,8 @@ A daily, automated background process that converts short-term message data into
     
 
 ### 3.5. Dynamic Status Subsystem
+
+**STATUS: NOT YET IMPLEMENTED - Planned for future development**
 
 An automated process that periodically updates the bot's Discord presence to reflect a dynamic, "thoughtful" status.
 
@@ -143,6 +156,8 @@ Standard bot features will be implemented as separate, modular components.
 
 ### 3.7. Real-Time Administration Interface
 
+**STATUS: PARTIALLY IMPLEMENTED - Basic structure in place, admin commands to be added**
+
 A set of secure, admin-only slash commands for live management of the bot's database.
 
 -   **Functionality:** Provides commands to create, read, update, and delete records for the Bot's Identity, User Memories, Relationship Metrics, and Global State.
@@ -156,11 +171,41 @@ This document will serve as the guiding document for the bot's development.
 
 This section maps the conceptual components defined above to the final, physical file structure of the project. This is the definitive guide for the repository's organization.
 
-
 ```
-
-/ ├── 📂 cogs/ │ ├── 📄 **init**.py │ ├── 📄 admin.py │ ├── 📄 events.py │ ├── 📄 memory_tasks.py │ ├── 📄 moderation.py │ ├── 📄 settings.py │ └── 📄 utility.py | ├── 📂 database/ │ ├── 📄 **init**.py │ ├── 📄 db_manager.py │ └── 📄 schemas.py | ├── 📂 modules/ │ ├── 📄 **init**.py │ ├── 📄 ai_handler.py │ ├── 📄 config_manager.py │ ├── 📄 emote_orchestrator.py │ └── 📄 logging_manager.py | ├── 📂 tests/ │ ├── 📄 **init**.py │ └── 📄 (Unit tests for modules and cogs) | ├── 📜 .env ├── 📜 .gitignore ├── 📜 config.json ├── 📜 gui.py ├── 📜 main.py ├── 📜 README.md ├── 📜 requirements.txt └── 📜 SYSTEM_ARCHITECTURE.md
-
+/
+├── 📂 cogs/
+│   ├── 📄 __init__.py
+│   ├── 📄 admin.py
+│   ├── 📄 events.py
+│   ├── 📄 memory_tasks.py
+│   ├── 📄 moderation.py
+│   ├── 📄 settings.py
+│   └── 📄 utility.py
+|
+├── 📂 database/
+│   ├── 📄 __init__.py
+│   ├── 📄 db_manager.py
+│   └── 📄 schemas.py
+|
+├── 📂 modules/
+│   ├── 📄 __init__.py
+│   ├── 📄 ai_handler.py
+│   ├── 📄 config_manager.py
+│   ├── 📄 emote_orchestrator.py
+│   └── 📄 logging_manager.py
+|
+├── 📂 tests/
+│   ├── 📄 __init__.py
+│   └── 📄 (Unit tests for modules and cogs)
+|
+├── 📜 .env
+├── 📜 .gitignore
+├── 📜 config.json
+├── 📜 gui.py
+├── 📜 main.py
+├── 📜 README.md
+├── 📜 requirements.txt
+└── 📜 SYSTEM_ARCHITECTURE.md
 ```
 
 ### 4.1. `cogs/` Directory
@@ -188,7 +233,7 @@ The central component for all data persistence logic.
 
 -   `__init__.py`: Marks the directory as a Python package, enabling imports of the manager and schemas.
     
--   `db_manager.py`: The sole interface for the database. Contains all functions for data manipulation (e.g., `getUser`, `addFact`). All other parts of the bot interact with the database through this manager.
+-   `db_manager.py`: The sole interface for the database. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`). All other parts of the bot interact with the database through this manager.
     
 -   `schemas.py`: Defines the database table structures (e.g., via ORM classes or SQL statements) as described in section 3.2.
     
@@ -199,7 +244,7 @@ Contains core helper classes not directly tied to Discord's API.
 
 -   `__init__.py`: Marks the directory as a Python package so these helper modules can be imported.
     
--   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text.
+-   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text. Implements the Intent Classification System.
     
 -   `config_manager.py`: Manages the loading of `config.json` and `.env` files.
     
@@ -234,4 +279,30 @@ A dedicated folder for housing unit tests and integration tests.
 -   `requirements.txt`: Lists all Python package dependencies.
     
 -   `SYSTEM_ARCHITECTURE.md`: This document.
-```
+
+## 5. Implementation Status
+
+### Completed Components
+- ✅ Core Interaction Handler with Intent Classification
+- ✅ Database Schema (all tables defined)
+- ✅ Short-Term Message Logging (24-hour rolling window)
+- ✅ Long-Term Memory Storage & Retrieval
+- ✅ Global State Management
+- ✅ Emote Integration System
+- ✅ Channel-Specific Configuration
+- ✅ Structured Logging System
+
+### In Progress
+- 🔄 Real-Time Administration Interface (structure in place, commands to be added)
+- 🔄 Bot Identity Database Integration (table exists, not yet used by AI handler)
+- 🔄 Relationship Metrics (table exists, not yet utilized)
+
+### Planned for Future Development
+- ⏳ Proactive Engagement Subsystem
+- ⏳ Automated Memory Consolidation Process
+- ⏳ Dynamic Status Subsystem
+- ⏳ Semantic Similarity Checking for Memory Deduplication
+
+
+
+
