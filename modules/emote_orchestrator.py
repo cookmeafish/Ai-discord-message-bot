@@ -44,8 +44,7 @@ class EmoteOrchestrator:
         Finds all occurrences of :emote_name: in a string and replaces them
         with the actual Discord emote string if the emote exists.
         
-        CRITICAL FIX: This function now correctly replaces only the :emote_name: tag
-        and does not create malformed emote strings.
+        This function correctly replaces only :emote_name: tags (not already-formatted Discord emotes).
         """
         if not text:
             return text
@@ -64,14 +63,15 @@ class EmoteOrchestrator:
                 return match.group(0)
 
         try:
-            # This regex finds all words enclosed in colons, e.g., :smile:
-            # It will NOT match emotes that are already in Discord format <:name:id>
-            result = re.sub(r'(?<!<):(\w+):(?!>)', replace_match, text)
+            # CRITICAL FIX: This regex ONLY matches :word: patterns that are NOT already 
+            # part of a Discord emote format <:name:id> or <a:name:id>
+            # The negative lookbehind (?<!<) ensures we don't match emotes after '<'
+            # The negative lookbehind (?<!<a) ensures we don't match animated emotes after '<a'
+            # The negative lookahead (?!>\d+>) ensures we don't match if followed by '>digits>'
+            result = re.sub(r'(?<!<)(?<!<a):(\w+):(?!>\d+>)', replace_match, text)
             return result
         except Exception as e:
             print(f"ERROR: Emote replacement failed: {e}")
             return text
-
-
 
 

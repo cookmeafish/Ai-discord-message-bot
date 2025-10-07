@@ -16,13 +16,27 @@ class AIHandler:
         self.emote_handler = emote_handler
         print("AI Handler: Initialized successfully.")
 
+    def _strip_discord_formatting(self, text):
+        """
+        Strips Discord emote formatting from text, converting <:name:id> back to :name:
+        This prevents the AI from seeing and trying to replicate malformed Discord syntax.
+        """
+        if not text:
+            return text
+        
+        # Replace <:emotename:1234567890> with :emotename:
+        # Replace <a:emotename:1234567890> (animated) with :emotename:
+        text = re.sub(r'<a?:(\w+):\d+>', r':\1:', text)
+        return text
+
     async def _classify_intent(self, message, short_term_memory):
         """Step 1: Classify the user's intent."""
         
         recent_messages = short_term_memory[-5:]
         
         conversation_history = "\n".join(
-            [f'{msg["author_id"]}: {msg["content"]}' for msg in recent_messages]
+            [f'{msg["author_id"]}: {self._strip_discord_formatting(msg["content"])}' 
+             for msg in recent_messages]
         )
         
         intent_prompt = f"""
@@ -39,7 +53,7 @@ Conversation History:
 {conversation_history}
 
 Last User Message:
-{message.author.id}: {message.content}
+{message.author.id}: {self._strip_discord_formatting(message.content)}
 
 Based on the rules and the last user message, what is the user's primary intent? Respond with ONLY the intent category name.
 """
@@ -76,6 +90,9 @@ Based on the rules and the last user message, what is the user's primary intent?
         personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
 
         bot_name = channel.guild.me.display_name
+        
+        # Get available emotes for the system prompt
+        available_emotes = self.emote_handler.get_available_emote_names()
         
         long_term_memory_entries = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
@@ -164,9 +181,12 @@ For example, if you learned 'my favorite food is tamales', you could say 'my mou
                 "2. **NO FOLLOW-UP QUESTIONS**: You must not ask any questions.\n"
                 "3. **USE MEMORY WISELY**: If a fact has a Source, you know who told you. Only mention facts if they are relevant.\n"
                 "4. **NO NAME PREFIX**: NEVER start your response with your name and a colon.\n"
+                f"5. **EMOTES**: You can use custom server emotes by wrapping their name in colons. Available emotes: {available_emotes}. Use them sparingly and naturally.\n"
             )
 
         messages_for_api = [{'role': 'system', 'content': system_prompt}]
+        
+        # CRITICAL: Strip Discord formatting from conversation history
         for msg_data in short_term_memory[-10:]:
             role = "assistant" if msg_data["author_id"] == self.emote_handler.bot.user.id else "user"
             author_name = "User"
@@ -175,7 +195,9 @@ For example, if you learned 'my favorite food is tamales', you could say 'my mou
                 if member:
                     author_name = member.display_name
             
-            content = f'{author_name}: {msg_data["content"]}'
+            # Strip Discord emote formatting before sending to API
+            clean_content = self._strip_discord_formatting(msg_data["content"])
+            content = f'{author_name}: {clean_content}'
             messages_for_api.append({'role': role, 'content': content})
 
         try:
@@ -194,3 +216,5 @@ For example, if you learned 'my favorite food is tamales', you could say 'my mou
         except Exception as e:
             print(f"AI HANDLER ERROR: An unexpected error occurred: {e}")
             return None
+
+
