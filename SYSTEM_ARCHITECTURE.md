@@ -49,13 +49,23 @@ All persistent data is stored in and retrieved from a relational database.
 
 -   **User Schema:** A table for user profiles, tracking `user_id` and all known `nicknames` (historical and current).
     
--   **Bot Self-Identity Schema:** A table dedicated to the bot's persona, storing collections of:
+-   **Bot Self-Identity Schema:** A table dedicated to the bot's persona, storing collections of personality elements. Each entry contains:
     
-    -   `Core Traits`: (e.g., "curious," "cautious," "a fish").
-        
-    -   `Lore`: (e.g., "Is a fish that can go on land and use Discord.").
-        
-    -   `Facts & Quirks`: (e.g., "Dreams of being cooked at a 5-star restaurant," or "Mourns its cousin Fred, who was tragically eaten by a shark instead of being properly cooked and served.").
+    -   `id`: Auto-incrementing primary key
+    -   `category`: Type of personality element ("trait", "lore", or "fact")
+    -   `content`: The actual personality element text
+    -   `created_at`: Timestamp when added
+    
+    **Category Definitions:**
+    - `Core Traits`: Fundamental personality characteristics (e.g., "sarcastic and witty", "a fish who can walk on land")
+    - `Lore`: Background story and history (e.g., "I work as a surgeon despite having fins", "My wife died in a boating accident")
+    - `Facts & Quirks`: Specific behaviors and preferences (e.g., "Dreams of being cooked at a 5-star restaurant", "Hates sharks because one ate my cousin Fred")
+    
+    **Auto-Population on First Run:**
+    If the bot_identity table is empty on startup, the system automatically runs `scripts/populate_bot_identity.py` to create Dr. Fish's default personality with 5 traits, 5 lore entries, and 8 facts.
+    
+    **Live Editing:**
+    Bot personality can be modified in real-time via admin commands. Changes take effect immediately due to the Real-Time Data Reliance principle.
         
 -   **Structured Long-Term Memory Schema:** A table of user-associated memory objects, each containing:
     
@@ -69,13 +79,28 @@ All persistent data is stored in and retrieved from a relational database.
         
 -   **Per-User Relationship Metrics Schema:** A table linking the bot to each user, containing:
     
-    -   `Anger`: Integer (0-10).
-        
-    -   `Rapport`: Integer (0-10).
-        
-    -   `Trust`: Integer (0-10).
-        
-    -   `Formality`: Integer (-5 to +5).
+    -   `user_id`: Discord user ID (primary key)
+    -   `Anger`: Integer (0-10) - Bot's defensive/sarcastic level toward user
+    -   `Rapport`: Integer (0-10) - Bot's friendliness and warmth toward user
+    -   `Trust`: Integer (0-10) - Bot's openness and vulnerability with user
+    -   `Formality`: Integer (-5 to +5) - Speech style from casual (-5) to formal (+5)
+    -   `last_updated`: Timestamp of most recent metric change
+    
+    **How Metrics Affect Bot Behavior:**
+    - **High Rapport (8-10)**: Casual, friendly, jokes around, uses warm emotes
+    - **Low Rapport (0-3)**: Distant, brief responses, neutral/cold emotes
+    - **High Trust (7-10)**: Shares personal thoughts, vulnerable, open
+    - **Low Trust (0-3)**: Guarded, doesn't share personal information
+    - **High Anger (7-10)**: Defensive, sarcastic, slightly rude, annoyed emotes
+    - **High Formality (+3 to +5)**: Professional language, no slang
+    - **Low Formality (-5 to -3)**: Slang, contractions, very casual
+    
+    **Automatic Metric Updates:**
+    The AI Handler analyzes user sentiment after each interaction and conservatively updates metrics:
+    - Compliments/kindness: +1 rapport
+    - Personal sharing/vulnerability: +1 trust
+    - Insults/rudeness: +1 anger, -1 rapport
+    - Professional context: Adjusts formality based on situation
         
 -   **Global State Schema:** A simple key-value table to store global bot states, such as the "Daily Mood."
     
@@ -156,7 +181,7 @@ Standard bot features will be implemented as separate, modular components.
 
 ### 3.7. Real-Time Administration Interface
 
-**STATUS: PARTIALLY IMPLEMENTED - Basic structure in place, admin commands to be added**
+**STATUS: COMPLETED ✅**
 
 A set of secure, admin-only slash commands for live management of the bot's database.
 
@@ -171,6 +196,8 @@ This document will serve as the guiding document for the bot's development.
 
 This section maps the conceptual components defined above to the final, physical file structure of the project. This is the definitive guide for the repository's organization.
 
+**⚠️ IMPORTANT**: When adding new files or directories to the project, this file structure MUST be updated to reflect those changes. The file structure should always represent the current state of the project.
+
 ```
 /
 ├── 📂 cogs/
@@ -184,8 +211,12 @@ This section maps the conceptual components defined above to the final, physical
 |
 ├── 📂 database/
 │   ├── 📄 __init__.py
+│   ├── 📄 bot_data.db
 │   ├── 📄 db_manager.py
 │   └── 📄 schemas.py
+|
+├── 📂 logs/
+│   └── 📄 bot_YYYYMMDD.log (daily rotating log files)
 |
 ├── 📂 modules/
 │   ├── 📄 __init__.py
@@ -194,18 +225,29 @@ This section maps the conceptual components defined above to the final, physical
 │   ├── 📄 emote_orchestrator.py
 │   └── 📄 logging_manager.py
 |
+├── 📂 Notes/
+│   └── 📄 New ideas.txt
+|
+├── 📂 scripts/
+│   └── 📄 populate_bot_identity.py
+|
 ├── 📂 tests/
 │   ├── 📄 __init__.py
 │   └── 📄 (Unit tests for modules and cogs)
 |
 ├── 📜 .env
 ├── 📜 .gitignore
+├── 📜 AI_GUIDELINES.md
 ├── 📜 config.json
+├── 📜 debug.log
 ├── 📜 gui.py
 ├── 📜 main.py
+├── 📜 PLANNED_FEATURES.md
 ├── 📜 README.md
 ├── 📜 requirements.txt
-└── 📜 SYSTEM_ARCHITECTURE.md
+├── 📜 SYSTEM_ARCHITECTURE.md
+├── 📜 TROUBLESHOOTING.md
+└── 📜 test_file.txt
 ```
 
 ### 4.1. `cogs/` Directory
@@ -233,9 +275,23 @@ The central component for all data persistence logic.
 
 -   `__init__.py`: Marks the directory as a Python package, enabling imports of the manager and schemas.
     
--   `db_manager.py`: The sole interface for the database. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`). All other parts of the bot interact with the database through this manager.
+-   `bot_data.db`: The SQLite database file containing all persistent bot data (automatically created on first run).
+    
+-   `db_manager.py`: The sole interface for the database. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`, `get_bot_identity`, `get_relationship_metrics`, `update_relationship_metrics`). All other parts of the bot interact with the database through this manager.
     
 -   `schemas.py`: Defines the database table structures (e.g., via ORM classes or SQL statements) as described in section 3.2.
+
+### 4.2.1. `logs/` Directory
+
+Contains daily rotating log files for debugging and monitoring.
+
+-   `bot_YYYYMMDD.log`: Daily log files with timestamps, log levels, and detailed information about bot operations.
+
+### 4.2.2. `scripts/` Directory
+
+Contains utility scripts for database management and initialization.
+
+-   `populate_bot_identity.py`: Script that automatically populates the bot's initial personality (traits, lore, facts) on first run. Can also be run manually to reset the bot's identity.
     
 
 ### 4.3. `modules/` Directory
@@ -264,45 +320,67 @@ A dedicated folder for housing unit tests and integration tests.
 
 ### 4.5. Root Directory Files
 
--   `.env`: Stores sensitive credentials.
+-   `.env`: Stores sensitive credentials (Discord token, OpenAI API key).
     
--   `.gitignore`: Specifies files/directories to be ignored by Git (e.g., `.env`, `__pycache__/`, `Notes/`).
+-   `.gitignore`: Specifies files/directories to be ignored by Git (e.g., `.env`, `__pycache__/`, `Notes/`, `database/bot_data.db`).
     
--   `config.json`: Stores non-sensitive, user-configurable settings.
+-   `AI_GUIDELINES.md`: Comprehensive guidelines for AI assistants working on this project. Includes code review standards, architecture alignment requirements, and documentation update procedures.
+    
+-   `config.json`: Stores non-sensitive, user-configurable settings including channel-specific formality settings and bot personality defaults.
+    
+-   `debug.log`: General purpose debug log file for troubleshooting.
     
 -   `gui.py`: The optional graphical user interface for configuration and startup.
     
 -   `main.py`: The primary entry point for the application, responsible for initializing managers and loading cogs.
     
--   `README.md`: The user-facing guide for setup and basic features.
+-   `PLANNED_FEATURES.md`: Comprehensive roadmap of all planned features organized by development phase (Phase 2, 3, 4, etc.). Contains implementation details, technical requirements, and status tracking. **AI assistants must consult this file before implementing new features.**
+    
+-   `README.md`: The user-facing guide for quick start, setup, features overview, and basic usage.
     
 -   `requirements.txt`: Lists all Python package dependencies.
     
--   `SYSTEM_ARCHITECTURE.md`: This document.
+-   `SYSTEM_ARCHITECTURE.md`: This document - the technical specification and architectural blueprint for the entire system.
+    
+-   `TROUBLESHOOTING.md`: Comprehensive troubleshooting guide with solutions to common issues, database problems, performance optimization, and debugging steps.
+    
+-   `test_file.txt`: Temporary test file (can be safely deleted).
 
 ## 5. Implementation Status
 
-### Completed Components
+### Phase 1: COMPLETED ✅
+**Bot Identity & Relationship Metrics System**
+
+Phase 1 has been fully implemented and is production-ready.
+
+#### Implemented Features:
+- ✅ **Bot Identity Database System**: Bot's personality (traits, lore, facts) stored in and retrieved from database
+- ✅ **Automatic Identity Population**: First-run script auto-populates Dr. Fish's default personality
+- ✅ **Relationship Metrics**: Per-user tracking of rapport, trust, anger, and formality (0-10 scale)
+- ✅ **Emotional Context Blending**: Bot adjusts responses based on both emotional topics and user relationships
+- ✅ **Channel Formality System**: Channel-level formality settings with optional user-level overrides
+- ✅ **Automatic Metric Updates**: AI analyzes sentiment and updates relationship metrics after interactions
+- ✅ **Real-Time Administration Interface**: Full CRUD commands for bot identity, user metrics, and memories
+- ✅ **Global Mood System**: Database storage for bot's daily mood states
+
+#### Admin Commands Available:
+- Bot Identity: `/bot_add_trait`, `/bot_add_lore`, `/bot_add_fact`, `/bot_view_identity`
+- User Relationships: `/user_view_metrics`, `/user_set_metrics`, `/user_view_memory`, `/user_add_memory`
+- Global Mood: `/bot_set_mood`, `/bot_get_mood`
+
+### Core System Components: COMPLETED ✅
 - ✅ Core Interaction Handler with Intent Classification
-- ✅ Database Schema (all tables defined)
+- ✅ Database Schema (all tables defined and in use)
 - ✅ Short-Term Message Logging (24-hour rolling window)
 - ✅ Long-Term Memory Storage & Retrieval
 - ✅ Global State Management
 - ✅ Emote Integration System
 - ✅ Channel-Specific Configuration
-- ✅ Structured Logging System
+- ✅ Structured Logging System with Daily Rotation
 
-### In Progress
-- 🔄 Real-Time Administration Interface (structure in place, commands to be added)
-- 🔄 Bot Identity Database Integration (table exists, not yet used by AI handler)
-- 🔄 Relationship Metrics (table exists, not yet utilized)
-
-### Planned for Future Development
-- ⏳ Proactive Engagement Subsystem
-- ⏳ Automated Memory Consolidation Process
-- ⏳ Dynamic Status Subsystem
+### Phase 2: PLANNED ⏳
+**Memory Consolidation & Proactive Engagement**
+- ⏳ Proactive Engagement Subsystem (30-minute scheduled checks)
+- ⏳ Automated Memory Consolidation Process (daily AI-powered summarization)
+- ⏳ Dynamic Status Subsystem (AI-generated status updates)
 - ⏳ Semantic Similarity Checking for Memory Deduplication
-
-
-
-

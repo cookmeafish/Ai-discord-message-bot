@@ -95,6 +95,9 @@ class BotGUI(ctk.CTk):
         self.save_button = ctk.CTkButton(self.bottom_frame, text="Save Config", command=self.save_all_configs)
         self.save_button.pack(side="left", padx=20, pady=10)
 
+        self.consolidate_button = ctk.CTkButton(self.bottom_frame, text="Test Memory Consolidation", command=self.test_memory_consolidation, fg_color="#17a2b8", hover_color="#138496")
+        self.consolidate_button.pack(side="left", padx=(0, 20), pady=10)
+
         self.start_button = ctk.CTkButton(self.bottom_frame, text="Start Bot", command=self.start_bot, fg_color="#28a745", hover_color="#218838")
         self.start_button.pack(side="right", padx=20, pady=10)
 
@@ -139,8 +142,119 @@ class BotGUI(ctk.CTk):
             return
         for channel_id, channel_config in settings.items():
             purpose = channel_config.get('purpose', 'Default purpose')
-            display_text = f"ID: {channel_id} - Purpose: {purpose[:50]}..."
-            ctk.CTkLabel(self.active_channels_frame, text=display_text, wraplength=400, justify="left").pack(anchor="w", pady=2)
+
+            # Create a frame for each channel row
+            channel_frame = ctk.CTkFrame(self.active_channels_frame, fg_color="transparent")
+            channel_frame.pack(fill="x", pady=2)
+
+            # Channel info label
+            display_text = f"ID: {channel_id} - Purpose: {purpose[:35]}..."
+            ctk.CTkLabel(channel_frame, text=display_text, wraplength=300, justify="left").pack(side="left", anchor="w")
+
+            # Button container
+            button_frame = ctk.CTkFrame(channel_frame, fg_color="transparent")
+            button_frame.pack(side="right")
+
+            # Edit button
+            edit_btn = ctk.CTkButton(
+                button_frame,
+                text="Edit",
+                command=lambda cid=channel_id, cfg=channel_config: self.edit_channel(cid, cfg),
+                width=60,
+                height=24,
+                fg_color="#17a2b8",
+                hover_color="#138496"
+            )
+            edit_btn.pack(side="left", padx=2)
+
+            # Delete button
+            delete_btn = ctk.CTkButton(
+                button_frame,
+                text="Remove",
+                command=lambda cid=channel_id: self.remove_channel(cid),
+                width=70,
+                height=24,
+                fg_color="#dc3545",
+                hover_color="#c82333"
+            )
+            delete_btn.pack(side="left", padx=2)
+
+    def edit_channel(self, channel_id, channel_config):
+        """Opens a dialog to edit channel settings."""
+        # Create edit window
+        edit_window = ctk.CTkToplevel(self)
+        edit_window.title(f"Edit Channel {channel_id}")
+        edit_window.geometry("500x400")
+        edit_window.grab_set()  # Make it modal
+
+        # Channel ID display (non-editable)
+        ctk.CTkLabel(edit_window, text=f"Channel ID: {channel_id}", font=("Roboto", 14, "bold")).pack(pady=(20, 10))
+
+        # Purpose/Instructions editor
+        ctk.CTkLabel(edit_window, text="Channel Purpose/Instructions:").pack(padx=20, anchor="w", pady=(10, 0))
+        purpose_textbox = ctk.CTkTextbox(edit_window, height=150)
+        purpose_textbox.pack(fill="x", padx=20, pady=5)
+        current_purpose = channel_config.get('purpose', '')
+        purpose_textbox.insert("1.0", current_purpose)
+
+        # Random reply chance
+        ctk.CTkLabel(edit_window, text="Random Reply Chance (e.g., 0.05 for 5%):").pack(padx=20, anchor="w", pady=(10, 0))
+        reply_chance_entry = ctk.CTkEntry(edit_window, width=200)
+        reply_chance_entry.pack(padx=20, pady=5, anchor="w")
+        current_chance = channel_config.get('random_reply_chance', 0.05)
+        reply_chance_entry.insert(0, str(current_chance))
+
+        # Buttons frame
+        button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        def save_changes():
+            new_purpose = purpose_textbox.get("1.0", "end-1c").strip()
+            try:
+                new_chance = float(reply_chance_entry.get())
+            except ValueError:
+                new_chance = current_chance
+
+            # Update the config
+            self.config_manager.add_or_update_channel_setting(
+                channel_id=channel_id,
+                purpose=new_purpose,
+                random_reply_chance=new_chance
+            )
+            print(f"Updated channel {channel_id} settings")
+            self.update_active_channels_display()
+            edit_window.destroy()
+
+        # Save button
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save Changes",
+            command=save_changes,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=edit_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        cancel_btn.pack(side="left", padx=10)
+
+    def remove_channel(self, channel_id):
+        """Removes a channel from the active channels list."""
+        success = self.config_manager.remove_channel_setting(channel_id)
+        if success:
+            print(f"Removed channel {channel_id} from active channels")
+            self.update_active_channels_display()
+        else:
+            print(f"Failed to remove channel {channel_id}")
 
     def load_secrets(self):
         if not os.path.exists(ENV_FILE):
@@ -241,6 +355,34 @@ class BotGUI(ctk.CTk):
             self.log_textbox.configure(state="disabled")
         else:
             print("Bot is not running or has already stopped.")
+
+    def test_memory_consolidation(self):
+        """
+        Triggers memory consolidation by calling the bot's consolidate_memories function directly.
+        This simulates what the daily scheduled task would do.
+        """
+        if not (self.bot_process and self.bot_process.poll() is None):
+            self.log_textbox.configure(state="normal")
+            self.log_textbox.insert("end", "\nERROR: Bot must be running to test memory consolidation.\n")
+            self.log_textbox.insert("end", "Please start the bot first, then click this button.\n")
+            self.log_textbox.configure(state="disabled")
+            print("Cannot test memory consolidation: Bot is not running")
+            return
+
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.insert("end", "\n=== Testing Memory Consolidation ===\n")
+        self.log_textbox.insert("end", "NOTE: You must use the /consolidate_memory slash command in Discord.\n")
+        self.log_textbox.insert("end", "1. Go to any channel where the bot is active\n")
+        self.log_textbox.insert("end", "2. Type: /consolidate_memory\n")
+        self.log_textbox.insert("end", "3. Watch the console output below for results\n")
+        self.log_textbox.insert("end", "===================================\n\n")
+        self.log_textbox.configure(state="disabled")
+
+        print("\n=== Memory Consolidation Test ===")
+        print("To test memory consolidation:")
+        print("1. Use the /consolidate_memory command in Discord")
+        print("2. Results will appear in the bot console output above")
+        print("=================================")
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("dark")

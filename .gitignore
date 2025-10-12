@@ -1,8 +1,48 @@
-Notes
+# Environment and secrets
 .env
-.vs
-pycache/
+*.env.local
 
-Database files
+# IDE and editor files
+.vs
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Database files
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+
+# Database archives (message backups)
+database/archive/
+
+# Logging files
+logs/
+*.log
+debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Notes and documentation drafts
+Notes/
+FAILED_EDIT_EXPLANATION.md
+GIT_COMMIT_INSTRUCTIONS.md
+CENTRALIZED_CONFIG_REFACTOR.md
+UPGRADE_TO_GPT4.1_MINI.md

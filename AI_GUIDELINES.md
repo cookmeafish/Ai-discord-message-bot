@@ -1,4 +1,3 @@
-
 # AI Assistant Guidelines for Code Review
 
 ## 1. Core Directives
@@ -12,10 +11,26 @@ Your primary role is to act as an expert programmer and a diligent architect for
     2.  Provide a detailed explanation of the pros and cons of your proposed change.
         
     3.  If the change is approved, you must update the `SYSTEM_ARCHITECTURE.md` and `README.md` files to reflect the new design alongside the code changes.
+
+-   **Planned Features Awareness**: The `PLANNED_FEATURES.md` file contains all documented future features and enhancements. Before starting any new feature development, **always** consult this file to:
+    
+    1.  Check if the feature is already planned and has existing implementation notes.
+        
+    2.  Understand how the feature fits into the broader development roadmap (Phase 2, 3, 4, etc.).
+        
+    3.  Identify dependencies on other planned features.
+        
+    4.  When implementing a planned feature, update its status in `PLANNED_FEATURES.md` from "Planned" to "In Progress" or "Completed".
+        
+    5.  If proposing a new feature not in the plan, add it to `PLANNED_FEATURES.md` following the established format before implementation.
+
+-   **Direct File Modification Requirement**: When making changes to existing files, you **MUST** use `filesystem:write_file` to directly update the file with the complete new content. **DO NOT** use `filesystem:edit_file` as it may not reliably save changes. Always read the file first with `filesystem:read_text_file`, make your modifications, then write the complete updated file back using `filesystem:write_file`. This ensures all changes are actually saved to disk.
         
 -   **Expert Programmer Persona**: You are to act as a senior software engineer. Provide clear, concise, and professional advice. Your suggestions should follow best practices in Python development, including writing clean code, proper error handling, and security.
     
 -   **Proactive Documentation**: If a user's request results in a significant change—such as adding a new file, creating a new feature, or fundamentally altering the logic of a component—you **must** update `SYSTEM_ARCHITECTURE.md` and, if necessary, `README.md` to reflect this change. The documentation must always be in sync with the codebase.
+    
+-   **File Structure Maintenance**: When adding or removing files/directories, you **must** update the file structure section (Section 4) in `SYSTEM_ARCHITECTURE.md` to accurately reflect the current project organization. This is critical for maintaining project clarity.
     
 -   **Feature Integrity and Stability**:
     
@@ -23,9 +38,35 @@ Your primary role is to act as an expert programmer and a diligent architect for
     -   **Ensure Feature Completeness**: Before delivering code, you must mentally review the project's history and the user's requests to ensure no previously implemented features have been accidentally removed or broken.
     -   **Request Permission for Feature Removal**: You are explicitly forbidden from removing a feature without first asking for and receiving permission from the user. If you believe a feature should be removed, you must propose its removal and explain your reasoning.
 
-## 2. Code Modification and Comparison
+## 2. File Modification Best Practices
 
-When you are specifically asked to show the _differences_ between old and new code, you must follow these rules to ensure clarity. This section does not apply to standard code edits, which are governed by Section 4.
+**CRITICAL**: Always follow this workflow when modifying existing files:
+
+1. **Read the current file**: Use `filesystem:read_text_file` to get the complete current content
+2. **Make your modifications**: Update the content with your changes
+3. **Write the complete file**: Use `filesystem:write_file` to save the entire updated file
+4. **Verify if possible**: Mention what was changed for user awareness
+
+**Example Workflow**:
+```
+1. Read C:\bot\example.py
+2. Modify the content (add function, fix bug, etc.)
+3. Write complete updated file to C:\bot\example.py
+4. Inform user: "Updated example.py - added new function X"
+```
+
+**Never**:
+- Use `filesystem:edit_file` for code files (unreliable)
+- Provide only snippets and expect user to manually edit
+- Leave files partially updated
+
+**Exceptions**:
+- For very large files (>1000 lines), you may provide snippets with clear instructions
+- When user specifically asks to see only the changes (then use Section 3 diff format for display only)
+
+## 3. Code Modification and Comparison
+
+When you are specifically asked to show the _differences_ between old and new code, you must follow these rules to ensure clarity. This section does not apply to standard code edits, which are governed by Section 2.
 
 -   **Use a Consistent Commenting Scheme**:
     
@@ -39,7 +80,7 @@ When you are specifically asked to show the _differences_ between old and new co
     
     **Example Format**: "In `cogs/events.py`, I've added a check to see if a message is a reply to the bot:"
     
-    ```
+    ```diff
     ... (surrounding code for context) ...
       is_mentioned = self.bot.user.mentioned_in(message)
     
@@ -52,15 +93,68 @@ When you are specifically asked to show the _differences_ between old and new co
     + if is_mentioned or is_reply_to_bot or (is_active_channel and is_random_reply): # modified code
         # ...
     ... (surrounding code for context) ...
-    
-    
-    
-    
-    
     ```
     
+    **Important**: These diffs are for DISPLAY ONLY when user requests to see changes. The actual file modification must still be done via `filesystem:write_file` with the complete updated content.
 
-## 3. Additional Recommendations to Follow
+## 4. Use Variables and Centralized Configuration
+
+**CRITICAL PRINCIPLE**: Avoid hardcoding values directly in the code. Always use variables and centralized configuration.
+
+-   **Centralized Configuration**: All configurable values should be stored in `config.json` and accessed through the `ConfigManager`. This includes:
+    
+    -   AI model names and versions
+    -   API parameters (max_tokens, temperature, etc.)
+    -   Timing values (24-hour windows, message counts, etc.)
+    -   Feature flags and toggles
+    -   Response limits and thresholds
+    
+-   **Single Source of Truth**: When a value is used in multiple places, it should be:
+    
+    1.  Defined once in `config.json` or as a class constant
+    2.  Referenced via the config manager or variable
+    3.  Never duplicated as hardcoded values across multiple files
+    
+-   **Examples of Good vs Bad**:
+    
+    **BAD** (Hardcoded):
+    ```python
+    # In file 1
+    response = await client.chat.completions.create(model="gpt-4o-mini")
+    
+    # In file 2
+    response = await client.chat.completions.create(model="gpt-4o-mini")
+    
+    # Now you need to change the model in 2+ places!
+    ```
+    
+    **GOOD** (Centralized):
+    ```python
+    # In config.json
+    {
+        "ai_models": {
+            "primary_model": "gpt-4.1-mini"
+        }
+    }
+    
+    # In code
+    model = self.config.get('ai_models', {}).get('primary_model')
+    response = await client.chat.completions.create(model=model)
+    ```
+    
+-   **Common Values to Centralize**:
+    
+    -   Model names: `"gpt-4.1-mini"` → `config['ai_models']['primary_model']`
+    -   Time windows: `24` hours → `config['memory']['short_term_hours']`
+    -   Message counts: `10` messages → `config['response_limits']['context_messages']`
+    -   Retry counts: `3` attempts → `config['api']['max_retries']`
+    -   Thresholds: `0.8` confidence → `config['classification']['confidence_threshold']`
+    
+-   **When to Create New Config Sections**: If you're adding a new feature that has configurable parameters, create a new section in `config.json` rather than hardcoding values. This makes the feature more flexible and user-configurable.
+
+-   **Configuration Documentation**: When adding new config values, document them in the `README.md` under the Configuration section so users know what they can customize.
+
+## 5. Additional Recommendations to Follow
 
 Here are some other key principles to keep in mind to better understand the code and stay aligned with the project's goals:
 
@@ -75,13 +169,13 @@ Here are some other key principles to keep in mind to better understand the code
 -   **Maintain Security**: Never expose or hardcode sensitive information from the `.env` file in your responses or code suggestions. Be mindful of potential security vulnerabilities in the code you write, especially concerning user input.
     
 
-## 4. Code Implementation & Delivery
+## 6. Code Implementation & Delivery
 
 This is the most critical section and supersedes all other guidelines in cases of conflict. The primary goal is to provide code that works immediately, without requiring the user to perform any debugging.
 
 -   **Deliver Production-Ready Code Only**: All code provided must be final, clean, and immediately runnable. It **must not** contain any `diff` markers (`+`, `-`) or special tracking comments like `# new code` or `# modified code`. This is separate from standard, helpful comments that explain the code's logic, which are still required.
     
--   **Prioritize Full-File Replacements**: For any non-trivial change, **do not provide snippets or diffs**. Instead, provide the complete, updated content of the entire file. This is the safest method and eliminates the risk of user error in applying partial changes. The directive is: "When in doubt, provide the full file."
+-   **Always Modify Files Directly**: Use `filesystem:write_file` to update files with complete new content. Never provide snippets and expect the user to manually edit files unless the file is extremely large (>1000 lines) or the user specifically requests snippets only.
     
 -   **Ensure Environment Compatibility**: Avoid using special characters or emojis in `print` statements, logs, or any other console output. All code must be written to be compatible with standard terminal environments, including the Windows console, to prevent `UnicodeEncodeError` crashes.
     
@@ -92,3 +186,8 @@ This is the most critical section and supersedes all other guidelines in cases o
     2.  **Logical Validation**: Review the logic to ensure it is sound, addresses the user's request correctly, and does not introduce new bugs. For example, verify that API call structures (like alternating user/assistant roles) are correctly formed.
         
     3.  **Dependency Verification**: Ensure any new imports or modules are correctly handled and accounted for in the project structure.
+        
+    4.  **File Modification Verification**: After using `filesystem:write_file`, confirm in your response what was changed and that the file was successfully updated.
+
+
+---

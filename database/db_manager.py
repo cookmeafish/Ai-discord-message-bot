@@ -14,12 +14,15 @@ class DBManager:
     def __init__(self):
         # Ensure the 'database' directory exists
         os.makedirs(DB_FOLDER, exist_ok=True)
-        
+
         try:
             self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
             # Enable foreign key constraints
             self.conn.execute("PRAGMA foreign_keys = ON")
+            # Enable auto-vacuum for automatic database compaction
+            self.conn.execute("PRAGMA auto_vacuum = FULL")
             self._initialize_database()
+            print("Database optimization enabled: auto_vacuum = FULL")
         except Exception as e:
             print(f"CRITICAL DATABASE ERROR: Failed to connect to database: {e}")
             raise
@@ -280,22 +283,24 @@ class DBManager:
     def get_relationship_metrics(self, user_id):
         """
         Retrieves relationship metrics for a user.
-        
+        Auto-creates a record with default values (0,0,0,0) if none exists.
+
         Args:
             user_id: Discord user ID
-            
+
         Returns:
             Dictionary with anger, rapport, trust, formality values
         """
         query = "SELECT anger, rapport, trust, formality FROM relationship_metrics WHERE user_id = ?"
-        
+        insert_query = "INSERT INTO relationship_metrics (user_id, anger, rapport, trust, formality) VALUES (?, 0, 0, 0, 0)"
+
         try:
             cursor = self.conn.cursor()
             cursor.execute(query, (user_id,))
             row = cursor.fetchone()
-            cursor.close()
-            
+
             if row:
+                cursor.close()
                 return {
                     "anger": row[0],
                     "rapport": row[1],
@@ -303,7 +308,11 @@ class DBManager:
                     "formality": row[3]
                 }
             else:
-                # Return default values if no metrics exist
+                # Auto-create record with default values
+                cursor.execute(insert_query, (user_id,))
+                self.conn.commit()
+                cursor.close()
+                print(f"DATABASE: Auto-created relationship metrics for user {user_id} with defaults (0,0,0,0)")
                 return {
                     "anger": 0,
                     "rapport": 0,
@@ -352,7 +361,80 @@ class DBManager:
         except Exception as e:
             print(f"DATABASE ERROR: Failed to update relationship metrics for user {user_id}: {e}")
 
-    # --- Cleanup Methods ---
+    # --- Archival and Cleanup Methods ---
+
+    def archive_and_clear_short_term_memory(self):
+        """
+        Archives all short-term messages to a JSON file in database/archive/,
+        then deletes them from the short_term_message_log table.
+
+        Returns:
+            Tuple of (archived_count, deleted_count, archive_filename)
+        """
+        import json
+
+        # Create archive directory if it doesn't exist
+        archive_dir = os.path.join(DB_FOLDER, "archive")
+        os.makedirs(archive_dir, exist_ok=True)
+
+        try:
+            # Get ALL messages from short_term_message_log (no time filter)
+            query = """
+            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
+            FROM short_term_message_log
+            ORDER BY timestamp ASC
+            """
+
+            cursor = self.conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            if not rows:
+                print("DATABASE: No messages to archive in short-term memory.")
+                cursor.close()
+                return (0, 0, None)
+
+            # Convert to list of dictionaries
+            messages = [{
+                "message_id": row[0],
+                "user_id": row[1],
+                "channel_id": row[2],
+                "content": row[3],
+                "timestamp": row[4],
+                "directed_at_bot": bool(row[5])
+            } for row in rows]
+
+            # Create archive filename with timestamp
+            archive_timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            archive_filename = f"short_term_archive_{archive_timestamp}.json"
+            archive_path = os.path.join(archive_dir, archive_filename)
+
+            # Write to JSON file
+            with open(archive_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "archived_at": datetime.datetime.utcnow().isoformat(),
+                    "message_count": len(messages),
+                    "messages": messages
+                }, f, indent=2, ensure_ascii=False)
+
+            archived_count = len(messages)
+            print(f"DATABASE: Archived {archived_count} messages to {archive_filename}")
+
+            # Now delete all messages from short_term_message_log
+            delete_query = "DELETE FROM short_term_message_log"
+            cursor.execute(delete_query)
+            deleted_count = cursor.rowcount
+            self.conn.commit()
+            cursor.close()
+
+            print(f"DATABASE: Deleted {deleted_count} messages from short_term_message_log")
+            print(f"DATABASE: Archive saved to: {archive_path}")
+
+            return (archived_count, deleted_count, archive_filename)
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to archive and clear short-term memory: {e}")
+            return (0, 0, None)
 
     def close(self):
         """Closes the database connection."""
