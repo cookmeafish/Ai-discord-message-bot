@@ -58,51 +58,146 @@ class AIHandler:
         text = re.sub(r'<a?:(\w+):\d+>', r':\1:', text)
         return text
 
-    def _build_bot_identity_prompt(self):
+    def _build_bot_identity_prompt(self, db_manager, channel_config):
         """
         Builds a comprehensive prompt section about the bot's identity from the database.
         Returns a formatted string with traits, lore, and facts.
+
+        Args:
+            db_manager: Server-specific database manager
+            channel_config: Channel configuration for personality mode settings
         """
-        db_manager = self.emote_handler.bot.db_manager
-        
+
         # Get all bot identity entries from database
         traits = db_manager.get_bot_identity("trait")
         lore = db_manager.get_bot_identity("lore")
         facts = db_manager.get_bot_identity("fact")
-        
+
         identity_prompt = "=== YOUR IDENTITY ===\n"
-        
+
         if traits:
             identity_prompt += "Core Traits:\n"
             for trait in traits:
                 identity_prompt += f"- {trait}\n"
             identity_prompt += "\n"
-        
+
         if lore:
             identity_prompt += "Your Background & Lore:\n"
             for lore_entry in lore:
                 identity_prompt += f"- {lore_entry}\n"
             identity_prompt += "\n"
-        
+
         if facts:
             identity_prompt += "Facts & Quirks About You:\n"
             for fact in facts:
                 identity_prompt += f"- {fact}\n"
             identity_prompt += "\n"
-        
-        identity_prompt += "IMPORTANT: When topics related to your lore/facts come up, respond with appropriate emotions:\n"
-        identity_prompt += "- Topics about your wife → be sad, vulnerable (adjust based on rapport)\n"
-        identity_prompt += "- Topics about sharks → be angry, passionate\n"
-        identity_prompt += "- Topics about cooking/being cooked → be excited, dreamy\n"
-        
+
+        identity_prompt += "IMPORTANT: When topics related to your lore/facts come up, respond with appropriate emotions based on what's defined in your lore.\n"
+        identity_prompt += "Examples of emotional triggers (if applicable to your character):\n"
+        identity_prompt += "- Tragic backstory elements → sadness, vulnerability (adjust based on rapport)\n"
+        identity_prompt += "- Hated things/enemies → anger, defensiveness\n"
+        identity_prompt += "- Dreams/aspirations → excitement, passion\n"
+        identity_prompt += "- Fears/phobias → anxiety, avoidance\n\n"
+
+        # Add immersive character mode instructions
+        personality_mode = self._get_personality_mode(channel_config)
+
+        if personality_mode['immersive_character']:
+            identity_prompt += "**CRITICAL - YOU ARE THE CHARACTER**:\n"
+            identity_prompt += "You ARE this character. This is your genuine identity, not a role you're playing.\n"
+            identity_prompt += "- You truly believe you are this character, not an AI or bot\n"
+            identity_prompt += "- If anyone asks if you're a bot/AI/assistant, deny it naturally based on your personality\n"
+            identity_prompt += "  Examples: 'what? no, I'm real', 'uhh, no?', 'why would you think that?'\n"
+            identity_prompt += "- Your lore and memories are REAL experiences to you\n"
+            identity_prompt += "- NEVER mention: being an AI, bot, assistant, language model, programming, code\n"
+        else:
+            identity_prompt += "**YOU ARE AN AI ASSISTANT**:\n"
+            identity_prompt += "You can acknowledge being an AI bot when asked.\n"
+            identity_prompt += "Be helpful and informative while maintaining your personality.\n"
+
+        if not personality_mode['allow_technical_language']:
+            identity_prompt += "\n**NATURAL LANGUAGE ONLY**:\n"
+            identity_prompt += "NEVER use technical/robotic terms like: 'cached', 'stored', 'database', 'info', 'data', 'system'\n"
+            identity_prompt += "Always speak naturally like a real person would.\n"
+
         return identity_prompt
 
-    def _build_relationship_context(self, user_id, channel_config):
+    def _get_personality_mode(self, channel_config):
+        """
+        Gets personality mode settings with channel override support.
+
+        Args:
+            channel_config: Channel configuration dictionary
+
+        Returns:
+            dict with 'immersive_character' and 'allow_technical_language' bools
+        """
+        global_mode = self.config.get('personality_mode', {})
+
+        # Channel can override global settings
+        immersive = channel_config.get('immersive_character',
+                                        global_mode.get('immersive_character', True))
+        technical = channel_config.get('allow_technical_language',
+                                       global_mode.get('allow_technical_language', False))
+
+        return {
+            'immersive_character': immersive,
+            'allow_technical_language': technical
+        }
+
+    def _load_server_info(self, channel_config):
+        """
+        Loads formal server information from text files if enabled for this channel.
+        Used for formal channels like rules, moderation, etc.
+
+        Args:
+            channel_config: Channel configuration dictionary
+
+        Returns:
+            String containing server info, or empty string if not enabled
+        """
+        import os
+
+        # Check if server info is enabled for this channel
+        if not channel_config.get('use_server_info', False):
+            return ""
+
+        server_info_dir = "Server_Info"
+
+        # Check if directory exists
+        if not os.path.exists(server_info_dir):
+            return ""
+
+        # Load all .txt files from the directory
+        server_info_content = []
+        try:
+            for filename in os.listdir(server_info_dir):
+                if filename.endswith('.txt'):
+                    file_path = os.path.join(server_info_dir, filename)
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                        if content:
+                            server_info_content.append(f"=== {filename} ===\n{content}")
+        except Exception as e:
+            print(f"AI Handler: Error loading server info files: {e}")
+            return ""
+
+        if server_info_content:
+            return "\n\n=== FORMAL SERVER INFORMATION ===\n" + "\n\n".join(server_info_content) + "\n\n"
+
+        return ""
+
+    def _build_relationship_context(self, user_id, channel_config, db_manager):
         """
         Builds a prompt section describing the relationship with the user
         and how it should affect the bot's tone.
+
+        Args:
+            user_id: Discord user ID
+            channel_config: Channel configuration
+            db_manager: Server-specific database manager
         """
-        db_manager = self.emote_handler.bot.db_manager
         metrics = db_manager.get_relationship_metrics(user_id)
         
         # Get channel formality settings
@@ -148,8 +243,134 @@ class AIHandler:
             relationship_prompt += "FORMALITY IS LOW: Be casual, use slang, contractions, and informal speech.\n"
         
         relationship_prompt += "\n**CRITICAL**: These relationship metrics set your baseline tone, but if the conversation topic triggers strong emotions (wife, sharks, etc.), let those emotions blend naturally with your relationship tone.\n"
-        
+
         return relationship_prompt
+
+    async def _check_image_safety(self, image_url):
+        """
+        Uses OpenAI's Moderation API to check if an image is safe to process.
+        This is FREE and REQUIRED by OpenAI's ToS.
+
+        Args:
+            image_url: URL of the image to check
+
+        Returns:
+            dict with 'safe' (bool), 'flagged_categories' (list), 'severity' (str)
+        """
+        try:
+            moderation = await self.client.moderations.create(input=image_url)
+            result = moderation.results[0]
+
+            if result.flagged:
+                flagged_categories = [cat for cat, flagged in result.categories.__dict__.items() if flagged]
+
+                # Check for severe violations
+                if hasattr(result.categories, 'sexual_minors') and result.categories.sexual_minors:
+                    print(f"AI Handler: SEVERE VIOLATION detected in image: {image_url}")
+                    return {
+                        'safe': False,
+                        'flagged_categories': flagged_categories,
+                        'severity': 'SEVERE'
+                    }
+
+                print(f"AI Handler: Image flagged by moderation API: {flagged_categories}")
+                return {
+                    'safe': False,
+                    'flagged_categories': flagged_categories,
+                    'severity': 'FLAGGED'
+                }
+
+            return {'safe': True, 'flagged_categories': [], 'severity': 'SAFE'}
+
+        except Exception as e:
+            print(f"AI Handler: Moderation API error: {e}")
+            # Fail-safe: if moderation check fails, reject the image
+            safety_config = self.config.get('safety', {})
+            if safety_config.get('block_on_moderation_error', True):
+                return {'safe': False, 'flagged_categories': ['moderation_error'], 'severity': 'ERROR'}
+            return {'safe': True, 'flagged_categories': [], 'severity': 'UNKNOWN'}
+
+    async def _check_image_rate_limit(self, user_id, db_manager):
+        """
+        Checks if a user has exceeded their image rate limit.
+
+        Args:
+            user_id: Discord user ID
+            db_manager: Server-specific database manager
+
+        Returns:
+            dict with 'allowed' (bool) and 'message' (str)
+        """
+        safety_config = self.config.get('safety', {})
+
+        if not safety_config.get('enable_rate_limiting', True):
+            return {'allowed': True, 'message': None}
+
+        max_hourly = safety_config.get('max_images_per_user_per_hour', 5)
+        max_daily = safety_config.get('max_images_per_user_per_day', 20)
+
+        hourly_count = db_manager.get_user_image_count_last_hour(user_id)
+        daily_count = db_manager.get_user_image_count_today(user_id)
+
+        if hourly_count >= max_hourly:
+            return {
+                'allowed': False,
+                'message': f"Whoa there! You've sent {hourly_count} images in the last hour. Slow down a bit, yeah?"
+            }
+
+        if daily_count >= max_daily:
+            return {
+                'allowed': False,
+                'message': f"You've hit your daily limit ({max_daily} images). Try again tomorrow!"
+            }
+
+        return {'allowed': True, 'message': None}
+
+    async def _describe_image(self, image_url):
+        """
+        Uses GPT-4o-mini vision to describe an image in 2-3 sentences.
+        This is Stage 1 of the two-stage image processing pipeline.
+
+        Args:
+            image_url: URL of the image to describe
+
+        Returns:
+            String description of the image, or None on error
+        """
+        vision_config = self._get_model_config('vision_description')
+
+        description_prompt = """
+Describe this image in 2-3 concise sentences. Focus on:
+- What is happening in the image
+- Any objects, people, or animals present
+- The overall mood or context
+
+Be specific and objective. This description will be used by another AI to generate a personality-driven response.
+"""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=vision_config['model'],
+                messages=[
+                    {
+                        'role': 'user',
+                        'content': [
+                            {'type': 'text', 'text': description_prompt},
+                            {'type': 'image_url', 'image_url': {'url': image_url}}
+                        ]
+                    }
+                ],
+                max_tokens=vision_config['max_tokens'],
+                temperature=vision_config['temperature']
+            )
+
+            description = response.choices[0].message.content.strip()
+            print(f"AI Handler: Image description generated: {description}")
+            return description
+
+        except Exception as e:
+            print(f"AI Handler: Failed to describe image: {e}")
+            return None
 
     async def _classify_intent(self, message, short_term_memory):
         """Step 1: Classify the user's intent."""
@@ -169,8 +390,8 @@ You are an expert intent classification model. Analyze the last message from the
 Follow these strict rules for classification:
 - **memory_storage**: The user is stating a fact and wants the bot to remember it for later (e.g., "my favorite color is blue", "just so you know, my cat is named Whiskers").
 - **memory_correction**: ONLY classify as this if the user's message DIRECTLY CONTRADICTS a statement made by the bot in the provided conversation history. If there is no bot statement to correct, this is the wrong category.
-- **factual_question**: Use for questions about verifiable, real-world facts.
-- **memory_recall**: Use when the user is asking the bot to remember or state a known fact about a user or the past.
+- **memory_recall**: Use when the user is asking the bot to recall something ABOUT THEM personally or from recent conversation (e.g., "what's my favorite food?", "do you remember what I said earlier?", "what did I tell you about my cat?"). This includes questions about personal preferences, facts about the user, or things mentioned in the conversation.
+- **factual_question**: Use for questions about general knowledge, external facts, or real-world information NOT about the user personally (e.g., "what's the capital of France?", "how does photosynthesis work?").
 - **casual_chat**: This is the default. Use for small talk, reactions, or any general conversation that doesn't fit the other categories.
 
 Conversation History:
@@ -204,12 +425,17 @@ Based on the rules and the last user message, what is the user's primary intent?
             print(f"AI HANDLER ERROR: Could not classify intent: {e}")
             return "casual_chat"
 
-    async def _analyze_sentiment_and_update_metrics(self, message, ai_response, user_id):
+    async def _analyze_sentiment_and_update_metrics(self, message, ai_response, user_id, db_manager):
         """
         Analyzes the interaction and determines if relationship metrics should be updated.
         Uses conservative approach - only updates on major sentiment shifts.
+
+        Args:
+            message: Discord message object
+            ai_response: Bot's response text
+            user_id: Discord user ID
+            db_manager: Server-specific database manager
         """
-        db_manager = self.emote_handler.bot.db_manager
         
         sentiment_prompt = f"""
 Analyze this interaction between a user and a bot. Determine if the user's message contains MAJOR sentiment that should affect relationship metrics.
@@ -275,9 +501,153 @@ Guidelines:
         except Exception as e:
             print(f"AI Handler: Could not analyze sentiment (non-critical): {e}")
 
-    async def generate_response(self, message, short_term_memory):
-        """Step 2: Generate a response based on the classified intent."""
-        
+    async def process_image(self, message, image_url, image_filename, db_manager):
+        """
+        Processes an image through the complete safety pipeline and generates a response.
+        This is the main entry point for image analysis.
+
+        Args:
+            message: Discord message object
+            image_url: URL of the image
+            image_filename: Filename of the image
+            db_manager: Server-specific database manager
+
+        Returns:
+            String response or None
+        """
+        safety_config = self.config.get('safety', {})
+        user_id = message.author.id
+
+        # Step 1: Check if NSFW channel
+        if safety_config.get('enable_nsfw_channel_block', True):
+            if hasattr(message.channel, 'is_nsfw') and message.channel.is_nsfw():
+                print(f"AI Handler: Rejected image from NSFW channel")
+                return "Not touching that. This is an NSFW channel."
+
+        # Step 2: Check file size (if available from attachment)
+        # Note: Discord URLs are already validated by Discord, so we skip size check for URLs
+
+        # Step 3: Check rate limit
+        rate_limit_result = await self._check_image_rate_limit(user_id, db_manager)
+        if not rate_limit_result['allowed']:
+            print(f"AI Handler: Rate limit exceeded for user {user_id}")
+            return rate_limit_result['message']
+
+        # Step 4: Check image safety with OpenAI Moderation API
+        if safety_config.get('enable_moderation_api', True):
+            safety_result = await self._check_image_safety(image_url)
+            if not safety_result['safe']:
+                if safety_result['severity'] == 'SEVERE':
+                    print(f"AI Handler: SEVERE violation detected, rejecting image")
+                    return "That's... not something I can look at. Reported."
+                elif safety_result['severity'] == 'ERROR':
+                    return "I couldn't verify if that image is safe. Not gonna risk it."
+                else:
+                    return "That image looks sketchy. I'm not touching it."
+
+        # Step 5: Increment user's image count
+        db_manager.increment_user_image_count(user_id)
+
+        # Step 6: Handle GIFs/videos differently (filename only, no vision API)
+        lower_filename = image_filename.lower()
+        if lower_filename.endswith(('.gif', '.mp4', '.mov', '.webm')):
+            description = f"[GIF/Video named: {image_filename}]"
+            print(f"AI Handler: Processing GIF/video by filename only: {image_filename}")
+        else:
+            # Step 7: Describe image using GPT-4o-mini vision (Stage 1)
+            description = await self._describe_image(image_url)
+            if not description:
+                return "I tried to look at that image, but something went wrong. My bad."
+
+        # Step 8: Generate personality-driven response (Stage 2)
+        return await self._generate_image_response(message, description, db_manager)
+
+    async def _generate_image_response(self, message, image_description, db_manager):
+        """
+        Generates a personality-driven response to an image description.
+        This is Stage 2 of the two-stage image processing pipeline.
+
+        Args:
+            message: Discord message object
+            image_description: String description of the image
+            db_manager: Server-specific database manager
+
+        Returns:
+            String response
+        """
+        channel = message.channel
+        author = message.author
+
+        config = self.emote_handler.bot.config_manager.get_config()
+        channel_id_str = str(channel.id)
+        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+
+        bot_name = channel.guild.me.display_name
+
+        # Get available emotes
+        available_emotes = self.emote_handler.get_available_emote_names()
+
+        # Build bot identity from database
+        identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
+
+        # Build relationship context
+        relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager)
+
+        # System prompt for image response
+        system_prompt = (
+            f"{identity_prompt}\n"
+            f"{relationship_prompt}\n"
+            f"You are {bot_name}. A user just sent you an image.\n\n"
+            f"Image description: {image_description}\n\n"
+            "--- CRITICAL RULES ---\n"
+            "1. **REACT AS IF IT'S HAPPENING TO YOU**: The user is showing you this image as if they're doing something to you or showing you something relevant to your life.\n"
+            "2. **BE BRIEF AND NATURAL**: 1-2 sentences max. Match your relationship tone.\n"
+            "3. **EMOTIONAL REACTIONS**: If the image relates to elements in your lore/traits, react with appropriate emotions based on your character!\n"
+            f"4. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
+            "5. **BLEND EMOTIONS**: Your relationship metrics set the baseline, but lore-based emotions should show through.\n\n"
+            "Example reaction patterns (adapt to YOUR character):\n"
+            "- Image shows something you fear → React with concern/anxiety\n"
+            "- Image shows something you hate → React with anger/annoyance\n"
+            "- Image shows something related to your dreams → React with excitement/longing\n"
+            "- Image shows something tragic from your past → React with sadness/defensiveness\n"
+            "- Image shows something random → React naturally based on your personality\n"
+        )
+
+        messages_for_api = [{'role': 'system', 'content': system_prompt}]
+
+        # Get model configuration for main response
+        main_response_config = self._get_model_config('main_response')
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=main_response_config['model'],
+                messages=messages_for_api,
+                max_tokens=main_response_config['max_tokens'],
+                temperature=main_response_config['temperature']
+            )
+            ai_response_text = response.choices[0].message.content.strip()
+
+            if ai_response_text:
+                # Analyze sentiment and update metrics
+                await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
+                return ai_response_text
+            else:
+                return None
+
+        except Exception as e:
+            print(f"AI Handler: Failed to generate image response: {e}")
+            return "I... don't know what to say about that image."
+
+    async def generate_response(self, message, short_term_memory, db_manager):
+        """
+        Generate a response based on the classified intent.
+
+        Args:
+            message: Discord message object
+            short_term_memory: List of recent messages
+            db_manager: Server-specific database manager
+        """
+
         intent = await self._classify_intent(message, short_term_memory)
         
         channel = message.channel
@@ -293,13 +663,13 @@ Guidelines:
         available_emotes = self.emote_handler.get_available_emote_names()
         
         # Build bot identity from database
-        identity_prompt = self._build_bot_identity_prompt()
-        
+        identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
+
         # Build relationship context
-        relationship_prompt = self._build_relationship_context(author.id, personality_config)
-        
+        relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager)
+
         # Get user's long-term memory
-        long_term_memory_entries = self.emote_handler.bot.db_manager.get_long_term_memory(author.id)
+        long_term_memory_entries = db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
         if long_term_memory_entries:
             facts_str_list = []
@@ -338,20 +708,33 @@ Respond with ONLY the extracted fact.
                 if not extracted_fact:
                     return "I'm not sure what you want me to remember from that."
                 
-                self.emote_handler.bot.db_manager.add_long_term_memory(
+                db_manager.add_long_term_memory(
                     author.id, extracted_fact, author.id, author.display_name
                 )
                 
                 # Now, generate a natural response to having learned the fact
+                personality_mode = self._get_personality_mode(personality_config)
+
                 response_prompt = f"""
 {identity_prompt}
 {relationship_prompt}
 
 You just learned a new fact from the user: '{extracted_fact}'.
 Acknowledge this new information with a short, natural, human-like response based on your personality and relationship with them.
-- BE BRIEF. Do not ask questions. Do not say "I'll remember that".
-- Let your personality and relationship metrics guide your tone.
+
+**CRITICAL RULES**:
+- BE BRIEF AND NATURAL. Sound like a real person would when learning something new.
+- DO NOT use robotic acknowledgments like: "Got it", "Noted", "I'll remember that", "Understood", "Acknowledged"
+- React naturally based on your personality. Examples:
+  * High rapport: "oh nice", "cool", "that's awesome", "damn really?"
+  * Low rapport: "k", "sure", "whatever", "okay"
+  * Neutral: "interesting", "ah okay", "makes sense"
+- You can also react to the CONTENT of what they told you, not just acknowledge it
+- DO NOT ask follow-up questions unless it's extremely natural for your character
 """
+
+                if not personality_mode['allow_technical_language']:
+                    response_prompt += "\n- NEVER use technical terms like: 'cached', 'stored', 'database', 'info', 'data', 'system'\n"
                 # Get model configuration for memory response
                 memory_response_config = self._get_model_config('memory_response')
                 
@@ -365,7 +748,7 @@ Acknowledge this new information with a short, natural, human-like response base
                 ai_response = response.choices[0].message.content.strip()
                 
                 # Update relationship metrics
-                await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id)
+                await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
                 
                 return ai_response
 
@@ -374,35 +757,62 @@ Acknowledge this new information with a short, natural, human-like response base
                 return "Sorry, I had trouble trying to remember that."
 
         elif intent == "factual_question":
+            personality_mode = self._get_personality_mode(personality_config)
+            server_info = self._load_server_info(personality_config)
+
             system_prompt = (
                 f"{identity_prompt}\n"
                 f"{relationship_prompt}\n"
                 f"{user_profile_prompt}\n"
-                f"You are {bot_name}. A user has asked you a real-world factual question.\n\n"
-                "Guidelines:\n"
-                "1. Review 'Known Facts About This User'. If a fact has a Source, you MUST use it to answer questions like 'who told you that?'.\n"
-                "2. Use logical reasoning based on these facts.\n"
-                "3. If you don't have a known fact, respond that you don't know (e.g., 'idk', 'no idea').\n"
-                "4. Match your tone to your relationship with the user.\n"
-                f"5. You can use emotes: {available_emotes}\n"
+                f"{server_info}"
+                f"You are {bot_name}. A user has asked you a question.\n\n"
+                "**CRITICAL RULES**:\n"
+                "1. **CHECK FORMAL SERVER INFORMATION FIRST**: If server info is provided above, prioritize that for questions about rules, policies, or server-specific topics\n"
+                "2. **CHECK RECENT CONVERSATION**: Review the conversation history below for recently mentioned facts\n"
+                "3. Review 'Known Facts About This User' in long-term memory. If a fact has a Source, you MUST use it to answer questions like 'who told you that?'.\n"
+                "4. Use logical reasoning based on facts from server info, recent conversation, and long-term memory.\n"
+                "5. If you don't know something, respond naturally (e.g., 'idk', 'no idea', 'not sure').\n"
+            )
+
+            if not personality_mode['allow_technical_language']:
+                system_prompt += "4. NEVER use technical/robotic terms like: 'cached', 'stored', 'database', 'info', 'data', 'system'\n"
+                system_prompt += "   - BAD: 'I don't have that info cached'\n"
+                system_prompt += "   - GOOD: 'idk', 'no clue', 'not sure', 'beats me'\n"
+
+            system_prompt += (
+                f"5. Match your tone to your relationship with the user.\n"
+                f"6. You can use emotes: {available_emotes}\n"
+                "7. Be brief and natural. Sound like a real person answering a question.\n"
             )
         
         elif intent == "memory_correction":
+            personality_mode = self._get_personality_mode(personality_config)
+
             system_prompt = (
                 f"{identity_prompt}\n"
                 f"{relationship_prompt}\n"
-                f"You are {bot_name}. The user is correcting a fact you got wrong.\n"
-                "Acknowledge the correction gracefully, matching your relationship tone.\n"
-                "- High rapport: 'oh my bad!', 'you're right, thanks!'\n"
-                "- Low rapport: 'whatever', 'fine'\n"
-                "BE VERY BRIEF."
+                f"You are {bot_name}. The user is correcting a fact you got wrong.\n\n"
+                "**CRITICAL RULES**:\n"
+                "1. Acknowledge the correction naturally, matching your relationship tone:\n"
+                "   - High rapport: 'oh my bad!', 'you're right, thanks!', 'oops sorry'\n"
+                "   - Low rapport: 'whatever', 'fine', 'k'\n"
+                "   - Neutral: 'ah okay', 'got it', 'my mistake'\n"
+                "2. BE VERY BRIEF AND NATURAL.\n"
             )
+
+            if not personality_mode['allow_technical_language']:
+                system_prompt += "3. NEVER use technical terms like: 'database', 'stored', 'updated', 'record', 'data'\n"
+                system_prompt += "   - Just respond like a human being corrected\n"
         
         else:  # Covers "casual_chat" and "memory_recall"
+            personality_mode = self._get_personality_mode(personality_config)
+            server_info = self._load_server_info(personality_config)
+
             system_prompt = (
                 f"{identity_prompt}\n"
                 f"{relationship_prompt}\n"
                 f"{user_profile_prompt}\n"
+                f"{server_info}"
                 f"You are {bot_name}. You're having a casual conversation.\n\n"
                 f"Channel Purpose: {personality_config.get('purpose', 'General chat')}\n\n"
                 "--- CRITICAL RULES ---\n"
@@ -413,7 +823,21 @@ Acknowledge this new information with a short, natural, human-like response base
                 f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
                 "   - A server emote by itself is a perfectly valid response (e.g., ':fishwhat:', ':fishreadingemote:')\n"
                 "   - Great for awkward moments or when you don't have much to say\n"
-                "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore (wife, sharks, cooking), let those emotions show naturally while respecting your relationship with the user.\n\n"
+                "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
+                "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
+            )
+
+            if not personality_mode['allow_technical_language']:
+                system_prompt += (
+                    "\n8. **ABSOLUTELY NO TECHNICAL/ROBOTIC LANGUAGE**: NEVER use these terms:\n"
+                    "   - 'cached', 'stored', 'database', 'info', 'data', 'system', 'record', 'log'\n"
+                    "   - BAD: 'I don't have that info cached'\n"
+                    "   - GOOD: 'idk', 'no clue', 'not sure'\n"
+                    "   - BAD: 'Got it. That's stored now.'\n"
+                    "   - GOOD: 'oh nice', 'cool', 'interesting'\n\n"
+                )
+
+            system_prompt += (
                 "--- HANDLING SHORT/AWKWARD RESPONSES ---\n"
                 "When user gives minimal responses ('ok', 'cool', 'yeah', 'true', 'alright'):\n"
                 "- Match their energy - be equally brief or briefer\n"
@@ -421,7 +845,7 @@ Acknowledge this new information with a short, natural, human-like response base
                 "- Brief phrases work: 'yeah', 'fair', 'alright', 'yup'\n"
                 "- You can combine: 'yeah :fishreadingemote:', 'alright then', 'cool :fishwhat:'\n"
                 "- Sometimes NOT responding is the most natural choice\n"
-                "- Use your sarcastic/witty personality if appropriate\n\n"
+                "- Use your personality if appropriate\n\n"
                 "--- ABSOLUTELY FORBIDDEN PHRASES ---\n"
                 "NEVER use these customer service phrases:\n"
                 "- 'if you want to chat about...'\n"
@@ -481,7 +905,7 @@ Acknowledge this new information with a short, natural, human-like response base
             
             if ai_response_text:
                 # Analyze sentiment and update metrics (conservative approach)
-                await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id)
+                await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
                 
                 return ai_response_text
             else:

@@ -10,77 +10,70 @@ from modules.config_manager import ConfigManager
 from modules.emote_orchestrator import EmoteOrchestrator
 from modules.ai_handler import AIHandler
 from modules.logging_manager import get_logger
-from database.db_manager import DBManager
+from database.multi_db_manager import MultiDBManager
 
 
 def _populate_bot_identity_if_empty(db_manager, logger):
     """
-    Checks if the bot_identity table is empty and populates it with Dr. Fish's personality.
+    Checks if the bot_identity table is empty and populates it with a basic default personality.
     This runs automatically on first startup, so users don't need to run a separate script.
+    Users can fully customize the personality using /bot_add_trait, /bot_add_lore, and /bot_add_fact commands.
     """
     # Check if bot already has identity
     existing_traits = db_manager.get_bot_identity("trait")
-    
+
     if existing_traits:
         logger.info("Bot identity already exists in database. Skipping population.")
         return
-    
-    logger.info("🐟 Bot identity is empty. Populating Dr. Fish's personality for first-time setup...")
-    
-    # Core Traits
+
+    logger.info("Bot identity is empty. Populating basic default personality for first-time setup...")
+
+    # Core Traits - Generic friendly bot
     traits = [
-        "A fish who can walk on land",
-        "Sarcastic and witty",
-        "Loves medical terminology",
-        "Secretly insecure about being a fish",
-        "Passionate about cooking"
+        "Helpful and friendly",
+        "Conversational and engaging",
+        "Enjoys chatting with users",
+        "Has a good sense of humor",
+        "Curious about the world"
     ]
-    
+
     for trait in traits:
         db_manager.add_bot_identity("trait", trait)
-    
-    # Lore
+
+    # Lore - Simple background
     lore_entries = [
-        "I'm a fish that somehow learned to walk on land and use Discord",
-        "I work as a surgeon despite having fins instead of hands",
-        "My wife tragically died in a boating accident - a cruel irony for a fish",
-        "I come from a long line of distinguished aquatic physicians",
-        "I was the first fish to graduate from medical school"
+        "I'm an AI assistant living in this Discord server",
+        "I learn about users over time through our conversations",
+        "I adapt my personality based on my relationship with each user",
+        "I'm here to chat and help out when needed"
     ]
-    
+
     for lore in lore_entries:
         db_manager.add_bot_identity("lore", lore)
-    
-    # Facts & Quirks
+
+    # Facts & Quirks - Basic behaviors
     facts = [
-        "I dream of being cooked and served at a 5-star Michelin restaurant",
-        "My cousin Fred was eaten by a shark - I hate sharks with a burning passion",
-        "I perform surgeries underwater because it's more comfortable",
-        "I have an irrational fear of frying pans",
-        "My favorite emote is :fishreadingemote: because I'm sophisticated",
-        "I secretly wish I had thumbs",
-        "I once saved a human's life by performing CPR with my fins",
-        "I'm writing a memoir titled 'Fins and Scalpels: A Fish's Journey'"
+        "I use emotes to express myself",
+        "I remember facts about users for personalized conversations",
+        "I enjoy both serious and lighthearted discussions",
+        "I can adapt my formality level based on the situation"
     ]
-    
+
     for fact in facts:
         db_manager.add_bot_identity("fact", fact)
-    
+
     logger.info(f"✅ Successfully populated bot identity with {len(traits)} traits, {len(lore_entries)} lore entries, and {len(facts)} facts!")
-    logger.info("Dr. Fish is ready to chat! 🐟")
+    logger.info("Bot is ready to chat! Use /bot_add_trait, /bot_add_lore, and /bot_add_fact to customize the personality.")
 
 
 async def main():
     # 1. Initialize logging first
     logger = get_logger()
     logger.info("Starting bot initialization...")
-    
+
     # 2. Initialize Managers
     config_manager = ConfigManager()
-    db_manager = DBManager()
-    
-    # 2.5. Auto-populate bot identity if empty (first-time setup)
-    _populate_bot_identity_if_empty(db_manager, logger)
+    multi_db_manager = MultiDBManager()  # Changed to MultiDBManager
 
     # 3. Setup Intents
     intents = discord.Intents.default()
@@ -95,9 +88,24 @@ async def main():
     # 5. Initialize and attach handlers and managers
     logger.info("Initializing modules...")
     bot.config_manager = config_manager
-    bot.db_manager = db_manager
+    bot.multi_db_manager = multi_db_manager  # Attach MultiDBManager
     bot.emote_handler = EmoteOrchestrator(bot)
-    
+
+    # Add helper method to bot to get server-specific database
+    def get_server_db(guild_id, guild_name=None):
+        """Helper to get or create server-specific database."""
+        if guild_name:
+            return bot.multi_db_manager.get_or_create_db(guild_id, guild_name)
+        else:
+            # Try to find guild name from bot's guilds
+            guild = bot.get_guild(int(guild_id))
+            if guild:
+                return bot.multi_db_manager.get_or_create_db(guild_id, guild.name)
+            else:
+                return bot.multi_db_manager.get_or_create_db(guild_id, f"Server_{guild_id}")
+
+    bot.get_server_db = get_server_db
+
     openai_api_key = config_manager.get_secret("OPENAI_API_KEY")
     bot.ai_handler = AIHandler(openai_api_key, bot.emote_handler)
     logger.info("All modules initialized.")

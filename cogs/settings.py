@@ -20,15 +20,26 @@ class SettingsCog(commands.Cog):
         purpose: str = None,
         random_reply_chance: app_commands.Range[float, 0.0, 1.0] = None
     ):
-        """Slash command to activate the bot."""
+        """Slash command to activate the bot and create server database if needed."""
         channel_id = str(interaction.channel_id)
-        
+        guild = interaction.guild
+
+        # Create or get server-specific database
+        if guild:
+            db_manager = self.bot.get_server_db(guild.id, guild.name)
+
+            # Auto-populate bot identity if this is a new database
+            from main import _populate_bot_identity_if_empty
+            from modules.logging_manager import get_logger
+            logger = get_logger()
+            _populate_bot_identity_if_empty(db_manager, logger)
+
         final_settings = self.bot.config_manager.add_or_update_channel_setting(
             channel_id, purpose, random_reply_chance
         )
-        
+
         reply_chance_percent = final_settings.get('random_reply_chance', 0.0) * 100
-        
+
         await interaction.response.send_message(
             f"✅ Bot has been **activated** in this channel.\n"
             f"**Purpose:** {final_settings.get('purpose', 'Default')}\n"

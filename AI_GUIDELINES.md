@@ -163,11 +163,24 @@ Here are some other key principles to keep in mind to better understand the code
 -   **Write Meaningful Comments**: When adding new code or modifying existing logic, you must include clear and concise comments. Good comments explain the _'why'_ behind the code, not just the _'what'_. This is especially important for complex business logic, non-obvious workarounds, or configuration settings.
     
 -   **Respect the Data Layer**: All interactions with the database **must** be routed through `database/db_manager.py`. This ensures that data handling is consistent and centralized. Do not suggest writing raw SQL queries directly within cogs or other modules.
+
+-   **Per-Server Database Architecture**: The bot uses separate database files for each Discord server (`database/{ServerName}_data.db`). All database operations must use the server-specific `DBManager` instance obtained via `bot.get_server_db(guild_id, guild_name)`. Admin commands and AI handler methods must accept and use the `db_manager` parameter rather than accessing a global database.
     
 -   **Explain Your Reasoning**: Do not just provide code. Explain _why_ you are making a particular change and how it benefits the project or aligns with the system architecture. For example, if you are refactoring a function, explain that it improves readability or performance.
     
 -   **Maintain Security**: Never expose or hardcode sensitive information from the `.env` file in your responses or code suggestions. Be mindful of potential security vulnerabilities in the code you write, especially concerning user input.
-    
+
+-   **Use Generic, Character-Agnostic Examples**: The bot is designed to support any personality or character (e.g., "Giant Rat", "Gordon Ramsay", "Shark Man", etc.). When writing code comments, documentation, or examples:
+
+    -   **DO NOT** use character-specific references (e.g., "Dr. Fish", "frying pans", "sharks", "wife's death", "Michelin restaurant")
+    -   **DO** use generic, adaptable examples:
+        -   Personality traits: "sarcastic", "friendly", "professional", "energetic"
+        -   Lore elements: "works as a chef", "grew up in mountains", "studied abroad"
+        -   Facts/quirks: "loves puns", "afraid of heights", "dreams of traveling"
+        -   Emotional triggers: "tragic backstory → sadness", "hated things → anger", "dreams → excitement"
+
+    This ensures the codebase remains flexible and allows users to create any bot personality they desire without needing to remove character-specific references.
+
 
 ## 6. Code Implementation & Delivery
 

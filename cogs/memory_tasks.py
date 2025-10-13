@@ -14,12 +14,16 @@ class MemoryTasksCog(commands.Cog):
         # Background task is commented out - uncomment when ready for automatic daily runs
         # self.memory_consolidation_loop.start()
 
-    async def consolidate_memories(self):
+    async def consolidate_memories(self, guild_id, db_manager):
         """
-        Consolidates short-term message logs into long-term memories.
+        Consolidates short-term message logs into long-term memories for a specific server.
+
+        Args:
+            guild_id: Discord guild ID
+            db_manager: Server-specific database manager
 
         Process:
-        1. Retrieves last 24h of messages from short_term_message_log
+        1. Retrieves all messages from short_term_message_log for this server
         2. Groups messages by user
         3. Uses AI to extract important facts/memories from each user's messages
         4. Saves extracted facts to long_term_memory (with duplicate checking)
@@ -27,10 +31,10 @@ class MemoryTasksCog(commands.Cog):
         Returns:
             Dictionary with consolidation results (users_processed, memories_added, errors)
         """
-        print("=== Starting Memory Consolidation ===")
+        print(f"=== Starting Memory Consolidation for Guild {guild_id} ===")
 
-        # Get short-term memory (last 24h)
-        messages = self.bot.db_manager.get_short_term_memory()
+        # Get short-term memory from server-specific database
+        messages = db_manager.get_short_term_memory()
 
         if not messages:
             print("No messages found in short-term memory to consolidate.")
@@ -132,7 +136,7 @@ FACT: Has a cat named Whiskers
                 # Save each fact to database
                 for fact in facts:
                     # Use "Memory Consolidation" as the source
-                    self.bot.db_manager.add_long_term_memory(
+                    db_manager.add_long_term_memory(
                         user_id=user_id,
                         fact=fact,
                         source_user_id=user_id,
@@ -155,7 +159,7 @@ FACT: Has a cat named Whiskers
 
         # Archive and clear short-term memory now that it's been consolidated
         print("\n=== Archiving and Clearing Short-Term Memory ===")
-        archived_count, deleted_count, archive_filename = self.bot.db_manager.archive_and_clear_short_term_memory()
+        archived_count, deleted_count, archive_filename = db_manager.archive_and_clear_short_term_memory()
 
         if archive_filename:
             print(f"Successfully archived {archived_count} messages to {archive_filename}")
@@ -181,8 +185,24 @@ FACT: Has a cat named Whiskers
         """
         await interaction.response.defer(ephemeral=True)
 
+        # Get server-specific database
+        if not interaction.guild:
+            await interaction.followup.send(
+                "❌ This command can only be used in a server.",
+                ephemeral=True
+            )
+            return
+
+        db_manager = self.bot.get_server_db(interaction.guild.id, interaction.guild.name)
+        if not db_manager:
+            await interaction.followup.send(
+                "❌ Could not access server database.",
+                ephemeral=True
+            )
+            return
+
         try:
-            results = await self.consolidate_memories()
+            results = await self.consolidate_memories(interaction.guild.id, db_manager)
 
             response = f"**Memory Consolidation Complete**\n"
             response += f"- Users Processed: {results['users_processed']}\n"

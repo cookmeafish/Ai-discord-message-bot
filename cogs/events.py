@@ -28,12 +28,22 @@ class EventsCog(commands.Cog):
         Main message handler. Processes all incoming messages.
         Logs all messages to the database and triggers AI responses when appropriate.
         """
+        # Skip DMs - only process server messages
+        if not message.guild:
+            return
+
+        # Get server-specific database
+        db_manager = self.bot.get_server_db(message.guild.id, message.guild.name)
+        if not db_manager:
+            self.logger.warning(f"No database found for guild {message.guild.id}")
+            return
+
         # Log bot's own messages to database for conversation history
         if message.author.bot:
             # Only log if it's our bot
             if message.author.id == self.bot.user.id:
                 try:
-                    self.bot.db_manager.log_message(message, directed_at_bot=False)
+                    db_manager.log_message(message, directed_at_bot=False)
                     self.logger.debug(f"Logged bot message: {message.content[:50]}...")
                 except Exception as e:
                     self.logger.error(f"Failed to log bot message to database: {e}")
@@ -70,12 +80,43 @@ class EventsCog(commands.Cog):
         was_directed_at_bot = is_mentioned or is_reply_to_bot
 
         # Log ALL user messages to the database (not just those in active channels)
-        # This ensures the 24-hour rolling memory is complete
+        # This ensures the rolling memory is complete
         try:
-            self.bot.db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
+            db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
             self.logger.debug(f"Logged user message to database (directed_at_bot={was_directed_at_bot})")
         except Exception as e:
             self.logger.error(f"Failed to log message to database: {e}")
+
+        # Check if we need to trigger memory consolidation
+        import os
+        trigger_file = os.path.join("database", f".consolidate_trigger_{message.guild.id}")
+        message_count = db_manager.get_short_term_message_count()
+        message_limit = config.get('response_limits', {}).get('short_term_message_limit', 500)
+
+        # Check for GUI trigger file or message count limit
+        gui_triggered = os.path.exists(trigger_file)
+        count_triggered = message_count >= message_limit
+
+        if gui_triggered or count_triggered:
+            trigger_reason = "GUI button" if gui_triggered else f"message count ({message_count}/{message_limit})"
+            self.logger.info(f"Memory consolidation triggered by: {trigger_reason}")
+
+            try:
+                # Remove trigger file if it exists
+                if gui_triggered:
+                    os.remove(trigger_file)
+                    self.logger.info("Removed GUI trigger file")
+
+                # Get the memory tasks cog and trigger consolidation
+                memory_cog = self.bot.get_cog('MemoryTasksCog')
+                if memory_cog:
+                    # Run consolidation in background without awaiting (pass guild info)
+                    asyncio.create_task(memory_cog.consolidate_memories(message.guild.id, db_manager))
+                    self.logger.info("Memory consolidation task started in background")
+                else:
+                    self.logger.warning("MemoryTasksCog not found, cannot trigger consolidation")
+            except Exception as e:
+                self.logger.error(f"Failed to trigger memory consolidation: {e}")
 
         # Only generate AI responses in active channels
         if not is_active_channel:
@@ -94,17 +135,54 @@ class EventsCog(commands.Cog):
             rand_chance = channel_config.get('random_reply_chance', config.get('random_reply_chance', 0.0))
             is_random_reply = random.random() < rand_chance
 
-            # Respond if directed at bot or if random chance triggers
-            if was_directed_at_bot or is_random_reply:
-                self.logger.info(f"Generating response for message from {message.author.name} (directed={was_directed_at_bot}, random={is_random_reply})")
+            # Check if message has images/attachments
+            has_images = len(message.attachments) > 0
+
+            # Respond if directed at bot or if random chance triggers or if has images
+            if was_directed_at_bot or is_random_reply or has_images:
+                self.logger.info(f"Generating response for message from {message.author.name} (directed={was_directed_at_bot}, random={is_random_reply}, has_images={has_images})")
 
                 async with message.channel.typing():
                     try:
-                        # Get channel-specific short-term memory
-                        short_term_memory = self.bot.db_manager.get_short_term_memory(
-                            channel_id=message.channel.id
-                        )
-                        self.logger.debug(f"Retrieved {len(short_term_memory)} messages from short-term memory")
+                        # Check if message has images - if so, process through image pipeline
+                        if has_images:
+                            self.logger.info(f"Message has {len(message.attachments)} attachment(s), checking for images")
+
+                            # Process the first image attachment
+                            for attachment in message.attachments:
+                                # Check if it's an image or video/gif
+                                if attachment.content_type and (
+                                    attachment.content_type.startswith('image/') or
+                                    attachment.content_type.startswith('video/') or
+                                    attachment.filename.lower().endswith(('.gif', '.mp4', '.mov', '.webm'))
+                                ):
+                                    self.logger.info(f"Processing image/video: {attachment.filename}")
+
+                                    # Process image through safety pipeline
+                                    ai_response_text = await self.bot.ai_handler.process_image(
+                                        message=message,
+                                        image_url=attachment.url,
+                                        image_filename=attachment.filename,
+                                        db_manager=db_manager
+                                    )
+
+                                    if ai_response_text:
+                                        final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
+                                        sent_message = await message.channel.send(final_response)
+                                        self.logger.info(f"Sent image response: {final_response[:50]}...")
+                                    else:
+                                        self.logger.warning(f"Image processing returned no response")
+
+                                    # Only process the first image
+                                    break
+
+                            # Skip normal text processing since we handled the image
+                            return
+
+                        # Normal text message processing
+                        # Get server-wide short-term memory (not filtered by channel)
+                        short_term_memory = db_manager.get_short_term_memory()
+                        self.logger.debug(f"Retrieved {len(short_term_memory)} messages from server-wide short-term memory")
 
                         # Log the last few messages for debugging
                         if short_term_memory:
@@ -113,10 +191,11 @@ class EventsCog(commands.Cog):
                                 author_indicator = "BOT" if msg["author_id"] == self.bot.user.id else "USER"
                                 self.logger.debug(f"  [{author_indicator}] {msg['content'][:50]}...")
 
-                        # Generate AI response
+                        # Generate AI response with server-specific database
                         ai_response_text = await self.bot.ai_handler.generate_response(
                             message=message,
-                            short_term_memory=short_term_memory
+                            short_term_memory=short_term_memory,
+                            db_manager=db_manager
                         )
 
                         self.logger.debug(f"AI generated response: {ai_response_text[:50] if ai_response_text else 'None'}...")

@@ -1,5 +1,63 @@
 {
     "random_reply_chance": 0.05,
+    "personality_mode": {
+        "immersive_character": true,
+        "allow_technical_language": false
+    },
+    "ai_models": {
+        "primary_model": "gpt-4.1-mini",
+        "fallback_model": "gpt-4o-mini",
+        "intent_classification": {
+            "model": "gpt-4.1-mini",
+            "max_tokens": 15,
+            "temperature": 0.0
+        },
+        "sentiment_analysis": {
+            "model": "gpt-4.1-mini",
+            "max_tokens": 100,
+            "temperature": 0.0
+        },
+        "memory_extraction": {
+            "model": "gpt-4.1-mini",
+            "max_tokens": 60,
+            "temperature": 0.0
+        },
+        "memory_response": {
+            "model": "gpt-4.1-mini",
+            "max_tokens": 40,
+            "temperature": 0.7
+        },
+        "main_response": {
+            "model": "gpt-4.1-mini",
+            "max_tokens": 80,
+            "temperature": 0.8
+        },
+        "memory_consolidation": {
+            "model": "gpt-4o",
+            "max_tokens": 500,
+            "temperature": 0.3
+        },
+        "vision_description": {
+            "model": "gpt-4o-mini",
+            "max_tokens": 50,
+            "temperature": 0.3
+        }
+    },
+    "safety": {
+        "enable_moderation_api": true,
+        "enable_rate_limiting": true,
+        "block_on_moderation_error": true,
+        "enable_nsfw_channel_block": true,
+        "max_image_size_mb": 8,
+        "max_images_per_user_per_hour": 5,
+        "max_images_per_user_per_day": 20
+    },
+    "response_limits": {
+        "short_term_context_messages": 500,
+        "recent_messages_for_intent": 5,
+        "max_response_length": 80,
+        "short_term_message_limit": 500
+    },
     "default_personality": {
         "personality_traits": "chill, low-energy, concise, casual",
         "lore": "I am a helpful AI living on this Discord server.",
@@ -7,6 +65,13 @@
         "purpose": "To chat with users and assist with server tasks."
     },
     "channel_settings": {
+        "1427004937442951342": {
+            "personality_traits": "chill, low-energy, concise, casual",
+            "lore": "I am a helpful AI living on this Discord server.",
+            "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
+            "purpose": "To chat with users and assist with server tasks.",
+            "random_reply_chance": 0.05
+        },
         "1260857723734724640": {
             "personality_traits": "chill, low-energy, concise, casual",
             "lore": "I am a helpful AI living on this Discord server.",
@@ -14,7 +79,7 @@
             "purpose": "To chat with users and assist with server tasks.",
             "random_reply_chance": 0.05
         },
-        "1284389415430389760": {
+        "1427091957926068265": {
             "personality_traits": "chill, low-energy, concise, casual",
             "lore": "I am a helpful AI living on this Discord server.",
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",

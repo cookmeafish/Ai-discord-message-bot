@@ -28,24 +28,37 @@ This component is responsible for processing incoming messages and generating re
 -   **Intent Classification System:** Before generating a response, the system classifies the user's intent into one of five categories:
     -   **memory_storage**: User is stating a fact to be remembered
     -   **memory_correction**: User is correcting a previous bot statement
-    -   **factual_question**: User is asking for verifiable information
-    -   **memory_recall**: User is asking the bot to recall stored information
+    -   **factual_question**: User is asking for general knowledge or verifiable information (e.g., "what's the capital of France?")
+    -   **memory_recall**: User is asking the bot to recall personal information or recent conversation (e.g., "what's my favorite food?", "do you remember what I said earlier?")
     -   **casual_chat**: Default category for general conversation
-    
+
+    **Classification Improvements (2025-10-12)**: Enhanced distinction between `memory_recall` (personal/recent questions) and `factual_question` (general knowledge). This prevents the bot from treating personal memory questions as general factual queries.
+
     This classification allows the bot to tailor its response strategy and maintain context awareness.
     
--   **Context Aggregation for Response Formulation:** To formulate its response, the handler will aggregate context from two sources:
-    
-    -   **Short-Term Context (24-Hour Sliding Window):** The full transcript of messages in the channel from the preceding 24 hours, retrieved from the Short-Term Message Log. This provides immediate conversational flow, topic awareness, and understanding of recent events.
-        
+-   **Context Aggregation for Response Formulation:** To formulate its response, the handler will aggregate context from multiple sources:
+
+    -   **Short-Term Context (Server-Wide):** The full transcript of up to 500 messages from ALL channels within the server, retrieved from the Short-Term Message Log. **ARCHITECTURE CHANGE (2025-10-12)**: Messages are NO LONGER filtered by channel - this provides server-wide conversational context, allowing the bot to reference information mentioned in any channel within the server.
+
     -   **Long-Term Memory (Database Query):** A query to the database for the user's profile, including summarized memory facts and relationship metrics. This provides deep, historical context.
+
+    -   **Server Information (Optional):** If enabled for the channel via `use_server_info` setting, the bot loads text files from `Server_Info/` directory (located in project root) containing server rules, policies, and formal documentation. This is prioritized when answering questions about server-specific topics.
         
 -   **Expressive Emote Integration:** The final output will be processed to include relevant standard and custom server emotes based on the aggregated context and the bot's current persona.
     
 
-### 3.2. Data Persistence & Memory Architecture (Relational Database)
+### 3.2. Data Persistence & Memory Architecture (Per-Server Databases)
 
-All persistent data is stored in and retrieved from a relational database.
+**ARCHITECTURE UPDATE (2025-10-12)**: The system now uses per-server database isolation. Each Discord server has its own SQLite database file to prevent cross-contamination of data.
+
+**Database Architecture**:
+- **Separate Database Per Server**: Each server gets `database/{ServerName}_data.db`
+- **Server Name Sanitization**: Filesystem-safe names (invalid chars replaced, 50 char max)
+- **Multi-Database Manager**: `database/multi_db_manager.py` manages all server databases
+- **Automatic Creation**: Databases created on first `/activate` command per server
+- **Global Emotes**: Emote system remains shared across all servers
+
+All persistent data is stored in and retrieved from server-specific relational databases.
 
 -   **User Schema:** A table for user profiles, tracking `user_id` and all known `nicknames` (historical and current).
     
@@ -57,12 +70,12 @@ All persistent data is stored in and retrieved from a relational database.
     -   `created_at`: Timestamp when added
     
     **Category Definitions:**
-    - `Core Traits`: Fundamental personality characteristics (e.g., "sarcastic and witty", "a fish who can walk on land")
-    - `Lore`: Background story and history (e.g., "I work as a surgeon despite having fins", "My wife died in a boating accident")
-    - `Facts & Quirks`: Specific behaviors and preferences (e.g., "Dreams of being cooked at a 5-star restaurant", "Hates sharks because one ate my cousin Fred")
+    - `Core Traits`: Fundamental personality characteristics (e.g., "sarcastic and witty", "calm and collected", "energetic and enthusiastic")
+    - `Lore`: Background story and history (e.g., "grew up in a small town", "works as a chef", "studied abroad for 3 years")
+    - `Facts & Quirks`: Specific behaviors and preferences (e.g., "loves collecting vintage postcards", "afraid of heights", "dreams of opening a bakery")
     
     **Auto-Population on First Run:**
-    If the bot_identity table is empty on startup, the system automatically runs `scripts/populate_bot_identity.py` to create Dr. Fish's default personality with 5 traits, 5 lore entries, and 8 facts.
+    If the bot_identity table is empty on startup, the system automatically runs `scripts/populate_bot_identity.py` to create a basic default personality. The default personality can be fully customized per server using admin commands.
     
     **Live Editing:**
     Bot personality can be modified in real-time via admin commands. Changes take effect immediately due to the Real-Time Data Reliance principle.
@@ -108,9 +121,9 @@ All persistent data is stored in and retrieved from a relational database.
         
     -   `state_value`: The current integer value for that mood.
         
--   **Short-Term Message Log:** A table containing the full log of messages from the last 24 hours. This serves as the high-resolution, rolling buffer for the Core Interaction Handler.
-    
--   **Message Archive:** A permanent, long-term table for all messages after they have been processed by the memory consolidation system. This serves as the bot's complete historical record.
+-   **Short-Term Message Log:** A table containing the full log of up to 500 messages **server-wide across all channels**. **ARCHITECTURE CHANGE (2025-10-12)**: Messages are NOT filtered by channel - this allows the bot to maintain conversational context across all channels within a server. This serves as the high-resolution, rolling buffer for the Core Interaction Handler.
+
+-   **Message Archive:** Archived messages are stored as JSON files in `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json` after memory consolidation. These files contain the full message history with metadata (`archived_at`, `message_count`, and complete `messages` array). This serves as the bot's complete historical record per server.
     
 
 ### 3.3. Proactive Engagement Subsystem
@@ -127,26 +140,31 @@ This component allows the bot to initiate conversation, governed by strict rules
     
     -   **Contextual Engagement:** The system analyzes the last several messages and generates a relevant, on-topic comment.
         
-    -   **Status-Based Engagement:** The system retrieves its current dynamic status message (e.g., "Pondering the existence of sharks.") and generates a message for the channel that expands on that thought, influenced by the global "Day Mood."
+    -   **Status-Based Engagement:** The system retrieves its current dynamic status message and generates a message for the channel that expands on that thought, influenced by the global "Day Mood."
         
 
 ### 3.4. Automated Memory Consolidation Process
 
-**STATUS: NOT YET IMPLEMENTED - Planned for future development**
+**STATUS: IMPLEMENTED ✅ (Per-Server Architecture)**
 
-A daily, automated background process that converts short-term message data into long-term structured memory.
+An AI-powered background process that converts short-term message data into long-term structured memory **per server**.
 
-1.  The process ingests the last 24 hours of messages from the **Short-Term Message Log**.
-    
-2.  For each user, it generates new summarized facts based on their activity.
-    
-3.  For each new fact, it queries the database to find if a semantically similar fact already exists for that user.
-    
-4.  **On Match:** Updates the existing record's `LastMentioned_Timestamp` and increments the `ReferenceCount`.
-    
-5.  **On No Match:** Creates a new record in the Long-Term Memory table with the new fact and its associated metadata.
-    
-6.  **Archive & Reset:** After processing, the system moves the 24 hours of messages from the Short-Term Message Log into the permanent **Message Archive** and then clears the Short-Term Message Log. This completes the cycle, leaving the short-term buffer empty and ready for the next 24-hour period.
+1.  The process ingests up to 500 messages from the **Short-Term Message Log** for a specific server.
+
+2.  For each user, GPT-4o analyzes their messages and extracts new summarized facts based on their activity.
+
+3.  Extracted facts are added to the server's **Long-Term Memory** table with source attribution.
+
+4.  **Archive & Reset:** After processing, the system:
+    - Archives all short-term messages to `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
+    - Clears the Short-Term Message Log for that server
+    - SQLite auto-vacuum reclaims disk space
+
+5.  **Triggering Mechanisms:**
+    - **Automatic**: When a server reaches 500 messages in short-term memory
+    - **Manual**: Via `/consolidate_memory` slash command (admin only, per-server)
+
+6.  **Per-Server Independence**: Each server's consolidation runs independently without affecting other servers.
     
 
 ### 3.5. Dynamic Status Subsystem
@@ -165,7 +183,7 @@ An automated process that periodically updates the bot's Discord presence to ref
         
     3.  The AI generates a random, flavorful status text that aligns with its personality and current mood.
         
--   **Status Update:** The bot's Discord presence (e.g., "Playing: Pondering the existence of sharks.") will be updated with the newly generated text.
+-   **Status Update:** The bot's Discord presence will be updated with the newly generated text that reflects its personality and current mood.
     
 
 ### 3.6. Ancillary Functionality Modules
@@ -181,13 +199,59 @@ Standard bot features will be implemented as separate, modular components.
 
 ### 3.7. Real-Time Administration Interface
 
+**STATUS: COMPLETED ✅ (Per-Server Architecture)**
+
+A set of secure, admin-only slash commands for live management of each server's database.
+
+-   **Per-Server Scope:** All admin commands operate on the server where they're executed. Each server has independent bot identity, user relationships, and memories.
+
+-   **Functionality:** Provides commands to create, read, update, and delete records for the Bot's Identity, User Memories, Relationship Metrics, Global State, and Personality Mode settings.
+
+-   **Guild Validation:** Commands validate guild context and reject DM usage.
+
+-   **Instantaneous Effect:** Due to the system's Real-Time Data Reliance directive, any changes made via this interface will be reflected in the bot's very next interaction in that server.
+
+### 3.8. Personality Mode System
+
 **STATUS: COMPLETED ✅**
 
-A set of secure, admin-only slash commands for live management of the bot's database.
+A configurable system that controls how the bot presents itself and uses language in responses.
 
--   **Functionality:** Provides commands to create, read, update, and delete records for the Bot's Identity, User Memories, Relationship Metrics, and Global State.
-    
--   **Instantaneous Effect:** Due to the system's Real-Time Data Reliance directive, any changes made via this interface will be reflected in the bot's very next interaction.
+-   **Three Core Settings:**
+    -   **Immersive Character Mode** (`immersive_character`): When enabled (default: true), the bot genuinely believes it IS the character defined in its identity, not an AI roleplaying. It will deny being an AI if asked and treat its lore as real experiences.
+    -   **Allow Technical Language** (`allow_technical_language`): When disabled (default: false), the bot is forbidden from using robotic/technical terms like "cached", "stored", "database", "info", "data", "system" in its responses.
+    -   **Use Server Information** (`use_server_info`): When enabled (default: false), the bot loads text files from `Server_Info/` directory (located in project root) containing server rules, policies, and formal documentation. Ideal for formal channels like rules, moderation, or support.
+
+-   **Configuration Hierarchy:**
+    1.  **Global Defaults**: Set in `config.json` under `personality_mode` section
+    2.  **Per-Channel Overrides**: Channels can override global settings via GUI or `/channel_set_personality` command
+    3.  **Real-Time Updates**: Changes take effect immediately in the next interaction
+
+-   **Natural Language Enforcement:**
+    -   All intent prompts (memory_storage, factual_question, memory_correction, casual_chat) include conditional rules based on personality mode
+    -   When technical language is disabled, responses use natural alternatives:
+        -   "I don't have that info cached" → "idk" / "no clue" / "not sure"
+        -   "Got it. That's stored now." → "oh nice" / "cool" / "interesting"
+    -   Bot responds naturally like a real person in ALL interaction types
+
+-   **Server Information System (NEW 2025-10-12):**
+    -   **Purpose**: Provide authoritative server documentation for formal channels
+    -   **Implementation**: `_load_server_info()` method in `ai_handler.py` loads all `.txt` files from `Server_Info/` directory in project root
+    -   **Usage**: Enable per-channel via GUI or `/channel_set_personality use_server_info:true`
+    -   **Priority**: Bot prioritizes server info over personality when answering questions
+    -   **File Format**: UTF-8 encoded `.txt` files with descriptive names (e.g., `server_rules.txt`, `moderation_policy.txt`)
+    -   **Security**: Files excluded from git by default to protect sensitive information
+
+-   **Use Cases:**
+    -   **Casual/Roleplay Channels**: `immersive_character=true`, `allow_technical_language=false`, `use_server_info=false` (maximum immersion)
+    -   **Rules/Moderation Channels**: `immersive_character=false`, `allow_technical_language=true`, `use_server_info=true` (formal, authoritative)
+    -   **General Chat**: Use global defaults or customize per community preferences
+
+-   **Management Interfaces:**
+    -   **GUI**: Per-channel editor dialog with hover tooltips explaining each option (implemented via `ToolTip` class)
+    -   **Discord Command**: `/channel_set_personality` for live channel-specific configuration
+    -   **config.json**: Manual editing for headless deployments
+    -   **GUI Enhancement (2025-10-12)**: Personality mode settings removed from global settings, now ONLY in per-channel editor with tooltips
     
 
 This document will serve as the guiding document for the bot's development.
@@ -210,10 +274,17 @@ This section maps the conceptual components defined above to the final, physical
 │   └── 📄 utility.py
 |
 ├── 📂 database/
+│   ├── 📂 archive/
+│   │   └── 📄 short_term_archive_*.json (archived messages)
 │   ├── 📄 __init__.py
-│   ├── 📄 bot_data.db
+│   ├── 📄 {ServerName}_data.db (per-server databases)
 │   ├── 📄 db_manager.py
+│   ├── 📄 multi_db_manager.py
 │   └── 📄 schemas.py
+|
+├── 📂 Server_Info/
+│   ├── 📄 README.md (usage instructions)
+│   └── 📄 *.txt (server rules, policies, documentation)
 |
 ├── 📂 logs/
 │   └── 📄 bot_YYYYMMDD.log (daily rotating log files)
@@ -271,23 +342,39 @@ Houses Discord-facing logic, including commands and event listeners.
 
 ### 4.2. `database/` Directory
 
-The central component for all data persistence logic.
+The central component for all data persistence logic with per-server database isolation.
 
 -   `__init__.py`: Marks the directory as a Python package, enabling imports of the manager and schemas.
-    
--   `bot_data.db`: The SQLite database file containing all persistent bot data (automatically created on first run).
-    
--   `db_manager.py`: The sole interface for the database. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`, `get_bot_identity`, `get_relationship_metrics`, `update_relationship_metrics`). All other parts of the bot interact with the database through this manager.
-    
+
+-   `archive/`: Directory containing JSON archives of consolidated short-term messages (per-server).
+
+-   `{ServerName}_data.db`: Server-specific SQLite database files (automatically created on first `/activate` command per server).
+
+-   `db_manager.py`: Individual database interface class. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`, `get_bot_identity`, `get_relationship_metrics`, `update_relationship_metrics`). Now accepts optional `db_path` parameter for custom database locations. **ARCHITECTURE CHANGE (2025-10-12)**: `get_short_term_memory()` now returns server-wide messages, NOT filtered by channel.
+
+-   `multi_db_manager.py`: Central manager for all server databases. Handles server name sanitization, database creation, and caching of DBManager instances per guild. Provides `get_or_create_db(guild_id, server_name)` method.
+
 -   `schemas.py`: Defines the database table structures (e.g., via ORM classes or SQL statements) as described in section 3.2.
 
-### 4.2.1. `logs/` Directory
+### 4.2.1. `Server_Info/` Directory
+
+**NEW (2025-10-12)**: Contains text files with server rules, policies, and formal documentation that the bot can reference.
+
+-   `README.md`: Usage instructions for the Server_Info directory and how to configure channels to use it.
+
+-   `*.txt`: UTF-8 encoded text files with descriptive names (e.g., `server_rules.txt`, `moderation_policy.txt`, `faq.txt`). All `.txt` files in this directory are loaded when `use_server_info` is enabled for a channel.
+
+-   **Purpose**: Provide authoritative server documentation for formal channels (rules, moderation, support).
+
+-   **Security**: All `.txt` files are excluded from git by default to protect sensitive information.
+
+### 4.2.2. `logs/` Directory
 
 Contains daily rotating log files for debugging and monitoring.
 
 -   `bot_YYYYMMDD.log`: Daily log files with timestamps, log levels, and detailed information about bot operations.
 
-### 4.2.2. `scripts/` Directory
+### 4.2.3. `scripts/` Directory
 
 Contains utility scripts for database management and initialization.
 
@@ -300,12 +387,12 @@ Contains core helper classes not directly tied to Discord's API.
 
 -   `__init__.py`: Marks the directory as a Python package so these helper modules can be imported.
     
--   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text. Implements the Intent Classification System.
-    
+-   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text. Implements the Intent Classification System with improved distinction between memory_recall and factual_question (2025-10-12). **NEW**: `_load_server_info()` method loads formal server documentation from text files when enabled per-channel.
+
 -   `config_manager.py`: Manages the loading of `config.json` and `.env` files.
-    
+
 -   `emote_orchestrator.py`: Manages the loading and replacement of custom server emotes.
-    
+
 -   `logging_manager.py`: A dedicated module to handle structured logging for debugging and monitoring.
     
 
@@ -330,8 +417,8 @@ A dedicated folder for housing unit tests and integration tests.
     
 -   `debug.log`: General purpose debug log file for troubleshooting.
     
--   `gui.py`: The optional graphical user interface for configuration and startup.
-    
+-   `gui.py`: The optional graphical user interface for configuration and startup. **NEW (2025-10-12)**: Includes `ToolTip` class for hover text on checkboxes, personality mode settings moved to per-channel editor only (removed from global settings), and "Use Server Information" checkbox with tooltips.
+
 -   `main.py`: The primary entry point for the application, responsible for initializing managers and loading cogs.
     
 -   `PLANNED_FEATURES.md`: Comprehensive roadmap of all planned features organized by development phase (Phase 2, 3, 4, etc.). Contains implementation details, technical requirements, and status tracking. **AI assistants must consult this file before implementing new features.**
@@ -355,7 +442,7 @@ Phase 1 has been fully implemented and is production-ready.
 
 #### Implemented Features:
 - ✅ **Bot Identity Database System**: Bot's personality (traits, lore, facts) stored in and retrieved from database
-- ✅ **Automatic Identity Population**: First-run script auto-populates Dr. Fish's default personality
+- ✅ **Automatic Identity Population**: First-run script auto-populates a basic default personality (fully customizable)
 - ✅ **Relationship Metrics**: Per-user tracking of rapport, trust, anger, and formality (0-10 scale)
 - ✅ **Emotional Context Blending**: Bot adjusts responses based on both emotional topics and user relationships
 - ✅ **Channel Formality System**: Channel-level formality settings with optional user-level overrides
@@ -367,20 +454,33 @@ Phase 1 has been fully implemented and is production-ready.
 - Bot Identity: `/bot_add_trait`, `/bot_add_lore`, `/bot_add_fact`, `/bot_view_identity`
 - User Relationships: `/user_view_metrics`, `/user_set_metrics`, `/user_view_memory`, `/user_add_memory`
 - Global Mood: `/bot_set_mood`, `/bot_get_mood`
+- Personality Mode: `/channel_set_personality` (configure immersive character, technical language, and server info settings)
 
 ### Core System Components: COMPLETED ✅
-- ✅ Core Interaction Handler with Intent Classification
+- ✅ Core Interaction Handler with Intent Classification (improved memory_recall vs factual_question, 2025-10-12)
 - ✅ Database Schema (all tables defined and in use)
-- ✅ Short-Term Message Logging (24-hour rolling window)
+- ✅ Short-Term Message Logging (500 messages server-wide, not channel-filtered, 2025-10-12)
 - ✅ Long-Term Memory Storage & Retrieval
 - ✅ Global State Management
 - ✅ Emote Integration System
 - ✅ Channel-Specific Configuration
 - ✅ Structured Logging System with Daily Rotation
+- ✅ **Personality Mode System**: Immersive character mode with natural language enforcement
+- ✅ **Formal Server Information System**: Load text files for rules/policies (2025-10-12)
+- ✅ **GUI Tooltip System**: Hover text for personality mode checkboxes (2025-10-12)
 
-### Phase 2: PLANNED ⏳
-**Memory Consolidation & Proactive Engagement**
-- ⏳ Proactive Engagement Subsystem (30-minute scheduled checks)
-- ⏳ Automated Memory Consolidation Process (daily AI-powered summarization)
-- ⏳ Dynamic Status Subsystem (AI-generated status updates)
-- ⏳ Semantic Similarity Checking for Memory Deduplication
+### Phase 2: PARTIALLY COMPLETED ✅
+**Memory Consolidation & Per-Server Architecture**
+- ✅ **Per-Server Database Isolation**: Separate database file per Discord server
+- ✅ **Automated Memory Consolidation Process**: AI-powered fact extraction (GPT-4o)
+- ✅ **Message Archival System**: JSON backup before deletion
+- ✅ **Auto-trigger at 500 messages**: Per-server consolidation threshold
+- ✅ **Manual Consolidation Command**: `/consolidate_memory` (admin, per-server)
+- ✅ **Database Optimization**: SQLite auto-vacuum enabled
+- ✅ **Server-Wide Short-Term Memory**: Context maintained across all channels (2025-10-12)
+- ✅ **Formal Server Information System**: Load text files for rules/policies in formal channels (2025-10-12)
+- ✅ **Improved Intent Classification**: Better distinction between memory_recall and factual_question (2025-10-12)
+- ✅ **GUI Enhancements**: Tooltips for personality settings, server info checkbox (2025-10-12)
+- ⏳ **Proactive Engagement Subsystem**: 30-minute scheduled checks (planned)
+- ⏳ **Dynamic Status Subsystem**: AI-generated status updates (planned)
+- ⏳ **Semantic Similarity Checking**: Memory deduplication (planned)

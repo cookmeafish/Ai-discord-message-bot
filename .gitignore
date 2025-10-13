@@ -25,6 +25,9 @@ __pycache__/
 # Database archives (message backups)
 database/archive/
 
+# Server information (may contain sensitive rules/policies)
+Server_Info/*.txt
+
 # Logging files
 logs/
 *.log
@@ -46,3 +49,32 @@ FAILED_EDIT_EXPLANATION.md
 GIT_COMMIT_INSTRUCTIONS.md
 CENTRALIZED_CONFIG_REFACTOR.md
 UPGRADE_TO_GPT4.1_MINI.md
+PER_SERVER_DATABASE_IMPLEMENTATION.md
+resume-and-delete.txt
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Build and distribution
+dist/
+build/
+*.egg-info/
+
+# Jupyter notebooks (if used for testing)
+.ipynb_checkpoints/
+*.ipynb
+
+# pytest cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy type checker
+.mypy_cache/
+
+# Scripts output
+scripts/*.json
+scripts/*.csv

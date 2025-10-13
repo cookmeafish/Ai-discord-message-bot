@@ -90,6 +90,19 @@ CREATE TABLE IF NOT EXISTS message_archive (
 );
 """
 
+# --- Image Safety & Rate Limiting ---
+
+USER_IMAGE_STATS_TABLE = """
+CREATE TABLE IF NOT EXISTS user_image_stats (
+    user_id INTEGER PRIMARY KEY,
+    last_image_time TEXT,
+    hourly_count INTEGER NOT NULL DEFAULT 0,
+    daily_count INTEGER NOT NULL DEFAULT 0,
+    date TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
+);
+"""
+
 # A list of all table creation statements for easy initialization
 ALL_TABLES = [
     USERS_TABLE,
@@ -99,7 +112,8 @@ ALL_TABLES = [
     RELATIONSHIP_METRICS_TABLE,
     GLOBAL_STATE_TABLE,
     SHORT_TERM_MESSAGE_LOG_TABLE,
-    MESSAGE_ARCHIVE_TABLE
+    MESSAGE_ARCHIVE_TABLE,
+    USER_IMAGE_STATS_TABLE
 ]
 
 

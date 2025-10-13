@@ -18,6 +18,41 @@ from modules.config_manager import ConfigManager
 CONFIG_FILE = 'config.json'
 ENV_FILE = '.env'
 
+class ToolTip:
+    """Simple tooltip class for hover text on widgets"""
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+
+        self.tooltip_window = tw = ctk.CTkToplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+
+        label = ctk.CTkLabel(
+            tw,
+            text=self.text,
+            fg_color=("#ffffe0", "#3a3a3a"),
+            corner_radius=6,
+            padx=10,
+            pady=5
+        )
+        label.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
 class BotGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -184,7 +219,7 @@ class BotGUI(ctk.CTk):
         # Create edit window
         edit_window = ctk.CTkToplevel(self)
         edit_window.title(f"Edit Channel {channel_id}")
-        edit_window.geometry("500x400")
+        edit_window.geometry("550x600")
         edit_window.grab_set()  # Make it modal
 
         # Channel ID display (non-editable)
@@ -204,6 +239,42 @@ class BotGUI(ctk.CTk):
         current_chance = channel_config.get('random_reply_chance', 0.05)
         reply_chance_entry.insert(0, str(current_chance))
 
+        # Personality Mode Overrides
+        ctk.CTkLabel(edit_window, text="Personality Mode (Leave unchecked to use global defaults):").pack(padx=20, anchor="w", pady=(10, 0))
+
+        global_personality_mode = self.config.get('personality_mode', {})
+        current_immersive = channel_config.get('immersive_character', global_personality_mode.get('immersive_character', True))
+        current_technical = channel_config.get('allow_technical_language', global_personality_mode.get('allow_technical_language', False))
+
+        immersive_var = ctk.BooleanVar(value=current_immersive)
+        immersive_checkbox = ctk.CTkCheckBox(
+            edit_window,
+            text="Immersive Character Mode",
+            variable=immersive_var
+        )
+        immersive_checkbox.pack(padx=20, anchor="w", pady=(5, 0))
+        ToolTip(immersive_checkbox, "Bot believes it IS the character, not an AI roleplaying.\nDenies being AI if asked.")
+
+        technical_var = ctk.BooleanVar(value=current_technical)
+        technical_checkbox = ctk.CTkCheckBox(
+            edit_window,
+            text="Allow Technical Language",
+            variable=technical_var
+        )
+        technical_checkbox.pack(padx=20, anchor="w", pady=(0, 0))
+        ToolTip(technical_checkbox, "Allow bot to use technical terms like 'cached', 'database'.\nUseful for formal/support channels.")
+
+        # Server Information
+        current_use_server_info = channel_config.get('use_server_info', False)
+        server_info_var = ctk.BooleanVar(value=current_use_server_info)
+        server_info_checkbox = ctk.CTkCheckBox(
+            edit_window,
+            text="Use Server Information",
+            variable=server_info_var
+        )
+        server_info_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
+        ToolTip(server_info_checkbox, "Load text files from database/Formal_Server_Info/\nfor rules, policies, or server-specific information.\nIdeal for formal channels like rules or moderation.")
+
         # Buttons frame
         button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
         button_frame.pack(pady=20)
@@ -215,12 +286,22 @@ class BotGUI(ctk.CTk):
             except ValueError:
                 new_chance = current_chance
 
-            # Update the config
-            self.config_manager.add_or_update_channel_setting(
-                channel_id=channel_id,
-                purpose=new_purpose,
-                random_reply_chance=new_chance
-            )
+            # Get current config and update with new values
+            current_config = self.config_manager.get_config()
+            if 'channel_settings' not in current_config:
+                current_config['channel_settings'] = {}
+
+            if channel_id not in current_config['channel_settings']:
+                current_config['channel_settings'][channel_id] = {}
+
+            # Update channel settings
+            current_config['channel_settings'][channel_id]['purpose'] = new_purpose
+            current_config['channel_settings'][channel_id]['random_reply_chance'] = new_chance
+            current_config['channel_settings'][channel_id]['immersive_character'] = immersive_var.get()
+            current_config['channel_settings'][channel_id]['allow_technical_language'] = technical_var.get()
+            current_config['channel_settings'][channel_id]['use_server_info'] = server_info_var.get()
+
+            self.config_manager.update_config(current_config)
             print(f"Updated channel {channel_id} settings")
             self.update_active_channels_display()
             edit_window.destroy()
@@ -358,30 +439,24 @@ class BotGUI(ctk.CTk):
 
     def test_memory_consolidation(self):
         """
-        Triggers memory consolidation by calling the bot's consolidate_memories function directly.
-        This simulates what the daily scheduled task would do.
+        Shows instructions for triggering memory consolidation via Discord.
+        Note: With per-server databases, consolidation must be triggered from Discord
+        since the GUI doesn't have context about which server to consolidate.
         """
-        if not (self.bot_process and self.bot_process.poll() is None):
-            self.log_textbox.configure(state="normal")
-            self.log_textbox.insert("end", "\nERROR: Bot must be running to test memory consolidation.\n")
-            self.log_textbox.insert("end", "Please start the bot first, then click this button.\n")
-            self.log_textbox.configure(state="disabled")
-            print("Cannot test memory consolidation: Bot is not running")
-            return
-
         self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", "\n=== Testing Memory Consolidation ===\n")
-        self.log_textbox.insert("end", "NOTE: You must use the /consolidate_memory slash command in Discord.\n")
-        self.log_textbox.insert("end", "1. Go to any channel where the bot is active\n")
-        self.log_textbox.insert("end", "2. Type: /consolidate_memory\n")
-        self.log_textbox.insert("end", "3. Watch the console output below for results\n")
-        self.log_textbox.insert("end", "===================================\n\n")
+        self.log_textbox.insert("end", "\n=== Memory Consolidation Instructions ===\n")
+        self.log_textbox.insert("end", "Memory consolidation is now per-server.\n\n")
+        self.log_textbox.insert("end", "To manually trigger consolidation for a specific server:\n")
+        self.log_textbox.insert("end", "1. Go to the Discord server you want to consolidate\n")
+        self.log_textbox.insert("end", "2. Run the slash command: /consolidate_memory\n")
+        self.log_textbox.insert("end", "3. The bot will consolidate that server's memories\n\n")
+        self.log_textbox.insert("end", "Note: Consolidation also triggers automatically when\n")
+        self.log_textbox.insert("end", "a server reaches 500 messages in short-term memory.\n")
+        self.log_textbox.insert("end", "==========================================\n\n")
         self.log_textbox.configure(state="disabled")
 
-        print("\n=== Memory Consolidation Test ===")
-        print("To test memory consolidation:")
-        print("1. Use the /consolidate_memory command in Discord")
-        print("2. Results will appear in the bot console output above")
+        print("\n=== Memory Consolidation Info ===")
+        print("Use /consolidate_memory in Discord to trigger per-server consolidation")
         print("=================================")
 
 if __name__ == "__main__":

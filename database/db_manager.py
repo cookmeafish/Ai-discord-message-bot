@@ -11,12 +11,27 @@ DB_PATH = os.path.join(DB_FOLDER, DB_FILE)
 
 class DBManager:
     """Handles all database operations for the bot."""
-    def __init__(self):
-        # Ensure the 'database' directory exists
-        os.makedirs(DB_FOLDER, exist_ok=True)
+    def __init__(self, db_path=None):
+        """
+        Initialize database manager.
+
+        Args:
+            db_path: Optional custom database path. If None, uses default path.
+        """
+        # Use custom path or default
+        if db_path:
+            self.db_path = db_path
+            # Ensure parent directory exists
+            db_dir = os.path.dirname(db_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+        else:
+            # Ensure the 'database' directory exists
+            os.makedirs(DB_FOLDER, exist_ok=True)
+            self.db_path = DB_PATH
 
         try:
-            self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
             # Enable foreign key constraints
             self.conn.execute("PRAGMA foreign_keys = ON")
             # Enable auto-vacuum for automatic database compaction
@@ -78,51 +93,67 @@ class DBManager:
 
     def get_short_term_memory(self, channel_id=None):
         """
-        Retrieves all messages from the last 24 hours.
-        
+        Retrieves all messages from the short_term_message_log table.
+
         Args:
             channel_id: Optional channel ID to filter messages by channel
-            
+
         Returns:
             List of message dictionaries
         """
         if channel_id:
             query = """
-            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot 
-            FROM short_term_message_log 
-            WHERE timestamp >= ? AND channel_id = ?
+            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
+            FROM short_term_message_log
+            WHERE channel_id = ?
             ORDER BY timestamp ASC
             """
         else:
             query = """
-            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot 
-            FROM short_term_message_log 
-            WHERE timestamp >= ?
+            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
+            FROM short_term_message_log
             ORDER BY timestamp ASC
             """
-        
-        twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
-        
+
         try:
             cursor = self.conn.cursor()
             if channel_id:
-                cursor.execute(query, (twenty_four_hours_ago, channel_id))
+                cursor.execute(query, (channel_id,))
             else:
-                cursor.execute(query, (twenty_four_hours_ago,))
+                cursor.execute(query)
             rows = cursor.fetchall()
             cursor.close()
-            
+
             return [{
-                "message_id": row[0], 
-                "author_id": row[1], 
+                "message_id": row[0],
+                "author_id": row[1],
                 "channel_id": row[2],
-                "content": row[3], 
-                "timestamp": row[4], 
+                "content": row[3],
+                "timestamp": row[4],
                 "directed_at_bot": bool(row[5])
             } for row in rows]
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get short term memory: {e}")
             return []
+
+    def get_short_term_message_count(self):
+        """
+        Returns the total number of messages in the short_term_message_log table.
+
+        Returns:
+            Integer count of messages
+        """
+        query = "SELECT COUNT(*) FROM short_term_message_log"
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query)
+            count = cursor.fetchone()[0]
+            cursor.close()
+            return count
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to count short term messages: {e}")
+            return 0
 
     # --- Long-Term Memory Methods ---
 
@@ -435,6 +466,129 @@ class DBManager:
         except Exception as e:
             print(f"DATABASE ERROR: Failed to archive and clear short-term memory: {e}")
             return (0, 0, None)
+
+    # --- Image Rate Limiting Methods ---
+
+    def increment_user_image_count(self, user_id):
+        """
+        Increments the image count for a user. Creates a new record if none exists.
+        Resets hourly/daily counts if appropriate time has passed.
+
+        Args:
+            user_id: Discord user ID
+        """
+        now = datetime.datetime.utcnow()
+        today = now.date().isoformat()
+
+        try:
+            cursor = self.conn.cursor()
+
+            # Check if user has a record
+            cursor.execute("SELECT last_image_time, hourly_count, daily_count, date FROM user_image_stats WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+
+            if row:
+                last_image_time_str, hourly_count, daily_count, date = row
+                last_image_time = datetime.datetime.fromisoformat(last_image_time_str)
+
+                # Check if we need to reset hourly count (more than 1 hour ago)
+                if (now - last_image_time).total_seconds() >= 3600:
+                    hourly_count = 0
+
+                # Check if we need to reset daily count (different day)
+                if date != today:
+                    daily_count = 0
+
+                # Increment counts
+                hourly_count += 1
+                daily_count += 1
+
+                # Update record
+                cursor.execute("""
+                    UPDATE user_image_stats
+                    SET last_image_time = ?, hourly_count = ?, daily_count = ?, date = ?
+                    WHERE user_id = ?
+                """, (now.isoformat(), hourly_count, daily_count, today, user_id))
+            else:
+                # Create new record
+                cursor.execute("""
+                    INSERT INTO user_image_stats (user_id, last_image_time, hourly_count, daily_count, date)
+                    VALUES (?, ?, 1, 1, ?)
+                """, (user_id, now.isoformat(), today))
+
+            self.conn.commit()
+            cursor.close()
+            print(f"DATABASE: Incremented image count for user {user_id}")
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to increment image count for user {user_id}: {e}")
+
+    def get_user_image_count_last_hour(self, user_id):
+        """
+        Gets the number of images a user has sent in the last hour.
+
+        Args:
+            user_id: Discord user ID
+
+        Returns:
+            Integer count of images sent in the last hour
+        """
+        now = datetime.datetime.utcnow()
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT last_image_time, hourly_count FROM user_image_stats WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            cursor.close()
+
+            if not row:
+                return 0
+
+            last_image_time_str, hourly_count = row
+            last_image_time = datetime.datetime.fromisoformat(last_image_time_str)
+
+            # If more than 1 hour has passed, count is 0
+            if (now - last_image_time).total_seconds() >= 3600:
+                return 0
+
+            return hourly_count
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get hourly image count for user {user_id}: {e}")
+            return 0
+
+    def get_user_image_count_today(self, user_id):
+        """
+        Gets the number of images a user has sent today.
+
+        Args:
+            user_id: Discord user ID
+
+        Returns:
+            Integer count of images sent today
+        """
+        today = datetime.datetime.utcnow().date().isoformat()
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT daily_count, date FROM user_image_stats WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            cursor.close()
+
+            if not row:
+                return 0
+
+            daily_count, date = row
+
+            # If different day, count is 0
+            if date != today:
+                return 0
+
+            return daily_count
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get daily image count for user {user_id}: {e}")
+            return 0
 
     def close(self):
         """Closes the database connection."""
