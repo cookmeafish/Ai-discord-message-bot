@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+import testing
 
 class AdminCog(commands.Cog):
     """
@@ -20,10 +21,10 @@ class AdminCog(commands.Cog):
 
     # ==================== BOT IDENTITY COMMANDS ====================
 
-    @app_commands.command(name="bot_add_trait", description="Add a personality trait to the bot")
+    @app_commands.command(name="identity_add_trait", description="Add a personality trait to the bot")
     @app_commands.describe(trait="The trait to add (e.g., 'sarcastic', 'loves medical terms')")
     @app_commands.default_permissions(administrator=True)
-    async def bot_add_trait(self, interaction: discord.Interaction, trait: str):
+    async def identity_add_trait(self, interaction: discord.Interaction, trait: str):
         """Add a personality trait to the bot's identity."""
         db_manager = self._get_db(interaction)
         if not db_manager:
@@ -36,10 +37,10 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
-    @app_commands.command(name="bot_add_lore", description="Add a lore entry to the bot's background")
+    @app_commands.command(name="identity_add_lore", description="Add a lore entry to the bot's background")
     @app_commands.describe(lore="A lore entry about the bot's backstory")
     @app_commands.default_permissions(administrator=True)
-    async def bot_add_lore(self, interaction: discord.Interaction, lore: str):
+    async def identity_add_lore(self, interaction: discord.Interaction, lore: str):
         """Add a lore entry to the bot's identity."""
         db_manager = self._get_db(interaction)
         if not db_manager:
@@ -52,10 +53,10 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
-    @app_commands.command(name="bot_add_fact", description="Add a fact/quirk about the bot")
+    @app_commands.command(name="identity_add_fact", description="Add a fact/quirk about the bot")
     @app_commands.describe(fact="A fact or quirk about the bot")
     @app_commands.default_permissions(administrator=True)
-    async def bot_add_fact(self, interaction: discord.Interaction, fact: str):
+    async def identity_add_fact(self, interaction: discord.Interaction, fact: str):
         """Add a fact/quirk to the bot's identity."""
         db_manager = self._get_db(interaction)
         if not db_manager:
@@ -68,9 +69,9 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
-    @app_commands.command(name="bot_view_identity", description="View the bot's current personality from the database")
+    @app_commands.command(name="identity_view", description="View the bot's current personality from the database")
     @app_commands.default_permissions(administrator=True)
-    async def bot_view_identity(self, interaction: discord.Interaction):
+    async def identity_view(self, interaction: discord.Interaction):
         """Display the bot's complete identity from the database."""
         db_manager = self._get_db(interaction)
         if not db_manager:
@@ -102,7 +103,7 @@ class AdminCog(commands.Cog):
             embed.add_field(name="Facts & Quirks", value=facts_text, inline=False)
 
         if not traits and not lore and not facts:
-            embed.description = "No identity data found. Use `/bot_add_trait`, `/bot_add_lore`, or `/bot_add_fact` to populate."
+            embed.description = "No identity data found. Use `/identity_add_trait`, `/identity_add_lore`, or `/identity_add_fact` to populate."
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -273,13 +274,13 @@ class AdminCog(commands.Cog):
 
     # ==================== GLOBAL STATE COMMANDS ====================
 
-    @app_commands.command(name="bot_set_mood", description="Set the bot's global mood state")
+    @app_commands.command(name="mood_set", description="Set the bot's global mood state")
     @app_commands.describe(
         mood_type="Type of mood (anger, happiness, energy, etc.)",
         value="Mood value (typically 0-10)"
     )
     @app_commands.default_permissions(administrator=True)
-    async def bot_set_mood(self, interaction: discord.Interaction, mood_type: str, value: int):
+    async def mood_set(self, interaction: discord.Interaction, mood_type: str, value: int):
         """Set a global mood state for the bot."""
         db_manager = self._get_db(interaction)
         if not db_manager:
@@ -294,10 +295,10 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
-    @app_commands.command(name="bot_get_mood", description="Get the bot's current global mood state")
+    @app_commands.command(name="mood_get", description="Get the bot's current global mood state")
     @app_commands.describe(mood_type="Type of mood to check")
     @app_commands.default_permissions(administrator=True)
-    async def bot_get_mood(self, interaction: discord.Interaction, mood_type: str):
+    async def mood_get(self, interaction: discord.Interaction, mood_type: str):
         """Get a global mood state value."""
         db_manager = self._get_db(interaction)
         if not db_manager:
@@ -309,12 +310,66 @@ class AdminCog(commands.Cog):
 
         if value is None:
             await interaction.response.send_message(
-                f"ℹ️ No mood state found for **{mood_type}**. Use `/bot_set_mood` to set it.",
+                f"ℹ️ No mood state found for **{mood_type}**. Use `/mood_set` to set it.",
                 ephemeral=True
             )
         else:
             await interaction.response.send_message(
                 f"📊 Current **{mood_type}** mood: **{value}**",
+                ephemeral=True
+            )
+
+    # ==================== TESTING COMMANDS ====================
+
+    @app_commands.command(name="run_tests", description="Run comprehensive bot tests and send results via DM")
+    @app_commands.default_permissions(administrator=True)
+    async def run_tests(self, interaction: discord.Interaction):
+        """
+        Run comprehensive test suite and send results to admin's DM.
+        Tests database operations, AI integration, config, and more.
+        """
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        # Defer response since tests might take a while
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            # Run tests
+            summary = await testing.run_tests_for_guild(
+                self.bot,
+                interaction.guild.id,
+                interaction.guild.name
+            )
+
+            # Format results for Discord
+            messages = testing.format_results_for_discord(summary)
+
+            # Send results via DM
+            try:
+                for message in messages:
+                    await interaction.user.send(message)
+
+                # Add log file location info
+                log_info = f"\n\nDetailed results saved to: `logs/test_results_*.json`"
+
+                await interaction.followup.send(
+                    f"✅ Test suite complete! Results sent to your DM.\n"
+                    f"**Summary**: {summary['passed']}/{summary['total']} tests passed ({summary['pass_rate']:.1f}%){log_info}",
+                    ephemeral=True
+                )
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    "❌ Could not send DM. Please enable DMs from server members.\n"
+                    f"**Test Summary**: {summary['passed']}/{summary['total']} tests passed ({summary['pass_rate']:.1f}%)\n"
+                    f"Detailed results saved to: `logs/test_results_*.json`",
+                    ephemeral=True
+                )
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Error running tests: {e}\n"
+                f"Check console logs for details.",
                 ephemeral=True
             )
 

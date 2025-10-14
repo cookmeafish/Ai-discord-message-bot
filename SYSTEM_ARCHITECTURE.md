@@ -27,12 +27,14 @@ This component is responsible for processing incoming messages and generating re
     
 -   **Intent Classification System:** Before generating a response, the system classifies the user's intent into one of five categories:
     -   **memory_storage**: User is stating a fact to be remembered
-    -   **memory_correction**: User is correcting a previous bot statement
+    -   **memory_correction**: User is correcting a previous bot statement about them or requesting a memory update
     -   **factual_question**: User is asking for general knowledge or verifiable information (e.g., "what's the capital of France?")
     -   **memory_recall**: User is asking the bot to recall personal information or recent conversation (e.g., "what's my favorite food?", "do you remember what I said earlier?")
     -   **casual_chat**: Default category for general conversation
 
     **Classification Improvements (2025-10-12)**: Enhanced distinction between `memory_recall` (personal/recent questions) and `factual_question` (general knowledge). This prevents the bot from treating personal memory questions as general factual queries.
+
+    **Memory Correction System (2025-10-13)**: When the bot detects `memory_correction` intent, it uses AI to identify which stored fact is being corrected, then updates the database with the new information. This allows users to naturally correct mistakes in the bot's memory (e.g., "Actually, my favorite color is red, not blue").
 
     This classification allows the bot to tailor its response strategy and maintain context awareness.
     
@@ -145,7 +147,7 @@ This component allows the bot to initiate conversation, governed by strict rules
 
 ### 3.4. Automated Memory Consolidation Process
 
-**STATUS: IMPLEMENTED ✅ (Per-Server Architecture)**
+**STATUS: IMPLEMENTED ✅ (Per-Server Architecture with Smart Contradiction Detection)**
 
 An AI-powered background process that converts short-term message data into long-term structured memory **per server**.
 
@@ -153,18 +155,25 @@ An AI-powered background process that converts short-term message data into long
 
 2.  For each user, GPT-4o analyzes their messages and extracts new summarized facts based on their activity.
 
-3.  Extracted facts are added to the server's **Long-Term Memory** table with source attribution.
+3.  **Smart Contradiction Detection (2025-10-13)**: Before adding each extracted fact:
+    - System uses semantic similarity search to find existing facts that might contradict the new one
+    - AI compares the new fact against existing similar facts
+    - If a contradiction is detected, the old fact is **updated** with the new information
+    - If no contradiction exists, the fact is added as new
+    - This prevents duplicate or conflicting information in long-term memory
 
-4.  **Archive & Reset:** After processing, the system:
+4.  Extracted facts are added to (or updated in) the server's **Long-Term Memory** table with source attribution.
+
+5.  **Archive & Reset:** After processing, the system:
     - Archives all short-term messages to `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
     - Clears the Short-Term Message Log for that server
     - SQLite auto-vacuum reclaims disk space
 
-5.  **Triggering Mechanisms:**
+6.  **Triggering Mechanisms:**
     - **Automatic**: When a server reaches 500 messages in short-term memory
     - **Manual**: Via `/consolidate_memory` slash command (admin only, per-server)
 
-6.  **Per-Server Independence**: Each server's consolidation runs independently without affecting other servers.
+7.  **Per-Server Independence**: Each server's consolidation runs independently without affecting other servers.
     
 
 ### 3.5. Dynamic Status Subsystem
@@ -306,6 +315,7 @@ This section maps the conceptual components defined above to the final, physical
 │   ├── 📄 __init__.py
 │   └── 📄 (Unit tests for modules and cogs)
 |
+├── 📜 testing.py
 ├── 📜 .env
 ├── 📜 .gitignore
 ├── 📜 AI_GUIDELINES.md
@@ -350,7 +360,7 @@ The central component for all data persistence logic with per-server database is
 
 -   `{ServerName}_data.db`: Server-specific SQLite database files (automatically created on first `/activate` command per server).
 
--   `db_manager.py`: Individual database interface class. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`, `get_bot_identity`, `get_relationship_metrics`, `update_relationship_metrics`). Now accepts optional `db_path` parameter for custom database locations. **ARCHITECTURE CHANGE (2025-10-12)**: `get_short_term_memory()` now returns server-wide messages, NOT filtered by channel.
+-   `db_manager.py`: Individual database interface class. Contains all functions for data manipulation (e.g., `get_long_term_memory`, `add_long_term_memory`, `get_global_state`, `set_global_state`, `get_bot_identity`, `get_relationship_metrics`, `update_relationship_metrics`). Now accepts optional `db_path` parameter for custom database locations. **ARCHITECTURE CHANGE (2025-10-12)**: `get_short_term_memory()` now returns server-wide messages, NOT filtered by channel. **NEW METHODS (2025-10-13)**: `find_contradictory_memory()` for semantic similarity search, `update_long_term_memory_fact()` for updating existing facts, `delete_long_term_memory()` for removing facts.
 
 -   `multi_db_manager.py`: Central manager for all server databases. Handles server name sanitization, database creation, and caching of DBManager instances per guild. Provides `get_or_create_db(guild_id, server_name)` method.
 
@@ -433,6 +443,8 @@ A dedicated folder for housing unit tests and integration tests.
     
 -   `test_file.txt`: Temporary test file (can be safely deleted).
 
+-   `testing.py`: Comprehensive test suite for validating bot functionality across 64 tests in 17 categories. Accessible via `/run_tests` admin command. Tests database operations, AI integration, per-server isolation, input validation, and all core systems. Results sent via Discord DM and saved to `logs/test_results_*.json`.
+
 ## 5. Implementation Status
 
 ### Phase 1: COMPLETED ✅
@@ -451,10 +463,11 @@ Phase 1 has been fully implemented and is production-ready.
 - ✅ **Global Mood System**: Database storage for bot's daily mood states
 
 #### Admin Commands Available:
-- Bot Identity: `/bot_add_trait`, `/bot_add_lore`, `/bot_add_fact`, `/bot_view_identity`
+- Bot Identity: `/identity_add_trait`, `/identity_add_lore`, `/identity_add_fact`, `/identity_view`
 - User Relationships: `/user_view_metrics`, `/user_set_metrics`, `/user_view_memory`, `/user_add_memory`
-- Global Mood: `/bot_set_mood`, `/bot_get_mood`
+- Global Mood: `/mood_set`, `/mood_get`
 - Personality Mode: `/channel_set_personality` (configure immersive character, technical language, and server info settings)
+- Testing: `/run_tests` (comprehensive system validation with 64 tests)
 
 ### Core System Components: COMPLETED ✅
 - ✅ Core Interaction Handler with Intent Classification (improved memory_recall vs factual_question, 2025-10-12)
@@ -468,11 +481,14 @@ Phase 1 has been fully implemented and is production-ready.
 - ✅ **Personality Mode System**: Immersive character mode with natural language enforcement
 - ✅ **Formal Server Information System**: Load text files for rules/policies (2025-10-12)
 - ✅ **GUI Tooltip System**: Hover text for personality mode checkboxes (2025-10-12)
+- ✅ **Comprehensive Testing System**: 64-test suite via `/run_tests` command (2025-10-13)
 
-### Phase 2: PARTIALLY COMPLETED ✅
+### Phase 2: COMPLETED ✅
 **Memory Consolidation & Per-Server Architecture**
 - ✅ **Per-Server Database Isolation**: Separate database file per Discord server
 - ✅ **Automated Memory Consolidation Process**: AI-powered fact extraction (GPT-4o)
+- ✅ **Smart Contradiction Detection**: Semantic similarity search and AI-powered duplicate prevention (2025-10-13)
+- ✅ **Memory Correction System**: Natural language memory updates via intent classification (2025-10-13)
 - ✅ **Message Archival System**: JSON backup before deletion
 - ✅ **Auto-trigger at 500 messages**: Per-server consolidation threshold
 - ✅ **Manual Consolidation Command**: `/consolidate_memory` (admin, per-server)
@@ -481,6 +497,45 @@ Phase 1 has been fully implemented and is production-ready.
 - ✅ **Formal Server Information System**: Load text files for rules/policies in formal channels (2025-10-12)
 - ✅ **Improved Intent Classification**: Better distinction between memory_recall and factual_question (2025-10-12)
 - ✅ **GUI Enhancements**: Tooltips for personality settings, server info checkbox (2025-10-12)
+- ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
+
+### Testing Infrastructure: COMPLETED ✅ (2025-10-13)
+**Comprehensive 64-Test Suite**
+
+A production-ready testing system accessible via `/run_tests` admin command that validates all bot systems:
+
+**Test Categories (17 total)**:
+1. **Database Connection** (3 tests) - Manager initialization, file existence, query execution
+2. **Database Tables** (6 tests) - All required tables exist and accessible
+3. **Bot Identity** (2 tests) - Personality storage and retrieval
+4. **Relationship Metrics** (3 tests) - User metrics CRUD operations
+5. **Long-Term Memory** (4 tests) - Memory storage, contradiction detection, updates
+6. **Short-Term Memory** (3 tests) - Message logging and retrieval
+7. **Memory Consolidation** (2 tests) - Archive system and consolidation functions
+8. **AI Integration** (3 tests) - AI handler, API keys, model configuration
+9. **Config Manager** (3 tests) - Configuration loading and validation
+10. **Emote System** (2 tests) - Emote handler and emote loading
+11. **Per-Server Isolation** (4 tests) - Database isolation, multi-DB manager, auto-vacuum
+12. **Input Validation** (4 tests) - SQL injection prevention, oversized content, empty/null inputs
+13. **Global State** (3 tests) - Global state CRUD operations
+14. **User Management** (3 tests) - User creation, timestamps, cleanup
+15. **Archive System** (4 tests) - Archive directory, functions, message count, JSON format
+16. **Image Rate Limiting** (4 tests) - Rate limit tracking table, increment/get methods
+17. **Channel Configuration** (3 tests) - Channel settings, personality mode, server info
+18. **Cleanup Verification** (5 tests) - Automatic test data cleanup across all tables
+
+**Features**:
+- Automatic test data cleanup after each run
+- Results sent via Discord DM to admin
+- Detailed JSON logs saved to `logs/test_results_*.json`
+- Per-server database testing
+- Pass/fail status with detailed error messages
+- Validates security (SQL injection prevention)
+- Tests all Phase 1 & 2 features
+
+**Usage**: `/run_tests` (admin only, per-server)
+
+### Phase 3: PLANNED
+**Proactive Features**
 - ⏳ **Proactive Engagement Subsystem**: 30-minute scheduled checks (planned)
 - ⏳ **Dynamic Status Subsystem**: AI-generated status updates (planned)
-- ⏳ **Semantic Similarity Checking**: Memory deduplication (planned)

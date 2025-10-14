@@ -42,7 +42,11 @@ CREATE TABLE IF NOT EXISTS long_term_memory (
     first_mentioned_timestamp TEXT NOT NULL,
     last_mentioned_timestamp TEXT NOT NULL,
     reference_count INTEGER NOT NULL DEFAULT 1,
-    FOREIGN KEY (user_id) REFERENCES users (user_id)
+    status TEXT DEFAULT 'active',
+    superseded_by_id INTEGER,
+    last_validated_timestamp TEXT,
+    FOREIGN KEY (user_id) REFERENCES users (user_id),
+    FOREIGN KEY (superseded_by_id) REFERENCES long_term_memory(id)
 );
 """
 

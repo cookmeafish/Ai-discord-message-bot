@@ -2,6 +2,7 @@
 import sqlite3
 import os
 from . import schemas
+from .input_validator import InputValidator
 import datetime
 
 # Define the location for the database file
@@ -61,35 +62,46 @@ class DBManager:
     def log_message(self, message, directed_at_bot=False):
         """
         Logs a message to the short_term_message_log table.
-        
+
         Args:
             message: Discord message object
             directed_at_bot: Boolean indicating if the message was directed at the bot
+
+        Returns:
+            bool: True if logged successfully, False if validation failed
         """
+        # Validate message content
+        is_valid, error = InputValidator.validate_message_content(message.content)
+        if not is_valid:
+            print(f"DATABASE: Rejected message {message.id}: {error}")
+            return False
+
         query = """
         INSERT OR REPLACE INTO short_term_message_log (message_id, user_id, channel_id, content, timestamp, directed_at_bot)
         VALUES (?, ?, ?, ?, ?, ?)
         """
         timestamp = message.created_at.isoformat()
         directed_flag = 1 if directed_at_bot else 0
-        
+
         try:
             cursor = self.conn.cursor()
             cursor.execute(query, (
-                message.id, 
-                message.author.id, 
-                message.channel.id, 
-                message.content, 
-                timestamp, 
+                message.id,
+                message.author.id,
+                message.channel.id,
+                message.content,
+                timestamp,
                 directed_flag
             ))
             self.conn.commit()
             cursor.close()
+            return True
         except sqlite3.IntegrityError:
             # Message already exists, skip silently
-            pass
+            return True
         except Exception as e:
             print(f"DATABASE ERROR: Failed to log message {message.id}: {e}")
+            return False
 
     def get_short_term_memory(self, channel_id=None):
         """
@@ -183,20 +195,34 @@ class DBManager:
         """
         Adds a new long-term memory fact for a user, including the source.
         Checks for exact duplicates before adding.
-        
+
         Args:
             user_id: Discord user ID this fact is about
             fact: The fact to remember
             source_user_id: Discord ID of who told the bot this fact
             source_nickname: Display name of who told the bot this fact
+
+        Returns:
+            bool: True if fact added successfully, False if validation failed
         """
+        # Validate inputs
+        is_valid, error = InputValidator.validate_fact(fact)
+        if not is_valid:
+            print(f"DATABASE: Rejected invalid fact: {error}")
+            return False
+
+        is_valid, error = InputValidator.validate_nickname(source_nickname)
+        if not is_valid:
+            print(f"DATABASE: Rejected invalid nickname: {error}")
+            return False
+
         check_query = "SELECT id FROM long_term_memory WHERE user_id = ? AND fact = ?"
         insert_query = """
         INSERT INTO long_term_memory (user_id, fact, source_user_id, source_nickname, first_mentioned_timestamp, last_mentioned_timestamp)
         VALUES (?, ?, ?, ?, ?, ?)
         """
         now = datetime.datetime.utcnow().isoformat()
-        
+
         try:
             cursor = self.conn.cursor()
             cursor.execute(check_query, (user_id, fact))
@@ -204,11 +230,152 @@ class DBManager:
                 cursor.execute(insert_query, (user_id, fact, source_user_id, source_nickname, now, now))
                 self.conn.commit()
                 print(f"DATABASE: Saved new fact for user {user_id}: '{fact}' from source {source_nickname}")
+                cursor.close()
+                return True
             else:
                 print(f"DATABASE: Fact already exists for user {user_id}, not saving duplicate.")
-            cursor.close()
+                cursor.close()
+                return False
         except Exception as e:
             print(f"DATABASE ERROR: Failed to add long-term memory for user {user_id}: {e}")
+            return False
+
+    def find_contradictory_memory(self, user_id, new_fact):
+        """
+        Finds facts that may contradict the new fact.
+        Returns active facts only (status != 'superseded').
+
+        Args:
+            user_id: Discord user ID
+            new_fact: The new fact to check against
+
+        Returns:
+            List of tuples (fact_id, fact_text) for potential contradictions
+        """
+        # NOTE: After migration, use status filter. Before migration, this will work without it.
+        try:
+            query = "SELECT id, fact FROM long_term_memory WHERE user_id = ?"
+            # Try to filter by status if column exists
+            cursor = self.conn.cursor()
+            cursor.execute("PRAGMA table_info(long_term_memory)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            if 'status' in columns:
+                query += " AND (status IS NULL OR status = 'active')"
+
+            cursor.execute(query, (user_id,))
+            rows = cursor.fetchall()
+            cursor.close()
+
+            return [(row[0], row[1]) for row in rows]
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to find contradictory memories: {e}")
+            return []
+
+    def update_long_term_memory_fact(self, fact_id, new_fact_text):
+        """
+        Updates an existing long-term memory fact.
+        Increments reference_count and updates last_mentioned_timestamp.
+
+        Args:
+            fact_id: ID of the fact to update
+            new_fact_text: New fact text
+
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        # Validate input
+        is_valid, error = InputValidator.validate_fact(new_fact_text)
+        if not is_valid:
+            print(f"DATABASE: Cannot update fact - {error}")
+            return False
+
+        query = """
+        UPDATE long_term_memory
+        SET fact = ?,
+            last_mentioned_timestamp = ?,
+            reference_count = reference_count + 1
+        WHERE id = ?
+        """
+        now = datetime.datetime.utcnow().isoformat()
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (new_fact_text, now, fact_id))
+            self.conn.commit()
+            cursor.close()
+            print(f"DATABASE: Updated fact ID {fact_id} to: '{new_fact_text}'")
+            return True
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to update fact {fact_id}: {e}")
+            return False
+
+    def supersede_long_term_memory_fact(self, old_fact_id, new_fact_id=None):
+        """
+        Marks an old fact as superseded by a new fact (soft delete).
+        NOTE: Requires migration to add status column first.
+
+        Args:
+            old_fact_id: ID of the fact to supersede
+            new_fact_id: Optional ID of the fact that replaces it
+
+        Returns:
+            bool: True if supersede successful, False otherwise
+        """
+        # Check if status column exists
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("PRAGMA table_info(long_term_memory)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            if 'status' not in columns:
+                print(f"DATABASE: Cannot supersede fact - status column does not exist. Run migration first.")
+                cursor.close()
+                return False
+
+            query = """
+            UPDATE long_term_memory
+            SET status = 'superseded',
+                superseded_by_id = ?,
+                last_mentioned_timestamp = ?
+            WHERE id = ?
+            """
+            now = datetime.datetime.utcnow().isoformat()
+
+            cursor.execute(query, (new_fact_id, now, old_fact_id))
+            self.conn.commit()
+            cursor.close()
+            print(f"DATABASE: Superseded fact ID {old_fact_id} (replaced by: {new_fact_id})")
+            return True
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to supersede fact {old_fact_id}: {e}")
+            return False
+
+    def delete_long_term_memory_fact(self, fact_id):
+        """
+        Permanently deletes a long-term memory fact.
+        WARNING: This is irreversible. Prefer supersede_long_term_memory_fact() for soft deletes.
+
+        Args:
+            fact_id: ID of the fact to delete
+
+        Returns:
+            bool: True if deletion successful, False otherwise
+        """
+        query = "DELETE FROM long_term_memory WHERE id = ?"
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (fact_id,))
+            self.conn.commit()
+            cursor.close()
+            print(f"DATABASE: Permanently deleted fact ID {fact_id}")
+            return True
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to delete fact {fact_id}: {e}")
+            return False
 
     # --- Global State Methods (NEW) ---
 
@@ -293,21 +460,62 @@ class DBManager:
     def add_bot_identity(self, category, content):
         """
         Adds a new bot identity entry.
-        
+
         Args:
             category: 'trait', 'lore', or 'fact'
             content: The content to add
+
+        Returns:
+            bool: True if added successfully, False if validation failed
         """
+        # Validate category (whitelist approach)
+        if not InputValidator.validate_bot_identity_category(category):
+            print(f"DATABASE: Rejected invalid bot identity category: {category}")
+            return False
+
+        # Validate content
+        is_valid, error = InputValidator.validate_bot_identity_content(content)
+        if not is_valid:
+            print(f"DATABASE: Rejected invalid bot identity content: {error}")
+            return False
+
         query = "INSERT INTO bot_identity (category, content) VALUES (?, ?)"
-        
+
         try:
             cursor = self.conn.cursor()
             cursor.execute(query, (category, content))
             self.conn.commit()
             cursor.close()
             print(f"DATABASE: Added bot identity - {category}: '{content}'")
+            return True
         except Exception as e:
             print(f"DATABASE ERROR: Failed to add bot identity: {e}")
+            return False
+
+    # --- User Management Methods ---
+
+    def _ensure_user_exists(self, user_id):
+        """
+        Ensures a user record exists in the users table.
+        Creates one if it doesn't exist.
+
+        Args:
+            user_id: Discord user ID
+        """
+        check_query = "SELECT user_id FROM users WHERE user_id = ?"
+        insert_query = "INSERT INTO users (user_id, first_seen, last_seen) VALUES (?, ?, ?)"
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(check_query, (user_id,))
+            if cursor.fetchone() is None:
+                now = datetime.datetime.utcnow().isoformat()
+                cursor.execute(insert_query, (user_id, now, now))
+                self.conn.commit()
+                print(f"DATABASE: Created user record for {user_id}")
+            cursor.close()
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to ensure user exists for {user_id}: {e}")
 
     # --- Relationship Metrics Methods (NEW) ---
 
@@ -339,7 +547,12 @@ class DBManager:
                     "formality": row[3]
                 }
             else:
-                # Auto-create record with default values
+                # Ensure user exists in users table first (for foreign key constraint)
+                cursor.close()
+                self._ensure_user_exists(user_id)
+
+                # Now create relationship metrics record
+                cursor = self.conn.cursor()
                 cursor.execute(insert_query, (user_id,))
                 self.conn.commit()
                 cursor.close()
@@ -373,13 +586,16 @@ class DBManager:
                 cursor.execute(insert_query, (user_id,))
                 self.conn.commit()
             
-            # Now update the metrics
+            # Now update the metrics (with whitelist validation)
             updates = []
             params = []
             for key, value in kwargs.items():
-                if key in ['anger', 'rapport', 'trust', 'formality']:
+                # SECURITY: Whitelist validation for column names
+                if InputValidator.validate_metric_key(key):
                     updates.append(f"{key} = ?")
                     params.append(value)
+                else:
+                    print(f"DATABASE: Rejected invalid metric key: {key}")
             
             if updates:
                 query = f"UPDATE relationship_metrics SET {', '.join(updates)} WHERE user_id = ?"

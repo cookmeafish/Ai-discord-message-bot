@@ -153,6 +153,13 @@ User-associated facts with source attribution:
 - `source_nickname` - Display name of source
 - Timestamps and reference counts
 
+**Memory Correction (2025-10-13)**:
+- Natural language corrections via `memory_correction` intent
+- AI identifies which fact to update based on user's correction
+- Example: "Actually, my favorite color is red, not blue" automatically updates the stored fact
+- Semantic similarity search prevents duplicate/contradictory facts
+- Accessed via `db_manager.find_contradictory_memory()`, `db_manager.update_long_term_memory_fact()`, and `db_manager.delete_long_term_memory()`
+
 ### short_term_message_log
 Up to 500 messages rolling buffer **server-wide across all channels** (per server). Provides high-resolution context for AI responses.
 
@@ -160,7 +167,12 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 
 **Memory Consolidation Process (Per-Server):**
 - AI (GPT-4o) analyzes up to 500 messages and extracts facts about users
-- Facts are saved to that server's `long_term_memory` with source attribution
+- **Smart Contradiction Detection (2025-10-13)**: Before saving each fact, system checks for contradictions:
+  - Uses semantic similarity search to find related existing facts
+  - AI determines if new fact contradicts any existing fact
+  - If contradiction detected, old fact is **updated** instead of creating duplicate
+  - If no contradiction, fact is added as new
+- Facts are saved to (or updated in) that server's `long_term_memory` with source attribution
 - All short-term messages are then archived to `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
 - After archival, short-term table is cleared for that server
 - Triggered automatically when server reaches 500 messages
@@ -172,10 +184,10 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 **IMPORTANT**: All admin commands operate on the server where they're executed. Each server has independent data.
 
 ### Bot Identity Management
-- `/bot_add_trait` - Add personality trait (for THIS server)
-- `/bot_add_lore` - Add backstory/history (for THIS server)
-- `/bot_add_fact` - Add quirk/behavior (for THIS server)
-- `/bot_view_identity` - Display complete personality (for THIS server)
+- `/identity_add_trait` - Add personality trait (for THIS server)
+- `/identity_add_lore` - Add backstory/history (for THIS server)
+- `/identity_add_fact` - Add quirk/behavior (for THIS server)
+- `/identity_view` - Display complete personality (for THIS server)
 
 ### User Relationship Management
 - `/user_view_metrics` - View relationship stats (for THIS server)
@@ -194,8 +206,18 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
   - **GUI Tooltips**: Hover over checkboxes in channel editor to see explanations of each option
 
 ### Global State
-- `/bot_set_mood` - Set server-specific mood integers
-- `/bot_get_mood` - View current mood (for THIS server)
+- `/mood_set` - Set server-specific mood integers
+- `/mood_get` - View current mood (for THIS server)
+
+### Testing System
+- `/run_tests` - Comprehensive system validation (admin only, per-server)
+  - Runs 64 tests across 17 categories
+  - Results sent via Discord DM to admin
+  - Detailed JSON log saved to `logs/test_results_*.json`
+  - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
+  - Automatic test data cleanup after each run
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (3), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Cleanup Verification (5)
+  - **Usage**: Recommended to run after major updates to ensure system stability
 
 ## AI Model Configuration
 
@@ -299,9 +321,11 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
 - Automatic metric updates
 - Real-time admin interface
 
-### Phase 2 (PARTIALLY COMPLETED ✅)
+### Phase 2 (COMPLETED ✅)
 - ✅ **Per-Server Database Isolation**: Separate database file per Discord server
 - ✅ **Memory consolidation system**: AI-powered fact extraction using GPT-4o
+- ✅ **Smart Contradiction Detection**: Semantic similarity search and AI-powered duplicate prevention (2025-10-13)
+- ✅ **Memory Correction System**: Natural language memory updates via intent classification (2025-10-13)
 - ✅ **Automatic archival**: Short-term messages to JSON before deletion (per-server)
 - ✅ **Auto-trigger at 500 messages**: Per-server consolidation threshold
 - ✅ **SQLite auto-vacuum**: Database optimization enabled
@@ -310,6 +334,9 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
 - ✅ **Server-Wide Short-Term Memory**: Context maintained across all channels within a server
 - ✅ **Formal Server Information System**: Load text files for rules/policies in formal channels
 - ✅ **Improved Intent Classification**: Better distinction between memory_recall and factual_question
+- ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
+
+### Phase 3 (PLANNED)
 - ⏳ **Proactive engagement subsystem**: Planned
 - ⏳ **Dynamic status updates**: Planned
 

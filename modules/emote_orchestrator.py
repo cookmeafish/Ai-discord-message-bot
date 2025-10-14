@@ -15,13 +15,19 @@ class EmoteOrchestrator:
         """Scans all guilds and loads all available custom emotes into a dictionary."""
         print("Loading custom emotes from all servers...")
         self.emotes.clear()
-        
+
         try:
             for guild in self.bot.guilds:
+                print(f"  Scanning guild: {guild.name} (ID: {guild.id})")
+                guild_emote_count = 0
                 for emote in guild.emojis:
                     if emote.name not in self.emotes:
                         self.emotes[emote.name] = emote
-            print(f"Successfully loaded {len(self.emotes)} unique custom emotes.")
+                        guild_emote_count += 1
+                        print(f"    Loaded emote: :{emote.name}: (ID: {emote.id})")
+                print(f"  Found {guild_emote_count} unique emotes in {guild.name}")
+            print(f"Successfully loaded {len(self.emotes)} total unique custom emotes.")
+            print(f"Available emote names: {', '.join(sorted(self.emotes.keys()))}")
         except Exception as e:
             print(f"ERROR: Failed to load emotes: {e}")
             self.emotes = {}
@@ -35,20 +41,21 @@ class EmoteOrchestrator:
 
     def get_available_emote_names(self):
         """
-        Returns a comma-separated string of all available emote names.
+        Returns a comma-separated string of all available emote names with colons.
+        This format matches the expected syntax for using emotes in bot responses.
         """
-        return ", ".join(self.emotes.keys()) if self.emotes else "No emotes loaded"
+        return ", ".join(f":{name}:" for name in self.emotes.keys()) if self.emotes else "No emotes loaded"
 
     def replace_emote_tags(self, text):
         """
         Finds all occurrences of :emote_name: in a string and replaces them
         with the actual Discord emote string if the emote exists.
-        
+
         This function correctly replaces only :emote_name: tags (not already-formatted Discord emotes).
         """
         if not text:
             return text
-            
+
         def replace_match(match):
             tag_name = match.group(1)
             emote = self.get_emote(tag_name)
@@ -59,7 +66,8 @@ class EmoteOrchestrator:
                 else:
                     return f'<:{emote.name}:{emote.id}>'
             else:
-                # If emote is not found, leave the original tag unchanged
+                # If emote is not found, leave the original tag unchanged and log warning
+                print(f"WARNING: Emote ':{tag_name}:' not found. Available emotes: {', '.join(self.emotes.keys())}")
                 return match.group(0)
 
         try:

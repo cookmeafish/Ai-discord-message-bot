@@ -39,7 +39,8 @@ class ConfigManager:
         return os.getenv(key_name)
 
     def get_config(self):
-        """Returns the current configuration."""
+        """Returns the current configuration, reloading from disk to ensure freshness."""
+        self.config = self._load_config()
         return self.config
 
     def update_config(self, new_data):

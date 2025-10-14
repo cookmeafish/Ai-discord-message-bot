@@ -79,8 +79,12 @@ class EventsCog(commands.Cog):
 
         was_directed_at_bot = is_mentioned or is_reply_to_bot
 
-        # Log ALL user messages to the database (not just those in active channels)
-        # This ensures the rolling memory is complete
+        # Only log and respond to messages from active channels
+        # (but bot still has access to ALL historical data when responding)
+        if not is_active_channel:
+            self.logger.debug(f"Channel {message.channel.id} is not active, skipping message logging and response")
+            return
+
         try:
             db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
             self.logger.debug(f"Logged user message to database (directed_at_bot={was_directed_at_bot})")
@@ -117,11 +121,6 @@ class EventsCog(commands.Cog):
                     self.logger.warning("MemoryTasksCog not found, cannot trigger consolidation")
             except Exception as e:
                 self.logger.error(f"Failed to trigger memory consolidation: {e}")
-
-        # Only generate AI responses in active channels
-        if not is_active_channel:
-            self.logger.debug(f"Channel {message.channel.id} is not active, skipping response")
-            return
 
         # Prevent duplicate processing
         if message.id in EventsCog._processing_messages:

@@ -32,6 +32,8 @@ This is an advanced, context-aware AI Discord bot designed for natural and engag
 
 - **Memory Consolidation (Per-Server)**: Automated system that extracts facts from conversations using GPT-4o, archives message history to JSON, and clears short-term memory. Each server's consolidation runs independently at 500 messages or via `/consolidate_memory` command.
 
+- **Smart Memory Correction**: Bot automatically detects when you correct its memory ("Actually, my favorite color is red") and updates stored facts. Uses AI-powered contradiction detection during consolidation to prevent duplicate or conflicting information.
+
 - **Headless & GUI Operation**: Can be configured and run via a simple graphical user interface with channel management (add/edit/remove) or managed manually for server-based operation.
 
 - **Global Emotes**: While data is isolated per-server, the emote system remains global - the bot can use emotes from any server it's in, regardless of which server the conversation is happening in.
@@ -136,16 +138,16 @@ Each server gets its own isolated database with its own bot personality, user re
 
 The bot's personality is now stored in the database and can be modified in real-time:
 
-- `/bot_add_trait` - Add a personality trait
-- `/bot_add_lore` - Add backstory/lore
-- `/bot_add_fact` - Add a fact or quirk
-- `/bot_view_identity` - View complete personality
+- `/identity_add_trait` - Add a personality trait
+- `/identity_add_lore` - Add backstory/lore
+- `/identity_add_fact` - Add a fact or quirk
+- `/identity_view` - View complete personality
 
 **Example**:
 ```
-/bot_add_trait trait:loves puns and wordplay
-/bot_add_lore lore:I once performed emergency surgery on a dolphin
-/bot_add_fact fact:I'm allergic to tartar sauce
+/identity_add_trait trait:loves puns and wordplay
+/identity_add_lore lore:I once performed emergency surgery on a dolphin
+/identity_add_fact fact:I'm allergic to tartar sauce
 ```
 
 ### User Relationship Management
@@ -204,10 +206,10 @@ Metrics automatically update based on user interactions (compliments increase ra
 The bot comes with a basic default personality that can be fully customized per server using admin commands.
 
 **How to Customize:**
-1. Use `/bot_add_trait [trait]` to add personality characteristics
-2. Use `/bot_add_lore [lore]` to add background story elements
-3. Use `/bot_add_fact [fact]` to add specific behaviors and quirks
-4. Use `/bot_view_identity` to see the current personality
+1. Use `/identity_add_trait [trait]` to add personality characteristics
+2. Use `/identity_add_lore [lore]` to add background story elements
+3. Use `/identity_add_fact [fact]` to add specific behaviors and quirks
+4. Use `/identity_view` to see the current personality
 
 **Personality Structure:**
 - **Traits**: Core personality characteristics (e.g., "sarcastic", "friendly", "professional")
@@ -216,14 +218,56 @@ The bot comes with a basic default personality that can be fully customized per 
 
 **Example Commands:**
 ```
-/bot_add_trait trait:loves puns and wordplay
-/bot_add_lore lore:grew up in a small coastal town
-/bot_add_fact fact:secretly collects vintage postcards
+/identity_add_trait trait:loves puns and wordplay
+/identity_add_lore lore:grew up in a small coastal town
+/identity_add_fact fact:secretly collects vintage postcards
 ```
 
 Each server can have a completely different bot personality, allowing for unique experiences per community!
 
 ## Testing the System
+
+### Comprehensive Test Suite
+
+The bot includes a comprehensive 64-test suite that validates all core systems:
+
+**Run All Tests**:
+```
+/run_tests
+```
+
+This command (admin only) runs 64 tests across 17 categories and provides:
+- Results sent via Discord DM to the admin who ran the command
+- Detailed JSON log saved to `logs/test_results_*.json`
+- Pass/fail status with error details for debugging
+
+**What Gets Tested**:
+- Database Connection & Tables (9 tests)
+- Bot Identity System (2 tests)
+- Relationship Metrics (3 tests)
+- Long-Term & Short-Term Memory (7 tests)
+- Memory Consolidation (2 tests)
+- AI Integration (3 tests)
+- Config Manager (3 tests)
+- Emote System (2 tests)
+- Per-Server Isolation (4 tests)
+- Input Validation & Security (4 tests)
+- Global State Management (3 tests)
+- User Management (3 tests)
+- Archive System (4 tests)
+- Image Rate Limiting (4 tests)
+- Channel Configuration (3 tests)
+- Cleanup Verification (5 tests)
+
+**When to Run Tests**:
+- After major updates or configuration changes
+- Before deploying to production
+- When troubleshooting unexpected behavior
+- To verify per-server database integrity
+
+All test data is automatically cleaned up after each run.
+
+### Manual Testing Examples
 
 ### Test Basic Personality
 ```
@@ -267,6 +311,7 @@ Rapport should have increased to 6.
 ├── modules/           # Core helper classes (AI, config, emotes, logging)
 ├── scripts/           # Utility scripts (e.g., populate_bot_identity.py)
 ├── tests/             # Unit tests
+├── testing.py         # Comprehensive 64-test suite (accessible via /run_tests)
 ├── config.json        # Bot configuration
 ├── .env              # Credentials (not in git)
 ├── main.py           # Entry point
@@ -305,29 +350,34 @@ For common issues and solutions, see the dedicated **[TROUBLESHOOTING.md](TROUBL
 
 Quick fixes:
 - **Bot not starting?** Check `.env` file has correct tokens
-- **Personality not working?** Use `/bot_view_identity` to verify database
+- **Personality not working?** Use `/identity_view` to verify database
 - **Metrics not updating?** Check console logs for "Updated metrics" messages
 - **Commands not showing?** Wait up to 1 hour for Discord to sync slash commands
+- **Bot behaving unexpectedly?** Run `/run_tests` to validate system integrity
 
 For detailed solutions, log file locations, and advanced troubleshooting, see TROUBLESHOOTING.md.
 
-## Phase 2 Status
+## Phase 2 Status (COMPLETED ✅)
 
-Implemented features:
+All Phase 2 features have been implemented:
 - ✅ **Per-Server Database Isolation**: Separate database file per Discord server
 - ✅ **Memory Consolidation System**: AI-powered fact extraction using GPT-4o
+- ✅ **Smart Contradiction Detection**: Prevents duplicate/conflicting facts during consolidation (2025-10-13)
+- ✅ **Natural Memory Correction**: Bot updates facts when users make corrections (2025-10-13)
 - ✅ **Message Archival**: Automatic JSON backup before deletion (per-server)
 - ✅ **Auto-trigger Consolidation**: Runs when server reaches 500 messages
 - ✅ **Database Optimization**: SQLite auto-vacuum enabled
 - ✅ **GUI Channel Management**: Add, edit, and remove channels
-
-Recent additions:
 - ✅ **Immersive Character Mode**: Bot believes it's the character, not an AI
 - ✅ **Natural Language Enforcement**: Eliminates robotic terms in all intents
 - ✅ **Per-Channel Personality Mode**: Configure immersion/technical language per channel
 - ✅ **GUI Personality Controls**: Checkboxes for global and per-channel personality settings
+- ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
+- ✅ **Comprehensive Testing Suite**: 64-test suite validating all systems via `/run_tests` (2025-10-13)
 
-Planned features:
+## Phase 3 (Planned)
+
+Upcoming features:
 - ⏳ **Automated Daily Consolidation**: Optional scheduled consolidation per server
 - ⏳ **Dynamic Status Updates**: Bot updates its Discord status with AI-generated thoughts
 - ⏳ **Proactive Engagement**: Bot randomly joins conversations based on context

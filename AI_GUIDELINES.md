@@ -33,10 +33,18 @@ Your primary role is to act as an expert programmer and a diligent architect for
 -   **File Structure Maintenance**: When adding or removing files/directories, you **must** update the file structure section (Section 4) in `SYSTEM_ARCHITECTURE.md` to accurately reflect the current project organization. This is critical for maintaining project clarity.
     
 -   **Feature Integrity and Stability**:
-    
+
     -   **Prioritize Stability**: Your absolute highest priority is to provide code that is stable and does not break existing functionality. You must perform rigorous mental checks to ensure your changes will not cause the bot to crash, loop, or behave erratically.
     -   **Ensure Feature Completeness**: Before delivering code, you must mentally review the project's history and the user's requests to ensure no previously implemented features have been accidentally removed or broken.
     -   **Request Permission for Feature Removal**: You are explicitly forbidden from removing a feature without first asking for and receiving permission from the user. If you believe a feature should be removed, you must propose its removal and explain your reasoning.
+
+-   **Testing Requirements**:
+
+    -   **Run Tests After Major Changes**: After implementing significant features or architectural changes, you **must** run `/run_tests` (via Discord bot) to validate system integrity.
+    -   **Add Tests for New Features**: When adding new features, you should add corresponding test cases to `testing.py` to ensure the feature can be validated in future test runs.
+    -   **Test Coverage**: The project maintains a comprehensive 64-test suite covering all core systems. New features should maintain or improve test coverage.
+    -   **Test Categories**: Current tests cover: Database operations, Bot identity, Relationship metrics, Memory systems, AI integration, Per-server isolation, Input validation & security, Global state, User management, Archive system, Image rate limiting, Channel configuration, and Cleanup verification.
+    -   **Automated Cleanup**: All tests include automatic cleanup verification to ensure no test data is left in the database after test runs.
 
 ## 2. File Modification Best Practices
 
@@ -193,14 +201,16 @@ This is the most critical section and supersedes all other guidelines in cases o
 -   **Ensure Environment Compatibility**: Avoid using special characters or emojis in `print` statements, logs, or any other console output. All code must be written to be compatible with standard terminal environments, including the Windows console, to prevent `UnicodeEncodeError` crashes.
     
 -   **Mandatory Pre-flight Checks**: Before delivering any code, you must perform a rigorous mental "linting" and review process. This includes:
-    
+
     1.  **Syntax & Indentation Check**: Meticulously verify all Python syntax, paying special attention to indentation, which was the source of a critical failure.
-        
+
     2.  **Logical Validation**: Review the logic to ensure it is sound, addresses the user's request correctly, and does not introduce new bugs. For example, verify that API call structures (like alternating user/assistant roles) are correctly formed.
-        
+
     3.  **Dependency Verification**: Ensure any new imports or modules are correctly handled and accounted for in the project structure.
-        
+
     4.  **File Modification Verification**: After using `filesystem:write_file`, confirm in your response what was changed and that the file was successfully updated.
+
+    5.  **Testing Validation**: For major changes, remind the user to run `/run_tests` to validate that all systems remain functional after your modifications.
 
 
 ---

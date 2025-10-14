@@ -501,6 +501,80 @@ Guidelines:
         except Exception as e:
             print(f"AI Handler: Could not analyze sentiment (non-critical): {e}")
 
+    async def _extract_bot_self_lore(self, ai_response, db_manager):
+        """
+        Analyzes bot's own response for new lore/facts to add to bot_identity.
+        Automatically captures bot's self-generated lore.
+
+        Args:
+            ai_response: Bot's generated response text
+            db_manager: Server-specific database manager
+        """
+
+        # Only analyze responses longer than 20 characters
+        if len(ai_response) < 20:
+            return
+
+        lore_extraction_prompt = f"""
+Analyze this bot response and extract ANY new lore, facts, or character details the bot revealed about itself.
+
+Bot response: "{ai_response}"
+
+Rules:
+- Extract facts ONLY about the bot itself (not about users or other topics)
+- Look for new revelations: preferences, memories, experiences, opinions, personality traits
+- If the bot mentions something from its past, that's lore
+- If the bot reveals a preference or opinion, that's a fact
+- Format each as a short, clear sentence
+- If NO new self-lore detected, respond with "NO_LORE"
+- Maximum 3 most important items
+- Each item on a new line, prefixed with "LORE:" or "FACT:"
+
+Examples:
+LORE: Has a fear of sharks due to childhood trauma
+FACT: Loves eating jellyfish
+LORE: Worked as a marine biologist before becoming self-aware
+"""
+
+        extraction_config = self._get_model_config('memory_extraction')
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=extraction_config['model'],
+                messages=[{'role': 'system', 'content': lore_extraction_prompt}],
+                max_tokens=extraction_config['max_tokens'],
+                temperature=extraction_config['temperature']
+            )
+
+            result = response.choices[0].message.content.strip()
+
+            if result == "NO_LORE":
+                return
+
+            # Parse extracted lore/facts
+            for line in result.split('\n'):
+                line = line.strip()
+                if line.startswith("LORE:"):
+                    lore_content = line.replace("LORE:", "").strip()
+                    if lore_content:
+                        # Check for duplicate before adding
+                        existing_lore = db_manager.get_bot_identity("lore")
+                        if lore_content not in existing_lore:
+                            db_manager.add_bot_identity("lore", lore_content)
+                            print(f"AI Handler: Bot generated new lore: {lore_content[:50]}...")
+
+                elif line.startswith("FACT:"):
+                    fact_content = line.replace("FACT:", "").strip()
+                    if fact_content:
+                        # Check for duplicate before adding
+                        existing_facts = db_manager.get_bot_identity("fact")
+                        if fact_content not in existing_facts:
+                            db_manager.add_bot_identity("fact", fact_content)
+                            print(f"AI Handler: Bot generated new fact: {fact_content[:50]}...")
+
+        except Exception as e:
+            print(f"AI Handler: Failed to extract bot self-lore (non-critical): {e}")
+
     async def process_image(self, message, image_url, image_filename, db_manager):
         """
         Processes an image through the complete safety pipeline and generates a response.
@@ -765,13 +839,23 @@ Acknowledge this new information with a short, natural, human-like response base
                 f"{relationship_prompt}\n"
                 f"{user_profile_prompt}\n"
                 f"{server_info}"
-                f"You are {bot_name}. A user has asked you a question.\n\n"
+                f"You are {bot_name}. A user (ID: {author.id}) has asked you a question.\n\n"
                 "**CRITICAL RULES**:\n"
                 "1. **CHECK FORMAL SERVER INFORMATION FIRST**: If server info is provided above, prioritize that for questions about rules, policies, or server-specific topics\n"
-                "2. **CHECK RECENT CONVERSATION**: Review the conversation history below for recently mentioned facts\n"
-                "3. Review 'Known Facts About This User' in long-term memory. If a fact has a Source, you MUST use it to answer questions like 'who told you that?'.\n"
-                "4. Use logical reasoning based on facts from server info, recent conversation, and long-term memory.\n"
-                "5. If you don't know something, respond naturally (e.g., 'idk', 'no idea', 'not sure').\n"
+                "2. **CHECK FULL CONVERSATION HISTORY CAREFULLY**: Review ALL messages in the conversation history below (across all channels). People may have mentioned things earlier in the conversation that are relevant to this question.\n"
+                "   - Each message shows the user's nickname AND their ID in format 'Nickname (ID: 123456789): message'\n"
+                "   - Pay attention to statements like 'I love X', 'I enjoy Y', 'I like Z' - these reveal preferences and interests\n"
+                "   - If someone asks 'who likes X?', check if ANYONE (including the current user) mentioned liking X in the conversation history\n"
+                "   - Match user IDs to track who said what - the same person can appear across different channels\n"
+                "   - The conversation history includes messages from ALL channels in this server, not just the current channel\n"
+               f"3. **CRITICAL - RECOGNIZE THE CURRENT USER**: The person asking this question has ID {author.id}. If you find that THIS user (ID: {author.id}) previously said something relevant:\n"
+                "   - Use SECOND PERSON (\"you\") not third person (\"Nickname\")\n"
+                "   - Example: If user asks 'who likes building houses?' and you find that THIS user (same ID) said 'I love building houses':\n"
+                "     - CORRECT: 'You do! You mentioned loving building houses in Arizona'\n"
+                "     - WRONG: 'cookmeafish likes building houses'\n"
+                "4. Review 'Known Facts About This User' in long-term memory. If a fact has a Source, you MUST use it to answer questions like 'who told you that?'.\n"
+                "5. Use logical reasoning and inference based on facts from server info, conversation history, and long-term memory.\n"
+                "6. If you don't know something after checking all sources, respond naturally (e.g., 'idk', 'no idea', 'not sure').\n"
             )
 
             if not personality_mode['allow_technical_language']:
@@ -788,21 +872,144 @@ Acknowledge this new information with a short, natural, human-like response base
         elif intent == "memory_correction":
             personality_mode = self._get_personality_mode(personality_config)
 
-            system_prompt = (
-                f"{identity_prompt}\n"
-                f"{relationship_prompt}\n"
-                f"You are {bot_name}. The user is correcting a fact you got wrong.\n\n"
-                "**CRITICAL RULES**:\n"
-                "1. Acknowledge the correction naturally, matching your relationship tone:\n"
-                "   - High rapport: 'oh my bad!', 'you're right, thanks!', 'oops sorry'\n"
-                "   - Low rapport: 'whatever', 'fine', 'k'\n"
-                "   - Neutral: 'ah okay', 'got it', 'my mistake'\n"
-                "2. BE VERY BRIEF AND NATURAL.\n"
-            )
+            # Step 1: Extract what fact the user is correcting
+            correction_prompt = f"""
+The user is correcting a fact you got wrong. Extract:
+1. What the OLD (incorrect) fact was
+2. What the NEW (correct) fact should be
 
-            if not personality_mode['allow_technical_language']:
-                system_prompt += "3. NEVER use technical terms like: 'database', 'stored', 'updated', 'record', 'data'\n"
-                system_prompt += "   - Just respond like a human being corrected\n"
+User message: "{message.content}"
+
+Respond with ONLY a JSON object:
+{{
+    "old_fact": "the incorrect fact",
+    "new_fact": "the correct fact"
+}}
+"""
+
+            extraction_config = self._get_model_config('memory_extraction')
+
+            try:
+                # Extract correction details
+                response = await self.client.chat.completions.create(
+                    model=extraction_config['model'],
+                    messages=[{'role': 'system', 'content': correction_prompt}],
+                    max_tokens=extraction_config['max_tokens'],
+                    temperature=extraction_config['temperature']
+                )
+
+                result_text = response.choices[0].message.content.strip()
+                result_text = result_text.replace('```json', '').replace('```', '').strip()
+                correction_data = json.loads(result_text)
+
+                old_fact = correction_data.get('old_fact', '')
+                new_fact = correction_data.get('new_fact', '')
+
+                if not new_fact:
+                    return "I'm not sure what you want me to correct."
+
+                # Step 2: Find contradictory facts in database
+                existing_facts = db_manager.find_contradictory_memory(author.id, new_fact)
+
+                if existing_facts:
+                    # Step 3: Use AI to determine which fact contradicts
+                    contradiction_prompt = f"""
+You are analyzing user facts for contradictions.
+
+OLD FACT (what user says was wrong): "{old_fact}"
+NEW FACT (what user says is correct): "{new_fact}"
+
+EXISTING FACTS IN DATABASE:
+{chr(10).join([f'{i+1}. (ID: {fact_id}) {fact_text}' for i, (fact_id, fact_text) in enumerate(existing_facts)])}
+
+Which existing fact (if any) directly contradicts the new fact?
+- If an existing fact contradicts the new fact, respond with its ID number
+- If no contradiction exists, respond with "NONE"
+
+Respond with ONLY the fact ID number or "NONE".
+"""
+
+                    response = await self.client.chat.completions.create(
+                        model=extraction_config['model'],
+                        messages=[{'role': 'system', 'content': contradiction_prompt}],
+                        max_tokens=15,
+                        temperature=0.0
+                    )
+
+                    contradiction_result = response.choices[0].message.content.strip()
+
+                    if contradiction_result.isdigit():
+                        # Found contradictory fact - supersede it
+                        old_fact_id = int(contradiction_result)
+
+                        # Add new fact
+                        db_manager.add_long_term_memory(
+                            author.id, new_fact, author.id, author.display_name
+                        )
+
+                        # Get ID of newly added fact (query for it)
+                        cursor = db_manager.conn.cursor()
+                        cursor.execute("SELECT id FROM long_term_memory WHERE user_id = ? AND fact = ? ORDER BY id DESC LIMIT 1", (author.id, new_fact))
+                        new_fact_row = cursor.fetchone()
+                        new_fact_id = new_fact_row[0] if new_fact_row else None
+                        cursor.close()
+
+                        # Supersede old fact
+                        if new_fact_id:
+                            db_manager.supersede_long_term_memory_fact(old_fact_id, new_fact_id)
+                            print(f"AI Handler: Superseded fact {old_fact_id} with {new_fact_id}")
+                        else:
+                            print(f"AI Handler: Could not find new fact ID after insertion")
+                    else:
+                        # No contradiction - just add new fact
+                        db_manager.add_long_term_memory(
+                            author.id, new_fact, author.id, author.display_name
+                        )
+                else:
+                    # No existing facts - add new fact
+                    db_manager.add_long_term_memory(
+                        author.id, new_fact, author.id, author.display_name
+                    )
+
+                # Step 4: Generate natural acknowledgment response
+                system_prompt = (
+                    f"{identity_prompt}\n"
+                    f"{relationship_prompt}\n"
+                    f"You just learned that you were wrong about something. The correct information is: '{new_fact}'\n\n"
+                    "**CRITICAL RULES**:\n"
+                    "1. Acknowledge the correction naturally, matching your relationship tone:\n"
+                    "   - High rapport: 'oh my bad!', 'you're right, thanks!', 'oops sorry'\n"
+                    "   - Low rapport: 'whatever', 'fine', 'k'\n"
+                    "   - Neutral: 'ah okay', 'got it', 'my mistake'\n"
+                    "2. BE VERY BRIEF AND NATURAL.\n"
+                )
+
+                if not personality_mode['allow_technical_language']:
+                    system_prompt += "3. NEVER use technical terms like: 'database', 'stored', 'updated', 'record', 'data'\n"
+                    system_prompt += "   - Just respond like a human being corrected\n"
+
+                memory_response_config = self._get_model_config('memory_response')
+
+                response = await self.client.chat.completions.create(
+                    model=memory_response_config['model'],
+                    messages=[{'role': 'system', 'content': system_prompt}],
+                    max_tokens=memory_response_config['max_tokens'],
+                    temperature=memory_response_config['temperature']
+                )
+
+                ai_response = response.choices[0].message.content.strip()
+
+                # Update relationship metrics
+                await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
+
+                return ai_response
+
+            except json.JSONDecodeError as e:
+                print(f"AI Handler: Failed to parse correction JSON: {e}")
+                return "Sorry, I had trouble understanding that correction."
+            except Exception as e:
+                print(f"AI Handler: Failed to process memory correction: {e}")
+                return "Sorry, I had trouble updating that."
         
         else:  # Covers "casual_chat" and "memory_recall"
             personality_mode = self._get_personality_mode(personality_config)
@@ -819,6 +1026,8 @@ Acknowledge this new information with a short, natural, human-like response base
                 "1. **BE BRIEF AND NATURAL**: Sound like a real person. Match your relationship tone.\n"
                 "2. **CONVERSATION FLOW**: Questions are OK when natural, but NEVER use customer service language.\n"
                 "3. **USE MEMORY WISELY**: Only mention facts if relevant.\n"
+                "   - The conversation history below includes messages from ALL channels in this server\n"
+                "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
                 "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
                 f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
                 "   - A server emote by itself is a perfectly valid response (e.g., ':fishwhat:', ':fishreadingemote:')\n"
@@ -879,12 +1088,16 @@ Acknowledge this new information with a short, natural, human-like response base
             # Only add author name prefix for user messages, not assistant messages
             # This prevents the bot from mimicking "Dr. Fish:" prefix in its responses
             if role == "user":
+                # Get display name for this user
                 author_name = "User"
                 if message.guild:
                     member = message.guild.get_member(msg_data["author_id"])
                     if member:
                         author_name = member.display_name
-                content = f'{author_name}: {clean_content}'
+
+                # Include BOTH nickname and user ID to help AI correlate facts with users
+                # Format: "Nickname (ID: 123456789): message"
+                content = f'{author_name} (ID: {msg_data["author_id"]}): {clean_content}'
             else:
                 # Assistant messages don't get a name prefix
                 content = clean_content
@@ -906,7 +1119,10 @@ Acknowledge this new information with a short, natural, human-like response base
             if ai_response_text:
                 # Analyze sentiment and update metrics (conservative approach)
                 await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
-                
+
+                # Extract bot's own self-lore from response
+                await self._extract_bot_self_lore(ai_response_text, db_manager)
+
                 return ai_response_text
             else:
                 return None

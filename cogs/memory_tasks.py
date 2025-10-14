@@ -82,29 +82,34 @@ class MemoryTasksCog(commands.Cog):
                 conversation_text = "\n".join([f"- {msg}" for msg in messages_list])
 
                 # Create AI prompt for extracting facts
-                extraction_prompt = f"""Analyze the following messages from a Discord user and extract ANY important facts, preferences, or information worth remembering about them.
+                extraction_prompt = f"""Analyze the following messages from a Discord user (User ID: {user_id}) and extract ANY important facts, preferences, or information worth remembering about THIS SPECIFIC USER.
 
 Extract facts such as:
 - Personal preferences (favorite things, likes/dislikes)
 - Life details (job, hobbies, location, family)
 - Opinions and beliefs
 - Future plans or goals
-- Anything the bot should remember for future conversations
+- Anything the bot should remember for future conversations with THIS user
 
-User's messages from the last 24 hours:
+User's messages:
 {conversation_text}
 
-Instructions:
-- Extract ONLY facts that are clearly stated or strongly implied
-- Format each fact as a short, clear sentence
+**CRITICAL INSTRUCTIONS**:
+- Extract facts about THIS USER ONLY (the one who wrote these messages)
+- Ignore questions the user asks about other people
+- Write facts in a way that clearly refers to THIS user, not "someone" or vague references
+- If the user says "I love X", extract as "Loves X" (about them specifically)
+- If the user asks "who likes X?" without stating they like it themselves, DO NOT extract a fact about liking X
+- Extract ONLY facts that are clearly stated or strongly implied about THIS user's own life, preferences, and experiences
+- Format each fact as a short, clear sentence starting with a verb or adjective (e.g., "Loves building houses", "Works as an engineer")
 - If there are NO meaningful facts to extract, respond with "NO_FACTS"
 - Maximum 5 most important facts
 - Each fact should be on a new line, prefixed with "FACT:"
 
-Example output:
-FACT: Likes pizza
-FACT: Works as a software engineer
-FACT: Has a cat named Whiskers
+Example output (facts about THIS user):
+FACT: Loves building houses in Arizona
+FACT: Finds building houses to be hard work
+FACT: Favorite food is jellyfish stuffed inside a red turkey
 """
 
                 # Call OpenAI API
@@ -133,17 +138,69 @@ FACT: Has a cat named Whiskers
                         if fact:
                             facts.append(fact)
 
-                # Save each fact to database
+                # Save each fact to database with contradiction detection
                 for fact in facts:
-                    # Use "Memory Consolidation" as the source
-                    db_manager.add_long_term_memory(
-                        user_id=user_id,
-                        fact=fact,
-                        source_user_id=user_id,
-                        source_nickname=user_name
-                    )
-                    memories_added += 1
-                    print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                    # Check for contradictory memories
+                    existing_facts = db_manager.find_contradictory_memory(user_id, fact)
+
+                    if existing_facts:
+                        # Use AI to determine if there's a contradiction
+                        contradiction_prompt = f"""You are a memory contradiction detector. Compare a new fact with existing facts about a user.
+
+NEW FACT: {fact}
+
+EXISTING FACTS:
+{chr(10).join([f"{i+1}. {ef['fact']}" for i, ef in enumerate(existing_facts)])}
+
+Determine if the new fact contradicts any existing fact. If it does:
+- Respond with ONLY the number (1, 2, 3, etc.) of the contradicted fact that should be replaced
+- The new fact should replace the old one if it's more recent or more specific
+
+If there is NO contradiction:
+- Respond with ONLY the word "NO_CONTRADICTION"
+
+Response (number or NO_CONTRADICTION):"""
+
+                        try:
+                            response = await client.chat.completions.create(
+                                model=model,
+                                messages=[{'role': 'system', 'content': contradiction_prompt}],
+                                max_tokens=10,
+                                temperature=0.0
+                            )
+
+                            contradiction_result = response.choices[0].message.content.strip()
+
+                            # Check if AI detected a contradiction
+                            if contradiction_result.isdigit():
+                                # AI identified a contradictory fact - update it
+                                fact_index = int(contradiction_result) - 1
+                                if 0 <= fact_index < len(existing_facts):
+                                    old_fact_id = existing_facts[fact_index]['id']
+                                    db_manager.update_long_term_memory_fact(old_fact_id, fact)
+                                    print(f"Updated contradictory memory for user {user_id}: {fact[:50]}...")
+                                else:
+                                    # Invalid index, add as new fact
+                                    db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                                    print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                            else:
+                                # No contradiction detected, add as new fact
+                                db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                                print(f"Saved memory for user {user_id}: {fact[:50]}...")
+
+                            memories_added += 1
+
+                        except Exception as e:
+                            # If contradiction detection fails, fall back to adding as new
+                            print(f"Warning: Contradiction detection failed for user {user_id}: {e}")
+                            db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                            memories_added += 1
+                            print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                    else:
+                        # No existing similar facts, add as new
+                        db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                        memories_added += 1
+                        print(f"Saved memory for user {user_id}: {fact[:50]}...")
 
                 users_processed += 1
                 print(f"Processed user {user_id}: {len(facts)} facts extracted")

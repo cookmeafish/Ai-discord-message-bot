@@ -57,7 +57,7 @@ class BotGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Discord Bot Control Panel")
-        self.geometry("850x750")
+        self.geometry("850x900")
         self.bot_process = None
 
         self.config_manager = ConfigManager()
@@ -114,13 +114,24 @@ class BotGUI(ctk.CTk):
         self.channel_purpose_textbox.pack(fill="x", padx=10, pady=2)
         self.channel_purpose_textbox.insert("1.0", "Example: Strictly answer user questions based on the server rules. Be formal and direct.")
 
+        # Add Channel button
+        self.add_channel_button = ctk.CTkButton(
+            self.right_frame,
+            text="Add Channel",
+            command=self.add_channel,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        self.add_channel_button.pack(padx=10, pady=(5, 10))
+
         ctk.CTkLabel(self.right_frame, text="Currently Active Channels:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
         self.active_channels_frame = ctk.CTkScrollableFrame(self.right_frame, height=100)
         self.active_channels_frame.pack(fill="x", padx=10)
         self.update_active_channels_display()
 
         ctk.CTkLabel(self.right_frame, text="Bot Console Output:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
-        self.log_textbox = ctk.CTkTextbox(self.right_frame, height=150)
+        self.log_textbox = ctk.CTkTextbox(self.right_frame, height=300)
         self.log_textbox.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         self.log_textbox.configure(state="disabled")
 
@@ -144,6 +155,10 @@ class BotGUI(ctk.CTk):
         self.output_queue = queue.Queue()
         self.after(100, self.process_log_queue)
 
+        # Track config file modification time for auto-refresh
+        self.config_last_modified = os.path.getmtime(CONFIG_FILE) if os.path.exists(CONFIG_FILE) else 0
+        self.after(1000, self.check_config_changes)
+
     def process_log_queue(self):
         try:
             while True:
@@ -157,6 +172,28 @@ class BotGUI(ctk.CTk):
             pass
         self.after(100, self.process_log_queue)
 
+    def check_config_changes(self):
+        """Periodically check if config.json has been modified externally and refresh display."""
+        try:
+            if os.path.exists(CONFIG_FILE):
+                current_modified = os.path.getmtime(CONFIG_FILE)
+                if current_modified > self.config_last_modified:
+                    # Config file was modified externally, refresh the display
+                    self.update_active_channels_display()
+                    self.config_last_modified = current_modified
+        except Exception as e:
+            # Silently handle errors to avoid disrupting GUI
+            pass
+        # Check again in 1 second
+        self.after(1000, self.check_config_changes)
+
+    def log_to_console(self, message):
+        """Write a message to the Bot Console Output textbox."""
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.insert("end", message + "\n")
+        self.log_textbox.see("end")
+        self.log_textbox.configure(state="disabled")
+
     def _stream_reader(self, stream):
         for line in iter(stream.readline, ''):
             self.output_queue.put(line)
@@ -169,12 +206,18 @@ class BotGUI(ctk.CTk):
         
     def update_active_channels_display(self):
         self.config = self.config_manager.get_config()
+
+        # Batch widget updates to prevent flashing
+        self.active_channels_frame.update_idletasks()
+
         for widget in self.active_channels_frame.winfo_children():
             widget.destroy()
+
         settings = self.config.get('channel_settings', {})
         if not settings:
             ctk.CTkLabel(self.active_channels_frame, text="No specific channels configured yet.").pack(anchor="w")
             return
+
         for channel_id, channel_config in settings.items():
             purpose = channel_config.get('purpose', 'Default purpose')
 
@@ -220,7 +263,13 @@ class BotGUI(ctk.CTk):
         edit_window = ctk.CTkToplevel(self)
         edit_window.title(f"Edit Channel {channel_id}")
         edit_window.geometry("550x600")
-        edit_window.grab_set()  # Make it modal
+
+        # Allow minimize/maximize
+        edit_window.resizable(True, True)
+        edit_window.minsize(450, 500)
+
+        # Make it modal (but this doesn't prevent minimize)
+        edit_window.grab_set()
 
         # Channel ID display (non-editable)
         ctk.CTkLabel(edit_window, text=f"Channel ID: {channel_id}", font=("Roboto", 14, "bold")).pack(pady=(20, 10))
@@ -273,7 +322,7 @@ class BotGUI(ctk.CTk):
             variable=server_info_var
         )
         server_info_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
-        ToolTip(server_info_checkbox, "Load text files from database/Formal_Server_Info/\nfor rules, policies, or server-specific information.\nIdeal for formal channels like rules or moderation.")
+        ToolTip(server_info_checkbox, "Load text files from Server_Info/\nfor rules, policies, or server-specific information.\nIdeal for formal channels like rules or moderation.")
 
         # Buttons frame
         button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
@@ -328,14 +377,43 @@ class BotGUI(ctk.CTk):
         )
         cancel_btn.pack(side="left", padx=10)
 
+    def add_channel(self):
+        """Adds a new channel from the input fields."""
+        channel_id = self.channel_id_entry.get().strip()
+        channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c").strip()
+
+        # Validate inputs
+        if not channel_id.isdigit():
+            self.log_to_console("Error: Channel ID must be a valid number")
+            return
+
+        # Use None if no purpose provided or if it's still the example text (matches /activate behavior)
+        if not channel_purpose or channel_purpose.startswith("Example:"):
+            channel_purpose = None
+
+        # Use the same method as /activate command for consistency
+        self.config_manager.add_or_update_channel_setting(channel_id, channel_purpose, None)
+
+        # Clear input fields
+        self.channel_id_entry.delete(0, 'end')
+        self.channel_purpose_textbox.delete("1.0", "end")
+        self.channel_purpose_textbox.insert("1.0", "Example: Strictly answer user questions based on the server rules. Be formal and direct.")
+
+        # Update display and log
+        self.update_active_channels_display()
+        self.log_to_console(f"Channel {channel_id} activated successfully!")
+        print(f"Channel {channel_id} activated successfully!")
+
     def remove_channel(self, channel_id):
         """Removes a channel from the active channels list."""
         success = self.config_manager.remove_channel_setting(channel_id)
         if success:
             print(f"Removed channel {channel_id} from active channels")
+            self.log_to_console(f"Removed channel {channel_id} from active channels")
             self.update_active_channels_display()
         else:
             print(f"Failed to remove channel {channel_id}")
+            self.log_to_console(f"Failed to remove channel {channel_id}")
 
     def load_secrets(self):
         if not os.path.exists(ENV_FILE):
@@ -350,6 +428,7 @@ class BotGUI(ctk.CTk):
         set_key(ENV_FILE, "DISCORD_TOKEN", self.token_entry.get())
         set_key(ENV_FILE, "OPENAI_API_KEY", self.openai_key_entry.get())
         print("Secrets saved to .env file!")
+        self.log_to_console("Secrets saved to .env file!")
 
         new_config = self.config_manager.get_config()
 
@@ -364,20 +443,27 @@ class BotGUI(ctk.CTk):
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks."
         }
-        
+
         channel_id = self.channel_id_entry.get()
         channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c")
         if channel_id.isdigit() and channel_purpose.strip():
             if 'channel_settings' not in new_config:
                 new_config['channel_settings'] = {}
-            
+
             new_channel_setting = new_config['default_personality'].copy()
             new_channel_setting['purpose'] = channel_purpose
             new_config['channel_settings'][channel_id] = new_channel_setting
             print(f"Channel {channel_id} setting prepared.")
+            self.log_to_console(f"Channel {channel_id} activated.")
 
         self.config_manager.update_config(new_config)
+
+        # Update modification time tracker to prevent file watcher from triggering
+        if os.path.exists(CONFIG_FILE):
+            self.config_last_modified = os.path.getmtime(CONFIG_FILE)
+
         self.update_active_channels_display()
+        self.log_to_console("Configuration saved successfully!")
 
     def get_python_executable(self):
         return sys.executable
