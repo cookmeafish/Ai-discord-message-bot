@@ -4,13 +4,15 @@ This document tracks future development features for the Discord bot.
 
 ## Phase 2 (COMPLETED ✅)
 
-All Phase 2 features have been fully implemented as of 2025-10-13:
+All Phase 2 features have been fully implemented as of 2025-10-14:
 
 - ✅ Per-Server Database Isolation
 - ✅ Memory consolidation system (AI-powered fact extraction using GPT-4o)
-- ✅ **Smart Contradiction Detection** (semantic similarity search + AI-powered duplicate prevention)
-- ✅ **Natural Memory Correction System** (users can correct bot's memory naturally)
-- ✅ **Bot Self-Lore Extraction** (automated extraction of relevant lore for emotional context)
+- ✅ **Smart Contradiction Detection** (semantic similarity search + AI-powered duplicate prevention) - Implemented in consolidation 2025-10-14
+- ✅ **Natural Memory Correction System** (users can correct bot's memory naturally) - Fully wired up 2025-10-14
+- ✅ **Bot Self-Lore Extraction** (automated extraction of bot's self-generated lore) - Implemented 2025-10-14
+- ✅ **Memory Schema Migration** (added status, superseded_by_id, last_validated_timestamp columns) - Migrated 2025-10-14
+- ✅ **Input Validation & SQL Injection Protection** (defense-in-depth security) - Implemented 2025-10-13
 - ✅ Automatic archival (JSON before deletion)
 - ✅ Auto-trigger at 500 messages per server
 - ✅ SQLite auto-vacuum
@@ -19,7 +21,7 @@ All Phase 2 features have been fully implemented as of 2025-10-13:
 - ✅ Server-Wide Short-Term Memory (cross-channel context)
 - ✅ Formal Server Information System (text file loading)
 - ✅ Improved Intent Classification (memory_recall vs factual_question)
-- ✅ **Comprehensive Testing Suite** (64 tests across 17 categories, accessible via `/run_tests`)
+- ✅ **Comprehensive Testing Suite** (61 tests across 17 categories, 100% pass rate, accessible via `/run_tests`)
 
 ## Phase 3 (Planned)
 
