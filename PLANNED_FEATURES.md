@@ -47,6 +47,7 @@ All Phase 2 features have been fully implemented as of 2025-10-13:
 ### Feature Ideas
 
 - **Roleplay Actions with Italic Formatting**: Bot formats actions as italics (e.g., "*walks over to the counter*") for more immersive roleplay interactions
+- **Concurrent Reply Handling Investigation**: Investigate how the bot handles multiple simultaneous replies (10+ people chatting with bot at once). Current behavior with concurrent Discord mentions/replies needs testing for potential race conditions, database conflicts, or API rate limiting issues.
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
 - Advanced relationship dynamics (jealousy, loyalty tracking)

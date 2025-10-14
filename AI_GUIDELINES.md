@@ -41,7 +41,7 @@ Your primary role is to act as an expert programmer and a diligent architect for
 -   **Testing Requirements**:
 
     -   **Run Tests After Major Changes**: After implementing significant features or architectural changes, you **must** run `/run_tests` (via Discord bot) to validate system integrity.
-    -   **Add Tests for New Features**: When adding new features, you should add corresponding test cases to `testing.py` to ensure the feature can be validated in future test runs.
+    -   **Add Tests for New Features**: When adding new features, you **should highly consider** adding corresponding test cases to `testing.py` to ensure the feature can be validated in future test runs. This maintains system reliability and helps catch regressions early.
     -   **Test Coverage**: The project maintains a comprehensive 64-test suite covering all core systems. New features should maintain or improve test coverage.
     -   **Test Categories**: Current tests cover: Database operations, Bot identity, Relationship metrics, Memory systems, AI integration, Per-server isolation, Input validation & security, Global state, User management, Archive system, Image rate limiting, Channel configuration, and Cleanup verification.
     -   **Automated Cleanup**: All tests include automatic cleanup verification to ensure no test data is left in the database after test runs.
