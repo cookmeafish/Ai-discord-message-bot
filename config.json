@@ -64,6 +64,7 @@
         "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
         "purpose": "To chat with users and assist with server tasks."
     },
+    "alternative_nicknames": [],
     "channel_settings": {
         "1427004937442951342": {
             "personality_traits": "chill, low-energy, concise, casual",
@@ -79,7 +80,14 @@
             "purpose": "To chat with users and assist with server tasks.",
             "random_reply_chance": 0.05
         },
-        "1427091957926068265": {
+        "1284389415430389760": {
+            "personality_traits": "chill, low-energy, concise, casual",
+            "lore": "I am a helpful AI living on this Discord server.",
+            "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
+            "purpose": "To chat with users and assist with server tasks.",
+            "random_reply_chance": 0.05
+        },
+        "1427827467384783044": {
             "personality_traits": "chill, low-energy, concise, casual",
             "lore": "I am a helpful AI living on this Discord server.",
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",

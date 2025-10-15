@@ -37,11 +37,11 @@ class MultiDBManager:
 
     def _get_db_filename(self, server_name, guild_id):
         """
-        Generates database filename: servername_data.db
-        Falls back to guild_id if server name can't be sanitized.
+        Generates database filename: {guild_id}_{servername}_data.db
+        Guild ID ensures uniqueness even if servers share names or get renamed.
         """
         sanitized_name = self._sanitize_server_name(server_name)
-        return f"{sanitized_name}_data.db"
+        return f"{guild_id}_{sanitized_name}_data.db"
 
     def _discover_existing_databases(self):
         """

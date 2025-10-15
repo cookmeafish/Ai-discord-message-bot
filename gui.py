@@ -99,6 +99,14 @@ class BotGUI(ctk.CTk):
         self.default_lore_textbox.pack(fill="x", padx=10, pady=2)
         self.default_lore_textbox.insert("1.0", self.config.get('default_personality', {}).get('lore', 'I am a helpful AI living on this Discord server.'))
 
+        ctk.CTkLabel(self.left_frame, text="Alternative Nicknames (comma-separated):").pack(padx=10, anchor="w", pady=(5,0))
+        self.alternative_nicknames_entry = ctk.CTkEntry(self.left_frame, width=320)
+        self.alternative_nicknames_entry.pack(padx=10, pady=2)
+        # Load existing nicknames from config (list to comma-separated string)
+        existing_nicknames = self.config.get('alternative_nicknames', [])
+        if existing_nicknames:
+            self.alternative_nicknames_entry.insert(0, ', '.join(existing_nicknames))
+
         self.right_frame = ctk.CTkFrame(self)
         self.right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nswe")
         
@@ -443,6 +451,14 @@ class BotGUI(ctk.CTk):
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks."
         }
+
+        # Save alternative nicknames (convert comma-separated string to list)
+        nicknames_str = self.alternative_nicknames_entry.get().strip()
+        if nicknames_str:
+            # Split by comma and strip whitespace from each nickname
+            new_config['alternative_nicknames'] = [nick.strip() for nick in nicknames_str.split(',') if nick.strip()]
+        else:
+            new_config['alternative_nicknames'] = []
 
         channel_id = self.channel_id_entry.get()
         channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c")

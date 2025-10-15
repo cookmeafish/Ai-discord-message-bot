@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 import random
 import asyncio
+import re
 from modules.logging_manager import get_logger
 
 class EventsCog(commands.Cog):
@@ -12,10 +13,58 @@ class EventsCog(commands.Cog):
     Implements the Core Interaction Handler (3.1) from the architecture.
     """
     _processing_messages = set()
+    _active_responses = 0  # Track number of concurrent AI responses
+    _max_concurrent_responses = 3  # Maximum concurrent responses to prevent overwhelming the bot
 
     def __init__(self, bot):
         self.bot = bot
         self.logger = get_logger()
+
+    def _normalize_text(self, text):
+        """
+        Normalizes text by removing spaces, periods, and special characters.
+        Converts to lowercase for case-insensitive matching.
+
+        Examples:
+            "Dr. Fish" -> "drfish"
+            "Gordon Ramsay" -> "gordonramsay"
+            "shark-bot" -> "sharkbot"
+        """
+        # Remove all non-alphanumeric characters and convert to lowercase
+        return re.sub(r'[^a-z0-9]', '', text.lower())
+
+    def _check_bot_name_mentioned(self, message):
+        """
+        Checks if the bot's name or any alternative nicknames are mentioned in the message.
+        Uses flexible matching that ignores spaces, periods, and special characters.
+
+        Returns:
+            bool: True if bot name/nickname is mentioned, False otherwise
+        """
+        # Normalize the message content
+        normalized_message = self._normalize_text(message.content)
+
+        # Get bot's Discord username
+        bot_username = self.bot.user.name
+        if self._normalize_text(bot_username) in normalized_message:
+            return True
+
+        # Get bot's server nickname (if it has one)
+        if message.guild:
+            bot_member = message.guild.get_member(self.bot.user.id)
+            if bot_member and bot_member.nick:
+                if self._normalize_text(bot_member.nick) in normalized_message:
+                    return True
+
+        # Get alternative nicknames from config
+        config = self.bot.config_manager.get_config()
+        alternative_nicknames = config.get('alternative_nicknames', [])
+
+        for nickname in alternative_nicknames:
+            if self._normalize_text(nickname) in normalized_message:
+                return True
+
+        return False
 
     @commands.Cog.listener("on_ready")
     async def on_cog_ready(self):
@@ -77,8 +126,8 @@ class EventsCog(commands.Cog):
             if message.reference.resolved.author.id == self.bot.user.id:
                 is_reply_to_bot = True
 
-        # Check if bot's name is mentioned in message content (case-insensitive)
-        bot_name_mentioned = self.bot.user.name.lower() in message.content.lower()
+        # Check if bot's name/nickname is mentioned in message (flexible matching)
+        bot_name_mentioned = self._check_bot_name_mentioned(message)
 
         was_directed_at_bot = is_mentioned or is_reply_to_bot or bot_name_mentioned
 
@@ -137,10 +186,20 @@ class EventsCog(commands.Cog):
 
             # Respond ONLY if directed at bot (mentioned, replied to, or name mentioned)
             if was_directed_at_bot:
+                # Check if bot is currently overwhelmed (too many concurrent responses)
+                if EventsCog._active_responses >= EventsCog._max_concurrent_responses:
+                    self.logger.warning(f"Bot is currently processing {EventsCog._active_responses} responses (max: {EventsCog._max_concurrent_responses}). Skipping message from {message.author.name}")
+                    await message.reply("I'm currently responding to multiple people at once. Please wait a moment and try again!")
+                    return
+
                 self.logger.info(f"Generating response for message from {message.author.name} (mentioned={is_mentioned}, reply={is_reply_to_bot}, name_mentioned={bot_name_mentioned}, has_images={has_images})")
 
-                async with message.channel.typing():
-                    try:
+                # Increment active response counter
+                EventsCog._active_responses += 1
+                self.logger.debug(f"Active responses: {EventsCog._active_responses}/{EventsCog._max_concurrent_responses}")
+
+                try:
+                    async with message.channel.typing():
                         # Check if message has images - if so, process through image pipeline
                         if has_images:
                             self.logger.info(f"Message has {len(message.attachments)} attachment(s), checking for images")
@@ -211,6 +270,10 @@ class EventsCog(commands.Cog):
                         self.logger.error(f"Failed to generate AI response: {e}", exc_info=True)
                         # Optionally send an error message to the channel
                         await message.reply("Sorry, I encountered an error while processing that.")
+                finally:
+                    # Always decrement active response counter
+                    EventsCog._active_responses -= 1
+                    self.logger.debug(f"Response complete. Active responses: {EventsCog._active_responses}/{EventsCog._max_concurrent_responses}")
 
         finally:
             # Always remove from processing set

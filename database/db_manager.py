@@ -651,9 +651,13 @@ class DBManager:
                 "directed_at_bot": bool(row[5])
             } for row in rows]
 
-            # Create archive filename with timestamp
+            # Extract guild_id from db_path (format: {guild_id}_{name}_data.db)
+            db_filename = os.path.basename(self.db_path)
+            guild_id = db_filename.split('_')[0] if '_' in db_filename else "unknown"
+
+            # Create archive filename with guild_id and timestamp
             archive_timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            archive_filename = f"short_term_archive_{archive_timestamp}.json"
+            archive_filename = f"short_term_archive_{guild_id}_{archive_timestamp}.json"
             archive_path = os.path.join(archive_dir, archive_filename)
 
             # Write to JSON file

@@ -4,7 +4,18 @@ This document tracks future development features for the Discord bot.
 
 ## Phase 2 (COMPLETED ✅)
 
-All Phase 2 features have been fully implemented as of 2025-10-14:
+All Phase 2 features have been fully implemented as of 2025-10-14.
+
+### Additional Updates - 2025-10-14:
+
+- ✅ **Multi-Server Database Fix** (guild_id prefix prevents filename collisions)
+- ✅ **Archive Filename Fix** (guild_id in archive names for per-server identification)
+- ✅ **Flexible Nickname Detection** (bot responds to name variations: "Dr. Fish", "drfish", "dr fish")
+- ✅ **Alternative Nicknames System** (configurable via GUI, supports any custom variations)
+- ✅ **Concurrent Response Limit** (max 3 simultaneous responses to prevent bot overload)
+- ✅ **Discord Reply Feature** (bot uses Discord's native reply UI for all responses)
+
+###  Phase 2 Core Features:
 
 - ✅ Per-Server Database Isolation
 - ✅ Memory consolidation system (AI-powered fact extraction using GPT-4o)
@@ -49,7 +60,6 @@ All Phase 2 features have been fully implemented as of 2025-10-14:
 ### Feature Ideas
 
 - **Roleplay Actions with Italic Formatting**: Bot formats actions as italics (e.g., "*walks over to the counter*") for more immersive roleplay interactions
-- **Concurrent Reply Handling Investigation**: Investigate how the bot handles multiple simultaneous replies (10+ people chatting with bot at once). Current behavior with concurrent Discord mentions/replies needs testing for potential race conditions, database conflicts, or API rate limiting issues.
 - **AI Image Generation with Natural Detection**: Bot can draw "childlike" images based on user requests
   - **Provider**: Together.ai API ($0.002/image, 99.9% uptime SLA)
   - **Natural language detection**: "draw a cat", "sketch a house", "make me a picture of..."
