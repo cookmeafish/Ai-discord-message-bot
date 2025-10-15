@@ -69,6 +69,7 @@ The bot has a configurable personality mode that controls immersion and language
 - **Immersive Character Mode** (`immersive_character`): When enabled (default: true), bot believes it IS the character, not an AI
 - **Allow Technical Language** (`allow_technical_language`): When disabled (default: false), bot forbidden from using robotic terms like "cached", "stored", "database"
 - **Use Server Information** (`use_server_info`): When enabled (default: false), bot loads text files from `Server_Info/` directory (located in project root) for rules, policies, and formal documentation
+- **Roleplay Formatting** (`enable_roleplay_formatting`): When enabled (default: true), bot formats physical actions in italics (e.g., *walks over*, *sighs deeply*). Only works when Immersive Character Mode is enabled.
 
 **Configuration hierarchy:**
 1. Global defaults in `config.json` under `personality_mode`
@@ -80,15 +81,26 @@ The bot has a configurable personality mode that controls immersion and language
 - `_build_bot_identity_prompt(db_manager, channel_config)` includes conditional immersion instructions
 - All intent prompts (memory_storage, factual_question, memory_correction, casual_chat) enforce natural language based on settings
 - `_load_server_info(channel_config)` loads formal server documentation when `use_server_info` is enabled
+- `_apply_roleplay_formatting(text, channel_config)` applies action formatting via `FormattingHandler` module
+
+**Roleplay Formatting Implementation (2025-10-15)**:
+- `modules/formatting_handler.py` - Detects and formats physical actions using regex patterns
+- 50+ action verbs across 8 categories (movement, gestures, facial expressions, sounds, looking, physical contact, etc.)
+- Only formats short sentences (<15 words) that start with action verbs
+- Preserves existing formatting (doesn't re-format already italicized text)
+- Conservative approach: won't format sentences starting with "I" or containing dialogue
+- Applied to all AI responses (memory_storage, memory_correction, casual_chat, image responses)
+- Configurable per-channel via GUI checkbox or config.json setting
 
 ### 4. Core Message Flow (Per-Server)
 1. `cogs/events.py:on_message()` - Receives message
 2. Guild validation and server-specific database retrieval via `bot.get_server_db(guild.id, guild.name)`
 3. Message logged to server database via `db_manager.log_message()`
-4. Intent classified via `ai_handler._classify_intent()` (5 categories: memory_storage, memory_correction, factual_question, memory_recall, casual_chat)
+4. Intent classified via `ai_handler._classify_intent()` (6 categories: image_generation, memory_storage, memory_correction, factual_question, memory_recall, casual_chat)
+   - **image_generation**: User requesting bot to draw/sketch/create an image ("draw me a cat", "can you sketch a house")
    - **memory_recall**: Personal questions about user or recent conversation ("what's my favorite food?", "do you remember what I said?")
    - **factual_question**: General knowledge questions ("what's the capital of France?")
-   - Improved classification distinguishes between personal memory recall and general factual queries
+   - Improved classification distinguishes between image generation, personal memory recall, and general factual queries
 5. Response generated via `ai_handler.generate_response(message, short_term_memory, db_manager)` with:
    - Bot identity from server database (`_build_bot_identity_prompt(db_manager)`)
    - Relationship metrics (`_build_relationship_context(user_id, channel_config, db_manager)`)
@@ -118,6 +130,7 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `main.py` - Bot initialization, loads cogs, auto-populates identity
 - `cogs/events.py` - Message handling and AI response triggering
 - `modules/ai_handler.py` - OpenAI API interface, intent classification, sentiment analysis
+- `modules/formatting_handler.py` - Roleplay action detection and italic formatting (2025-10-15)
 
 ### Database Layer
 - `database/multi_db_manager.py` - Central manager for all server databases
@@ -128,9 +141,19 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `Server_Info/` - Text files with server rules, policies, and formal documentation (in project root)
 
 ### Configuration
-- `config.json` - All configurable bot parameters (model names, limits, channel settings, per-server settings)
-- `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY)
+- `config.json` - All configurable bot parameters (model names, limits, channel settings, per-server settings, image generation)
+- `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 - `gui.py` - Graphical configuration interface with Server Manager
+
+### Image Generation Module (2025-10-15)
+- `modules/image_generator.py` - Together.ai API integration for AI image generation
+  - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
+  - **Style**: Childlike crayon drawings ("kindergarten art style")
+  - **Rate Limiting**: 5 images per user per day (configurable)
+  - **Cost**: $0.002 per image (~$2 per 1,000 images)
+  - **Intent**: `image_generation` - Natural language detection ("draw me a cat", "sketch a house")
+  - **Config**: `config.json` under `image_generation` section
+  - **GUI Integration**: Checkbox for enable/disable, field for daily limit
 
 ### GUI Server Manager (2025-10-14)
 The GUI provides a server-first interface for managing bot settings:
@@ -230,12 +253,12 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 64 tests across 17 categories
+  - Runs 76 tests across 19 categories
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (3), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Cleanup Verification (5)
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (3), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Cleanup Verification (5)
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 ## AI Model Configuration
@@ -358,6 +381,8 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
 - ✅ **Formal Server Information System**: Load text files for rules/policies in formal channels
 - ✅ **Improved Intent Classification**: Better distinction between memory_recall and factual_question
 - ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
+- ✅ **Roleplay Action Formatting**: Automatic italic formatting of physical actions for immersive roleplay (2025-10-15)
+- ✅ **AI Image Generation**: Natural language-triggered childlike drawings via Together.ai FLUX.1-schnell (2025-10-15)
 
 ### Phase 3 (PLANNED)
 - ⏳ **Proactive engagement subsystem**: Planned

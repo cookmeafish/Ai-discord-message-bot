@@ -34,6 +34,10 @@ This is an advanced, context-aware AI Discord bot designed for natural and engag
 
 - **Immersive Character Mode**: Configurable personality system where the bot can genuinely believe it's the character (not an AI roleplaying), with natural language enforcement to eliminate robotic terms like "cached" or "database". Fully configurable per-channel for formal/technical channels.
 
+- **Roleplay Action Formatting**: Automatically detects and formats physical actions in italics (e.g., *walks over to the counter*, *sighs deeply*) for more immersive roleplay interactions. Only formats clear action sentences that start with action verbs. Configurable per-channel and requires Immersive Character Mode to be enabled.
+
+- **AI Image Generation**: Bot can draw "childlike" crayon-style images when users ask naturally (e.g., "draw me a cat", "sketch a house"). Uses Together.ai's FLUX.1-schnell model with automatic intent detection, rate limiting (5 images per user per day), and configurable via GUI. Responses include personality-appropriate captions in character.
+
 - **Memory Consolidation (Per-Server)**: Automated system that extracts facts from conversations using GPT-4o, archives message history to JSON, and clears short-term memory. Each server's consolidation runs independently at 500 messages or via `/consolidate_memory` command.
 
 - **Smart Memory Correction**: Bot automatically detects when you correct its memory ("Actually, my favorite color is red") and updates stored facts. Uses AI-powered contradiction detection during consolidation to prevent duplicate or conflicting information.
@@ -59,6 +63,7 @@ For detailed Phase 1 setup instructions and feature documentation, see `PHASE1_S
    ```
    DISCORD_TOKEN="your_discord_token_here"
    OPENAI_API_KEY="your_openai_api_key_here"
+   TOGETHER_API_KEY="your_together_api_key_here"  # Optional - for image generation
    ```
 
 3. **Run the Bot**:
@@ -93,9 +98,11 @@ Each server gets its own isolated database with its own bot personality, user re
 ### Using the GUI (Recommended for First-Time Setup)
 
 1. Run `python gui.py`
-2. Enter your Discord Bot Token and OpenAI API Key
+2. Enter your Discord Bot Token, OpenAI API Key, and Together.ai API Key (optional - for image generation)
 3. Adjust global settings:
    - Random reply chance
+   - Enable image generation (checkbox)
+   - Max images per user per day (default: 5)
    - Default personality traits and lore
 4. Use the **Server Manager** to configure per-server settings:
    - View all active Discord servers
@@ -232,14 +239,14 @@ Each server can have a completely different bot personality, allowing for unique
 
 ### Comprehensive Test Suite
 
-The bot includes a comprehensive 64-test suite that validates all core systems:
+The bot includes a comprehensive 76-test suite that validates all core systems:
 
 **Run All Tests**:
 ```
 /run_tests
 ```
 
-This command (admin only) runs 64 tests across 17 categories and provides:
+This command (admin only) runs 76 tests across 19 categories and provides:
 - Results sent via Discord DM to the admin who ran the command
 - Detailed JSON log saved to `logs/test_results_*.json`
 - Pass/fail status with error details for debugging
@@ -260,6 +267,8 @@ This command (admin only) runs 64 tests across 17 categories and provides:
 - Archive System (4 tests)
 - Image Rate Limiting (4 tests)
 - Channel Configuration (3 tests)
+- Formatting Handler (6 tests)
+- Image Generation (6 tests)
 - Cleanup Verification (5 tests)
 
 **When to Run Tests**:
@@ -377,7 +386,9 @@ All Phase 2 features have been implemented:
 - ✅ **Natural Language Enforcement**: Eliminates robotic terms in all intents
 - ✅ **Per-Channel Personality Mode**: Configure immersion/technical language per channel
 - ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
-- ✅ **Comprehensive Testing Suite**: 64-test suite validating all systems via `/run_tests` (2025-10-13)
+- ✅ **Comprehensive Testing Suite**: 76-test suite validating all systems via `/run_tests` (2025-10-13, updated 2025-10-15)
+- ✅ **Roleplay Action Formatting**: Automatic detection and formatting of physical actions in italics (2025-10-15)
+- ✅ **AI Image Generation**: Natural language-triggered childlike drawings via Together.ai (2025-10-15)
 
 ## Phase 3 (Planned)
 

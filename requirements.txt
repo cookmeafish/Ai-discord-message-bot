@@ -1,5 +1,7 @@
 customtkinter
 discord.py
-openai
+openai>=1.35,<1.40
+httpx>=0.23.0,<0.28.0
 python-dotenv
 python-dateutil
+together

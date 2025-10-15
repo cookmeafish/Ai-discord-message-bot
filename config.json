@@ -2,7 +2,8 @@
     "random_reply_chance": 0.05,
     "personality_mode": {
         "immersive_character": true,
-        "allow_technical_language": false
+        "allow_technical_language": false,
+        "enable_roleplay_formatting": true
     },
     "ai_models": {
         "primary_model": "gpt-4.1-mini",
@@ -43,6 +44,15 @@
             "temperature": 0.3
         }
     },
+    "image_generation": {
+        "enabled": true,
+        "max_per_user_per_day": 5,
+        "style_prefix": "Childlike crayon drawing, kindergarten art style, simple 2D sketch",
+        "model": "black-forest-labs/FLUX.1-schnell",
+        "width": 512,
+        "height": 512,
+        "steps": 4
+    },
     "safety": {
         "enable_moderation_api": true,
         "enable_rate_limiting": true,
@@ -73,28 +83,32 @@
             "lore": "I am a helpful AI living on this Discord server.",
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks.",
-            "random_reply_chance": 0.05
+            "random_reply_chance": 0.05,
+            "guild_id": "1260857723193528360"
         },
         "1260857723734724640": {
             "personality_traits": "chill, low-energy, concise, casual",
             "lore": "I am a helpful AI living on this Discord server.",
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks.",
-            "random_reply_chance": 0.05
+            "random_reply_chance": 0.05,
+            "guild_id": "1260857723193528360"
         },
         "1284389415430389760": {
             "personality_traits": "chill, low-energy, concise, casual",
             "lore": "I am a helpful AI living on this Discord server.",
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks.",
-            "random_reply_chance": 0.05
+            "random_reply_chance": 0.05,
+            "guild_id": "1260857723193528360"
         },
         "1427827467384783044": {
             "personality_traits": "chill, low-energy, concise, casual",
             "lore": "I am a helpful AI living on this Discord server.",
             "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
             "purpose": "To chat with users and assist with server tasks.",
-            "random_reply_chance": 0.05
+            "random_reply_chance": 0.05,
+            "guild_id": "1427827466432548957"
         }
     }
 }

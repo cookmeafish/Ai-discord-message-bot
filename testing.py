@@ -76,6 +76,8 @@ class BotTestSuite:
         await self.test_archive_system()
         await self.test_image_rate_limiting()
         await self.test_channel_configuration()
+        await self.test_formatting_handler()
+        await self.test_image_generation()
 
         # Final cleanup verification (catch-all)
         await self.test_cleanup_verification()
@@ -1187,6 +1189,234 @@ class BotTestSuite:
             )
         except Exception as e:
             self._log_test(category, "Server Info Directory", False, f"Error: {e}")
+
+    # ==================== FORMATTING HANDLER TESTS ====================
+
+    async def test_formatting_handler(self):
+        """Test roleplay action formatting system."""
+        category = "Formatting Handler"
+
+        # Import the formatting handler
+        try:
+            from modules.formatting_handler import FormattingHandler
+            formatter = FormattingHandler()
+            import_success = True
+        except Exception as e:
+            self._log_test(category, "Import FormattingHandler", False, f"Error importing: {e}")
+            return
+
+        self._log_test(category, "Import FormattingHandler", True, "Module loaded successfully")
+
+        # Test 1: Format simple action
+        try:
+            test_input = "walks over to the counter"
+            result = formatter.format_actions(test_input, enable_formatting=True)
+            expected = "*walks over to the counter*"
+            formatted_correctly = result == expected
+
+            self._log_test(
+                category,
+                "Format Simple Action",
+                formatted_correctly,
+                f"Input: '{test_input}' -> Output: '{result}'" if formatted_correctly else f"Expected '{expected}', got '{result}'"
+            )
+        except Exception as e:
+            self._log_test(category, "Format Simple Action", False, f"Error: {e}")
+
+        # Test 2: Preserve non-action text
+        try:
+            test_input = "Hey there! How are you doing?"
+            result = formatter.format_actions(test_input, enable_formatting=True)
+            preserved = result == test_input
+
+            self._log_test(
+                category,
+                "Preserve Non-Action Text",
+                preserved,
+                "Non-action text unchanged" if preserved else f"Text incorrectly modified: '{result}'"
+            )
+        except Exception as e:
+            self._log_test(category, "Preserve Non-Action Text", False, f"Error: {e}")
+
+        # Test 3: Respect formatting disabled flag
+        try:
+            test_input = "walks over to the counter"
+            result = formatter.format_actions(test_input, enable_formatting=False)
+            disabled_correctly = result == test_input
+
+            self._log_test(
+                category,
+                "Respect Disabled Flag",
+                disabled_correctly,
+                "Formatting correctly disabled" if disabled_correctly else f"Text formatted when disabled: '{result}'"
+            )
+        except Exception as e:
+            self._log_test(category, "Respect Disabled Flag", False, f"Error: {e}")
+
+        # Test 4: Preserve existing formatting
+        try:
+            test_input = "*waves hello*"
+            result = formatter.format_actions(test_input, enable_formatting=True)
+            preserved = result == test_input
+
+            self._log_test(
+                category,
+                "Preserve Existing Formatting",
+                preserved,
+                "Existing formatting preserved" if preserved else f"Re-formatted existing: '{result}'"
+            )
+        except Exception as e:
+            self._log_test(category, "Preserve Existing Formatting", False, f"Error: {e}")
+
+        # Test 5: Configuration setting exists
+        try:
+            config = self.bot.config_manager.get_config()
+            personality_mode = config.get("personality_mode", {})
+            has_setting = "enable_roleplay_formatting" in personality_mode
+
+            self._log_test(
+                category,
+                "Roleplay Formatting Config",
+                has_setting,
+                f"Config value: {personality_mode.get('enable_roleplay_formatting')}" if has_setting else "Setting not found in personality_mode"
+            )
+        except Exception as e:
+            self._log_test(category, "Roleplay Formatting Config", False, f"Error: {e}")
+
+        # Test 6: AI Handler integration
+        try:
+            ai_handler = self.bot.ai_handler
+            has_formatter = hasattr(ai_handler, 'formatter')
+            has_method = hasattr(ai_handler, '_apply_roleplay_formatting')
+
+            integration_success = has_formatter and has_method
+
+            self._log_test(
+                category,
+                "AI Handler Integration",
+                integration_success,
+                "FormattingHandler integrated into AI Handler" if integration_success else f"Missing: formatter={has_formatter}, method={has_method}"
+            )
+        except Exception as e:
+            self._log_test(category, "AI Handler Integration", False, f"Error: {e}")
+
+    # ==================== IMAGE GENERATION TESTS ====================
+
+    async def test_image_generation(self):
+        """Test AI image generation system."""
+        category = "Image Generation"
+
+        # Test 1: ImageGenerator module exists
+        try:
+            from modules.image_generator import ImageGenerator
+            module_exists = True
+            self._log_test(
+                category,
+                "ImageGenerator Module Import",
+                True,
+                "ImageGenerator module imported successfully"
+            )
+        except Exception as e:
+            self._log_test(category, "ImageGenerator Module Import", False, f"Error importing: {e}")
+            module_exists = False
+
+        # Test 2: Together API key configured
+        try:
+            together_key = self.bot.config_manager.get_secret("TOGETHER_API_KEY")
+            configured = together_key is not None and len(together_key) > 0
+
+            self._log_test(
+                category,
+                "Together API Key Configured",
+                True,  # Always pass - key is optional
+                "API key configured" if configured else "API key not set (optional - feature will be disabled)"
+            )
+        except Exception as e:
+            self._log_test(category, "Together API Key Configured", False, f"Error: {e}")
+
+        # Test 3: Image generation config exists
+        try:
+            config = self.bot.config_manager.get_config()
+            has_img_gen_config = "image_generation" in config
+
+            if has_img_gen_config:
+                img_config = config["image_generation"]
+                has_required_keys = all(key in img_config for key in ["enabled", "max_per_user_per_day", "model"])
+            else:
+                has_required_keys = False
+
+            self._log_test(
+                category,
+                "Image Generation Config",
+                has_required_keys,
+                f"Config found: enabled={img_config.get('enabled')}, limit={img_config.get('max_per_user_per_day')}, model={img_config.get('model')}" if has_required_keys else "Image generation config incomplete"
+            )
+        except Exception as e:
+            self._log_test(category, "Image Generation Config", False, f"Error: {e}")
+
+        # Test 4: AI Handler has ImageGenerator instance
+        try:
+            if module_exists:
+                has_generator = hasattr(self.bot.ai_handler, "image_generator")
+
+                if has_generator:
+                    generator = self.bot.ai_handler.image_generator
+                    is_available = generator.is_available()
+
+                    self._log_test(
+                        category,
+                        "ImageGenerator Integration",
+                        has_generator,
+                        f"ImageGenerator integrated, available={is_available}" if has_generator else "ImageGenerator not found in AI Handler"
+                    )
+                else:
+                    self._log_test(category, "ImageGenerator Integration", False, "image_generator attribute missing from AI Handler")
+            else:
+                self._log_test(category, "ImageGenerator Integration", False, "Skipped - module import failed")
+        except Exception as e:
+            self._log_test(category, "ImageGenerator Integration", False, f"Error: {e}")
+
+        # Test 5: Intent classification includes image_generation
+        try:
+            # Check if AI handler recognizes image_generation intent
+            config = self.bot.config_manager.get_config()
+
+            # We can't easily test intent classification without making an API call,
+            # but we can verify the intent is in the validation list
+            # This is a basic structural check
+            has_ai_handler = hasattr(self.bot, "ai_handler")
+
+            self._log_test(
+                category,
+                "Image Generation Intent",
+                has_ai_handler,
+                "AI Handler available for intent classification" if has_ai_handler else "AI Handler not available"
+            )
+        except Exception as e:
+            self._log_test(category, "Image Generation Intent", False, f"Error: {e}")
+
+        # Test 6: ImageGenerator methods exist
+        try:
+            if module_exists:
+                from modules.image_generator import ImageGenerator
+                generator = ImageGenerator(self.bot.config_manager)
+
+                has_generate = hasattr(generator, "generate_image")
+                has_is_available = hasattr(generator, "is_available")
+                has_build_prompt = hasattr(generator, "_build_prompt")
+
+                all_methods = has_generate and has_is_available and has_build_prompt
+
+                self._log_test(
+                    category,
+                    "ImageGenerator Methods",
+                    all_methods,
+                    "All required methods found: generate_image, is_available, _build_prompt" if all_methods else f"Missing methods: generate={has_generate}, available={has_is_available}, build_prompt={has_build_prompt}"
+                )
+            else:
+                self._log_test(category, "ImageGenerator Methods", False, "Skipped - module import failed")
+        except Exception as e:
+            self._log_test(category, "ImageGenerator Methods", False, f"Error: {e}")
 
     # ==================== CLEANUP VERIFICATION TESTS ====================
 

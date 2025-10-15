@@ -269,9 +269,21 @@ class EventsCog(commands.Cog):
 
                         # Replace emote tags and send response
                         if ai_response_text:
-                            final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text, message.guild.id)
-                            sent_message = await message.reply(final_response)
-                            self.logger.info(f"Sent response: {final_response[:50]}...")
+                            # Check if response is a tuple (text + image bytes from image_generation intent)
+                            if isinstance(ai_response_text, tuple) and len(ai_response_text) == 2:
+                                text_response, image_bytes = ai_response_text
+                                final_response = self.bot.emote_handler.replace_emote_tags(text_response, message.guild.id)
+
+                                # Send image with caption
+                                import io
+                                image_file = discord.File(io.BytesIO(image_bytes), filename="drawing.png")
+                                sent_message = await message.reply(content=final_response, file=image_file)
+                                self.logger.info(f"Sent image response with caption: {final_response[:50]}...")
+                            else:
+                                # Normal text response
+                                final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text, message.guild.id)
+                                sent_message = await message.reply(final_response)
+                                self.logger.info(f"Sent response: {final_response[:50]}...")
 
                             # Note: The bot's message will be logged when it triggers on_message
                         else:

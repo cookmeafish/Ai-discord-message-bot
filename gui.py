@@ -82,10 +82,31 @@ class BotGUI(ctk.CTk):
         self.openai_key_entry.pack(padx=10, pady=(0, 10))
         self.openai_key_entry.insert(0, self.openai_api_key)
 
+        ctk.CTkLabel(self.left_frame, text="Together.ai API Key (for image generation):").pack(padx=10, anchor="w")
+        self.together_key_entry = ctk.CTkEntry(self.left_frame, width=320, show="*")
+        self.together_key_entry.pack(padx=10, pady=(0, 10))
+        self.together_key_entry.insert(0, get_key(ENV_FILE, "TOGETHER_API_KEY") or "")
+
         ctk.CTkLabel(self.left_frame, text="Random Reply Chance (e.g., 0.05 for 5%):").pack(padx=10, anchor="w")
         self.reply_chance_entry = ctk.CTkEntry(self.left_frame, width=320)
-        self.reply_chance_entry.pack(padx=10, pady=(0, 20))
+        self.reply_chance_entry.pack(padx=10, pady=(0, 10))
         self.reply_chance_entry.insert(0, str(self.config.get('random_reply_chance', 0.05)))
+
+        # Image Generation Settings
+        img_gen_config = self.config.get('image_generation', {})
+        self.image_gen_enabled_var = ctk.BooleanVar(value=img_gen_config.get('enabled', True))
+        image_gen_checkbox = ctk.CTkCheckBox(
+            self.left_frame,
+            text="Enable Image Generation",
+            variable=self.image_gen_enabled_var
+        )
+        image_gen_checkbox.pack(padx=10, anchor="w", pady=(5, 0))
+        ToolTip(image_gen_checkbox, "Allow bot to generate childlike drawings when users ask.\nRequires Together.ai API key above.\nDefault limit: 5 drawings per user per day.")
+
+        ctk.CTkLabel(self.left_frame, text="Max Images Per User Per Day:").pack(padx=10, anchor="w", pady=(5, 0))
+        self.max_images_entry = ctk.CTkEntry(self.left_frame, width=320)
+        self.max_images_entry.pack(padx=10, pady=(0, 20))
+        self.max_images_entry.insert(0, str(img_gen_config.get('max_per_user_per_day', 5)))
 
         ctk.CTkLabel(self.left_frame, text="Default Personality", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
 
@@ -196,14 +217,18 @@ class BotGUI(ctk.CTk):
         """
         Scans the database folder for server database files.
         Returns list of (guild_id, server_name) tuples.
+        Filters out old-format databases if a new-format one exists for the same server.
         """
         import re
         servers = []
+        old_format_servers = []
+        server_names_with_guild_id = set()
         db_folder = "database"
 
         if not os.path.exists(db_folder):
             return servers
 
+        # First pass: collect all servers
         for filename in os.listdir(db_folder):
             if filename.endswith('_data.db') and filename != '_data.db':
                 # Try new format first: {guild_id}_{servername}_data.db
@@ -212,13 +237,19 @@ class BotGUI(ctk.CTk):
                     guild_id = match.group(1)
                     server_name = match.group(2)
                     servers.append((guild_id, server_name))
+                    server_names_with_guild_id.add(server_name)
                 else:
                     # Try old format: {servername}_data.db (no guild_id prefix)
                     match = re.match(r'^(.+)_data\.db$', filename)
                     if match:
                         server_name = match.group(1)
                         guild_id = "unknown"  # Mark as unknown for old format
-                        servers.append((guild_id, server_name))
+                        old_format_servers.append((guild_id, server_name))
+
+        # Second pass: only add old-format servers if no new-format version exists
+        for guild_id, server_name in old_format_servers:
+            if server_name not in server_names_with_guild_id:
+                servers.append((guild_id, server_name))
 
         return servers
 
@@ -283,13 +314,13 @@ class BotGUI(ctk.CTk):
             config = self.config_manager.get_config()
             channel_settings = config.get('channel_settings', {})
 
-            # Filter channels by guild (we'll need to infer this from the database or config)
-            # For now, show all channels with a note
+            # Filter channels by guild_id
             server_channels = []
             for channel_id, channel_config in channel_settings.items():
-                # TODO: In future, store guild_id in channel_settings to properly filter
-                # For now, display all channels
-                server_channels.append((channel_id, channel_config))
+                channel_guild_id = channel_config.get('guild_id', 'unknown')
+                # Match channels that belong to this guild, or show unknown channels for old-format servers
+                if channel_guild_id == guild_id or (guild_id == "unknown" and channel_guild_id == 'unknown'):
+                    server_channels.append((channel_id, channel_config))
 
             if not server_channels:
                 ctk.CTkLabel(channels_frame, text="No channels activated yet. Use /activate in Discord.").pack(anchor="w", padx=5)
@@ -475,8 +506,19 @@ class BotGUI(ctk.CTk):
             text="Use Server Information",
             variable=server_info_var
         )
-        server_info_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
+        server_info_checkbox.pack(padx=20, anchor="w", pady=(5, 0))
         ToolTip(server_info_checkbox, "Load text files from Server_Info/\nfor rules, policies, or server-specific information.\nIdeal for formal channels like rules or moderation.")
+
+        # Roleplay Formatting
+        current_roleplay_formatting = channel_config.get('enable_roleplay_formatting', global_personality_mode.get('enable_roleplay_formatting', True))
+        roleplay_formatting_var = ctk.BooleanVar(value=current_roleplay_formatting)
+        roleplay_formatting_checkbox = ctk.CTkCheckBox(
+            edit_window,
+            text="Enable Roleplay Formatting",
+            variable=roleplay_formatting_var
+        )
+        roleplay_formatting_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
+        ToolTip(roleplay_formatting_checkbox, "Format physical actions in italics (e.g., *walks over*).\nOnly works when Immersive Character Mode is enabled.\nMakes roleplay more immersive and natural.")
 
         # Buttons frame
         button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
@@ -503,6 +545,7 @@ class BotGUI(ctk.CTk):
             current_config['channel_settings'][channel_id]['immersive_character'] = immersive_var.get()
             current_config['channel_settings'][channel_id]['allow_technical_language'] = technical_var.get()
             current_config['channel_settings'][channel_id]['use_server_info'] = server_info_var.get()
+            current_config['channel_settings'][channel_id]['enable_roleplay_formatting'] = roleplay_formatting_var.get()
 
             self.config_manager.update_config(current_config)
             print(f"Updated channel {channel_id} settings")
@@ -581,6 +624,7 @@ class BotGUI(ctk.CTk):
     def save_all_configs(self):
         set_key(ENV_FILE, "DISCORD_TOKEN", self.token_entry.get())
         set_key(ENV_FILE, "OPENAI_API_KEY", self.openai_key_entry.get())
+        set_key(ENV_FILE, "TOGETHER_API_KEY", self.together_key_entry.get())
         print("Secrets saved to .env file!")
         self.log_to_console("Secrets saved to .env file!")
 
@@ -605,6 +649,28 @@ class BotGUI(ctk.CTk):
             new_config['alternative_nicknames'] = [nick.strip() for nick in nicknames_str.split(',') if nick.strip()]
         else:
             new_config['alternative_nicknames'] = []
+
+        # Save image generation settings
+        if 'image_generation' not in new_config:
+            new_config['image_generation'] = {}
+
+        new_config['image_generation']['enabled'] = self.image_gen_enabled_var.get()
+        try:
+            new_config['image_generation']['max_per_user_per_day'] = int(self.max_images_entry.get())
+        except ValueError:
+            new_config['image_generation']['max_per_user_per_day'] = 5
+
+        # Preserve other image_generation settings
+        if 'style_prefix' not in new_config['image_generation']:
+            new_config['image_generation']['style_prefix'] = "Childlike crayon drawing, kindergarten art style, simple 2D sketch"
+        if 'model' not in new_config['image_generation']:
+            new_config['image_generation']['model'] = "black-forest-labs/FLUX.1-schnell"
+        if 'width' not in new_config['image_generation']:
+            new_config['image_generation']['width'] = 512
+        if 'height' not in new_config['image_generation']:
+            new_config['image_generation']['height'] = 512
+        if 'steps' not in new_config['image_generation']:
+            new_config['image_generation']['steps'] = 4
 
         channel_id = self.channel_id_entry.get()
         channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c")

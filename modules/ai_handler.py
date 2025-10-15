@@ -4,8 +4,11 @@ import openai
 import re
 import json
 import datetime
+import io
 from dateutil import parser
 from .emote_orchestrator import EmoteOrchestrator
+from .formatting_handler import FormattingHandler
+from .image_generator import ImageGenerator
 
 class AIHandler:
     def __init__(self, api_key: str, emote_handler: EmoteOrchestrator):
@@ -14,17 +17,23 @@ class AIHandler:
             raise ValueError("OpenAI API key is required.")
         self.client = openai.AsyncOpenAI(api_key=api_key)
         self.emote_handler = emote_handler
-        
+        self.formatter = FormattingHandler()
+        self.image_generator = ImageGenerator(emote_handler.bot.config_manager)
+
         # Load AI model configuration from config
         self.config = emote_handler.bot.config_manager.get_config()
         self.model_config = self.config.get('ai_models', {})
         self.response_limits = self.config.get('response_limits', {})
-        
+
         # Default values if config is missing
         self.PRIMARY_MODEL = self.model_config.get('primary_model', 'gpt-4.1-mini')
         self.FALLBACK_MODEL = self.model_config.get('fallback_model', 'gpt-4o-mini')
-        
+
         print(f"AI Handler: Initialized with primary model: {self.PRIMARY_MODEL}")
+        if self.image_generator.is_available():
+            print(f"AI Handler: Image generation enabled with model: {self.image_generator.model}")
+        else:
+            print("AI Handler: Image generation disabled (API key not configured)")
 
     def _get_model_config(self, task_type):
         """
@@ -52,11 +61,32 @@ class AIHandler:
         """
         if not text:
             return text
-        
+
         # Replace <:emotename:1234567890> with :emotename:
         # Replace <a:emotename:1234567890> (animated) with :emotename:
         text = re.sub(r'<a?:(\w+):\d+>', r':\1:', text)
         return text
+
+    def _apply_roleplay_formatting(self, text, channel_config):
+        """
+        Applies roleplay action formatting if enabled for this channel.
+
+        Args:
+            text: The AI response text
+            channel_config: Channel configuration dictionary
+
+        Returns:
+            Formatted text with actions in italics
+        """
+        # Check if formatting is enabled (default: True)
+        enable_formatting = channel_config.get('enable_roleplay_formatting', True)
+
+        # Only format if immersive character mode is enabled
+        personality_mode = self._get_personality_mode(channel_config)
+        if not personality_mode['immersive_character']:
+            enable_formatting = False
+
+        return self.formatter.format_actions(text, enable_formatting)
 
     def _build_bot_identity_prompt(self, db_manager, channel_config):
         """
@@ -120,6 +150,13 @@ class AIHandler:
             identity_prompt += "\n**NATURAL LANGUAGE ONLY**:\n"
             identity_prompt += "NEVER use technical/robotic terms like: 'cached', 'stored', 'database', 'info', 'data', 'system'\n"
             identity_prompt += "Always speak naturally like a real person would.\n"
+
+        # Add roleplay formatting instructions if enabled
+        if channel_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']:
+            identity_prompt += "\n**ROLEPLAY ACTIONS**:\n"
+            identity_prompt += "When describing physical actions or gestures, write them naturally.\n"
+            identity_prompt += "Examples: walks over to the counter, sighs deeply, waves hello, looks around nervously\n"
+            identity_prompt += "Keep actions short and natural - don't overuse them.\n"
 
         return identity_prompt
 
@@ -388,6 +425,7 @@ Be specific and objective. This description will be used by another AI to genera
 You are an expert intent classification model. Analyze the last message from the user ({message.author.id}) in the context of the recent conversation history. Your primary goal is to accurately determine the user's intent.
 
 Follow these strict rules for classification:
+- **image_generation**: The user is requesting the bot to draw, sketch, or create an image (e.g., "draw me a cat", "can you sketch a house", "make me a picture of a dragon"). This includes any variation of asking for visual artwork.
 - **memory_storage**: The user is stating a fact and wants the bot to remember it for later (e.g., "my favorite color is blue", "just so you know, my cat is named Whiskers").
 - **memory_correction**: ONLY classify as this if the user's message DIRECTLY CONTRADICTS a statement made by the bot in the provided conversation history. If there is no bot statement to correct, this is the wrong category.
 - **memory_recall**: Use when the user is asking the bot to recall something ABOUT THEM personally or from recent conversation (e.g., "what's my favorite food?", "do you remember what I said earlier?", "what did I tell you about my cat?"). This includes questions about personal preferences, facts about the user, or things mentioned in the conversation.
@@ -415,7 +453,7 @@ Based on the rules and the last user message, what is the user's primary intent?
             )
             intent = response.choices[0].message.content.strip().lower()
 
-            if intent in ["casual_chat", "memory_recall", "memory_correction", "factual_question", "memory_storage"]:
+            if intent in ["casual_chat", "memory_recall", "memory_correction", "factual_question", "memory_storage", "image_generation"]:
                 print(f"AI Handler: Classified intent as '{intent}' using {config['model']}")
                 return intent
             else:
@@ -702,6 +740,9 @@ LORE: Worked as a marine biologist before becoming self-aware
             ai_response_text = response.choices[0].message.content.strip()
 
             if ai_response_text:
+                # Apply roleplay formatting
+                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config)
+
                 # Analyze sentiment and update metrics
                 await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
                 return ai_response_text
@@ -756,7 +797,99 @@ LORE: Worked as a marine biologist before becoming self-aware
 
         # --- Dynamic System Prompt based on Intent ---
         system_prompt = ""
-        if intent == "memory_storage":
+        if intent == "image_generation":
+            # Check if image generation is available
+            if not self.image_generator.is_available():
+                return "I'd love to draw that for you, but I'm missing my art supplies (API key not configured)."
+
+            # Check rate limiting for image generation
+            img_gen_config = self.config.get('image_generation', {})
+            max_per_day = img_gen_config.get('max_per_user_per_day', 5)
+
+            # Use the existing image tracking system
+            daily_count = db_manager.get_user_image_count_today(author.id)
+
+            if daily_count >= max_per_day:
+                return f"I've drawn my limit for today ({max_per_day} drawings). My crayons need a break! Try again tomorrow."
+
+            try:
+                # Generate the image
+                print(f"AI Handler: Generating image for prompt: {message.content}")
+                image_bytes, error_msg = await self.image_generator.generate_image(message.content)
+
+                if error_msg:
+                    print(f"AI Handler: Image generation failed: {error_msg}")
+                    personality_mode = self._get_personality_mode(personality_config)
+
+                    # Generate a natural failure response
+                    failure_prompt = f"""
+{identity_prompt}
+{relationship_prompt}
+
+The user asked you to draw something, but you tried and failed due to a technical error.
+Respond naturally as if you tried to draw but messed up or ran into problems.
+
+**CRITICAL RULES**:
+- BE BRIEF AND NATURAL (1 sentence)
+- Match your relationship tone
+- Don't mention "API", "server", "system", or other technical terms
+- React like a person who tried to draw and failed
+- Examples: "I tried but I messed it up", "ugh my hand slipped", "I can't draw that right now, sorry"
+"""
+                    if not personality_mode['allow_technical_language']:
+                        failure_prompt += "\n- NEVER use terms like: 'error', 'failed', 'technical', 'API', 'server'\n"
+
+                    memory_response_config = self._get_model_config('memory_response')
+                    response = await self.client.chat.completions.create(
+                        model=memory_response_config['model'],
+                        messages=[{'role': 'system', 'content': failure_prompt}],
+                        max_tokens=memory_response_config['max_tokens'],
+                        temperature=memory_response_config['temperature']
+                    )
+
+                    return response.choices[0].message.content.strip()
+
+                # Success! Image generated, now send it
+                # Increment the image count AFTER successful generation
+                db_manager.increment_user_image_count(author.id)
+
+                # Generate a brief, natural response to go with the image
+                personality_mode = self._get_personality_mode(personality_config)
+
+                drawing_prompt = f"""
+{identity_prompt}
+{relationship_prompt}
+
+You just drew something for the user based on their request: "{message.content}"
+Respond with a VERY brief, natural comment about your drawing (1 sentence max).
+
+**CRITICAL RULES**:
+- BE EXTREMELY BRIEF (2-6 words ideally)
+- Match your relationship tone
+- React like a kid showing off their drawing
+- Examples: "here you go!", "ta-da!", "I tried my best", "hope you like it", "drew this for you"
+"""
+                if not personality_mode['allow_technical_language']:
+                    drawing_prompt += "\n- NEVER use technical terms\n"
+
+                memory_response_config = self._get_model_config('memory_response')
+                response = await self.client.chat.completions.create(
+                    model=memory_response_config['model'],
+                    messages=[{'role': 'system', 'content': drawing_prompt}],
+                    max_tokens=20,
+                    temperature=0.7
+                )
+
+                drawing_response = response.choices[0].message.content.strip()
+
+                # Return a tuple with the response and image bytes so the event handler can send both
+                return (drawing_response, image_bytes)
+
+            except Exception as e:
+                print(f"AI Handler: Unexpected error in image generation: {e}")
+                return "I tried to draw that but something went wrong. My bad."
+
+        elif intent == "memory_storage":
             extraction_prompt = f"""
 The user wants you to remember a fact about them or the world. Analyze the user's message and extract the core piece of information as a concise statement.
 - If the user says 'my favorite color is blue', the fact is 'My favorite color is blue'.
@@ -820,10 +953,13 @@ Acknowledge this new information with a short, natural, human-like response base
                 )
                 
                 ai_response = response.choices[0].message.content.strip()
-                
+
+                # Apply roleplay formatting
+                ai_response = self._apply_roleplay_formatting(ai_response, personality_config)
+
                 # Update relationship metrics
                 await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
-                
+
                 return ai_response
 
             except Exception as e:
@@ -999,6 +1135,9 @@ Respond with ONLY the fact ID number or "NONE".
 
                 ai_response = response.choices[0].message.content.strip()
 
+                # Apply roleplay formatting
+                ai_response = self._apply_roleplay_formatting(ai_response, personality_config)
+
                 # Update relationship metrics
                 await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
 
@@ -1115,8 +1254,11 @@ Respond with ONLY the fact ID number or "NONE".
                 temperature=main_response_config['temperature']
             )
             ai_response_text = response.choices[0].message.content.strip()
-            
+
             if ai_response_text:
+                # Apply roleplay formatting
+                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config)
+
                 # Analyze sentiment and update metrics (conservative approach)
                 await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
 
