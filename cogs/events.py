@@ -56,8 +56,19 @@ class EventsCog(commands.Cog):
                 if self._normalize_text(bot_member.nick) in normalized_message:
                     return True
 
-        # Get alternative nicknames from config
+        # Get alternative nicknames from config (server-specific first, then global)
         config = self.bot.config_manager.get_config()
+
+        # Check server-specific alternative nicknames first
+        if message.guild:
+            server_nicknames = config.get('server_alternative_nicknames', {})
+            guild_nicknames = server_nicknames.get(str(message.guild.id), [])
+
+            for nickname in guild_nicknames:
+                if self._normalize_text(nickname) in normalized_message:
+                    return True
+
+        # Fall back to global alternative nicknames for backward compatibility
         alternative_nicknames = config.get('alternative_nicknames', [])
 
         for nickname in alternative_nicknames:

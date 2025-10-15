@@ -206,12 +206,19 @@ class BotGUI(ctk.CTk):
 
         for filename in os.listdir(db_folder):
             if filename.endswith('_data.db') and filename != '_data.db':
-                # Parse filename format: {guild_id}_{servername}_data.db
+                # Try new format first: {guild_id}_{servername}_data.db
                 match = re.match(r'^(\d+)_(.+)_data\.db$', filename)
                 if match:
                     guild_id = match.group(1)
                     server_name = match.group(2)
                     servers.append((guild_id, server_name))
+                else:
+                    # Try old format: {servername}_data.db (no guild_id prefix)
+                    match = re.match(r'^(.+)_data\.db$', filename)
+                    if match:
+                        server_name = match.group(1)
+                        guild_id = "unknown"  # Mark as unknown for old format
+                        servers.append((guild_id, server_name))
 
         return servers
 
@@ -307,11 +314,25 @@ class BotGUI(ctk.CTk):
 
         refresh_channels()
 
+        # Alternative Nicknames Section
+        ctk.CTkLabel(settings_window, text="Alternative Nicknames:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
+        ctk.CTkLabel(settings_window, text="Comma-separated nicknames the bot responds to (e.g., 'drfish, dr fish'):", font=("Roboto", 10)).pack(padx=20, anchor="w")
+
+        nicknames_entry = ctk.CTkEntry(settings_window, width=500)
+        nicknames_entry.pack(padx=20, pady=5, fill="x")
+
+        # Get current server-specific nicknames
+        config = self.config_manager.get_config()
+        server_nicknames = config.get('server_alternative_nicknames', {})
+        current_nicknames = server_nicknames.get(guild_id, [])
+        if current_nicknames:
+            nicknames_entry.insert(0, ', '.join(current_nicknames))
+
         # Emote Sources Section
         ctk.CTkLabel(settings_window, text="Emote Sources:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
         ctk.CTkLabel(settings_window, text="Select which servers' emotes can be used:", font=("Roboto", 10)).pack(padx=20, anchor="w")
 
-        emote_frame = ctk.CTkScrollableFrame(settings_window, height=150)
+        emote_frame = ctk.CTkScrollableFrame(settings_window, height=120)
         emote_frame.pack(fill="x", padx=20, pady=5)
 
         # Get all available servers
@@ -339,10 +360,21 @@ class BotGUI(ctk.CTk):
         button_frame.pack(pady=20)
 
         def save_settings():
+            # Save alternative nicknames
+            nicknames_str = nicknames_entry.get().strip()
+            current_config = self.config_manager.get_config()
+
+            if 'server_alternative_nicknames' not in current_config:
+                current_config['server_alternative_nicknames'] = {}
+
+            if nicknames_str:
+                current_config['server_alternative_nicknames'][guild_id] = [nick.strip() for nick in nicknames_str.split(',') if nick.strip()]
+            else:
+                current_config['server_alternative_nicknames'][guild_id] = []
+
             # Save emote sources
             selected_sources = [gid for gid, var in emote_checkboxes.items() if var.get()]
 
-            current_config = self.config_manager.get_config()
             if 'server_emote_sources' not in current_config:
                 current_config['server_emote_sources'] = {}
 

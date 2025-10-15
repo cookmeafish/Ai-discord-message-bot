@@ -96,6 +96,14 @@ The bot has a configurable personality mode that controls immersion and language
    - Up to 500 messages server-wide history (not filtered by channel)
 6. Sentiment analysis updates relationship metrics automatically (`_analyze_sentiment_and_update_metrics(message, ai_response, user_id, db_manager)`)
 
+**Alternative Nicknames (Per-Server, 2025-10-14)**:
+- Bot responds to mentions, replies, Discord username, server nickname, AND alternative nicknames
+- **Server-specific nicknames**: Each server can configure custom nicknames via GUI Server Manager
+- Configured in `server_alternative_nicknames: {guild_id: [nickname1, nickname2]}`
+- Falls back to global `alternative_nicknames` for backward compatibility
+- Flexible matching: Ignores spaces, periods, special characters (e.g., "Dr. Fish" matches "drfish")
+- Implemented in `_check_bot_name_mentioned()` with `_normalize_text()` helper
+
 ### 5. Database-Only Interface (Per-Server Architecture)
 All database operations MUST go through `database/db_manager.py`. Never write raw SQL in cogs or modules.
 
@@ -120,8 +128,19 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `Server_Info/` - Text files with server rules, policies, and formal documentation (in project root)
 
 ### Configuration
-- `config.json` - All configurable bot parameters (model names, limits, channel settings)
+- `config.json` - All configurable bot parameters (model names, limits, channel settings, per-server settings)
 - `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY)
+- `gui.py` - Graphical configuration interface with Server Manager
+
+### GUI Server Manager (2025-10-14)
+The GUI provides a server-first interface for managing bot settings:
+- **Main View**: Lists all active Discord servers (scans `database/*_data.db` files)
+- **Server Settings Dialog**: Opened via "Edit Settings" button for each server
+  - **Active Channels**: View and edit channels activated for that server
+  - **Alternative Nicknames**: Server-specific nicknames the bot responds to
+  - **Emote Sources**: Checkbox selection of which servers provide emotes
+- **Database Scanning**: Supports both old `{servername}_data.db` and new `{guild_id}_{servername}_data.db` formats
+- **Auto-refresh**: GUI refreshes server list when config.json changes
 
 ## Key Database Tables (Per-Server)
 
@@ -301,15 +320,19 @@ For formal channels (rules, moderation, support, etc.), the bot can load text fi
 - Bot will reference these files authoritatively when answering questions
 - Does NOT replace personality - personality still affects tone and style
 
-## Emote System (Global Across All Servers)
+## Emote System (Per-Server Filtering)
 
 Custom Discord emotes are managed by `EmoteOrchestrator`:
 - Loads emotes from ALL servers the bot is in
+- **Per-Server Filtering (2025-10-14)**: Servers can restrict which servers' emotes are available
+  - Configured via GUI Server Manager → Edit Settings → Emote Sources
+  - Config format: `server_emote_sources: {guild_id: [allowed_guild_id1, allowed_guild_id2]}`
+  - Default behavior: If server not configured, all emotes available (backward compatible)
+  - Use case: Professional servers can restrict to professional emotes only
 - Provides AI with plain tags (`:fishstrong:`)
 - Replaces tags with Discord format (`<:fishstrong:1234567890>`) before sending
 - `_strip_discord_formatting()` in AI Handler removes Discord syntax from context to prevent AI from replicating malformed syntax
-
-**Global Emotes**: Unlike database data, emotes are shared globally - the bot can use emotes from any server in any conversation.
+- Filtering implemented in `get_emotes_for_guild(guild_id)` and `replace_emote_tags(text, guild_id)`
 
 ## Implementation Status
 
@@ -375,8 +398,10 @@ Update `_build_relationship_context()` in `modules/ai_handler.py` to add prompt 
 - **Per-Server Architecture**: Each Discord server has its own database file. Always use `bot.get_server_db(guild_id, guild_name)` to get the correct database instance.
 - **Database Isolation**: Bot personality, user relationships, and memories are completely separate per server. No data sharing between servers.
 - **Server-Wide Memory**: Short-term memory is NOT filtered by channel. Bot maintains context across all channels within a server.
-- **Global Emotes**: Unlike data, emotes are shared globally - bot can use emotes from any server it's in.
+- **Per-Server Emote Filtering (2025-10-14)**: Servers can restrict which servers' emotes are available via `server_emote_sources` config. Managed through GUI Server Manager.
+- **Per-Server Alternative Nicknames (2025-10-14)**: Each server can configure custom nicknames via `server_alternative_nicknames` config. Falls back to global `alternative_nicknames` for backward compatibility.
 - **Server Info**: Text files in `Server_Info/` directory (project root) are loaded per-channel when `use_server_info` is enabled. Default: OFF.
+- **GUI Server Manager**: Server-first interface for managing channels, nicknames, and emote sources per server. Scans database folder to display all active servers.
 - **GUI Tooltips**: Hover over personality mode checkboxes in channel editor to see explanations. Implemented using `ToolTip` class in `gui.py`.
 - **No Emoji in Console Output**: Avoid emojis in print statements due to Windows console compatibility. Use text or disable logging emoji.
 - **Discord Intents Required**: `messages`, `message_content`, `guilds`, `members` must be enabled in Discord Developer Portal.

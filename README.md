@@ -24,7 +24,11 @@ This is an advanced, context-aware AI Discord bot designed for natural and engag
 
 - **Long-Term Memory**: Remembers key facts and information about users over time, leading to highly personalized interactions.
 
-- **Expressive Emote Usage**: Intelligently uses custom server emotes to add personality and context to its messages.
+- **Per-Server Emote Filtering**: Each server can restrict which Discord servers' emotes the bot can use in responses. Professional servers can limit to professional emotes only, while casual servers can use all available emotes. Configured via GUI Server Manager.
+
+- **Per-Server Alternative Nicknames**: Each server can configure custom nicknames the bot responds to (e.g., "drfish", "dr fish"). Flexible matching ignores spaces, periods, and special characters. Falls back to global nicknames for backward compatibility.
+
+- **GUI Server Manager**: Server-first interface for managing bot settings. View all active servers, configure channels, set alternative nicknames, and control emote sources per server through an intuitive graphical interface.
 
 - **Channel-Specific Personalities**: Each channel can have unique purpose/instructions and random reply chance settings via the GUI.
 
@@ -92,17 +96,16 @@ Each server gets its own isolated database with its own bot personality, user re
 2. Enter your Discord Bot Token and OpenAI API Key
 3. Adjust global settings:
    - Random reply chance
-   - **Personality Mode** checkboxes:
-     - Immersive Character Mode (Bot believes it's the character)
-     - Allow Technical Language (e.g., 'cached', 'database')
    - Default personality traits and lore
-4. Configure channel-specific settings:
-   - Add channels with custom purpose/instructions
-   - Edit existing channels with the "Edit" button to configure per-channel personality mode
-   - Remove channels with the "Remove" button
-5. Click "Save Config" to create `.env` and `config.json`
+4. Use the **Server Manager** to configure per-server settings:
+   - View all active Discord servers
+   - Click "Edit Settings" on any server to configure:
+     - **Active Channels**: Add, edit, or remove channels for that server
+     - **Alternative Nicknames**: Set server-specific nicknames the bot responds to
+     - **Emote Sources**: Select which servers provide emotes for this server
+5. Click "Save Config" to save all settings
 6. Click "Start Bot" to run
-7. Use "Test Memory Consolidation" button to test the memory system
+7. Use "Test Memory Consolidation" button for memory system instructions
 
 ### Manual Configuration (Headless/Server Mode)
 
@@ -367,11 +370,12 @@ All Phase 2 features have been implemented:
 - ✅ **Message Archival**: Automatic JSON backup before deletion (per-server)
 - ✅ **Auto-trigger Consolidation**: Runs when server reaches 500 messages
 - ✅ **Database Optimization**: SQLite auto-vacuum enabled
-- ✅ **GUI Channel Management**: Add, edit, and remove channels
+- ✅ **GUI Server Manager**: Server-first interface with per-server channel, nickname, and emote configuration (2025-10-14)
+- ✅ **Per-Server Emote Filtering**: Restrict which servers' emotes are available per server (2025-10-14)
+- ✅ **Per-Server Alternative Nicknames**: Custom server-specific nicknames with flexible matching (2025-10-14)
 - ✅ **Immersive Character Mode**: Bot believes it's the character, not an AI
 - ✅ **Natural Language Enforcement**: Eliminates robotic terms in all intents
 - ✅ **Per-Channel Personality Mode**: Configure immersion/technical language per channel
-- ✅ **GUI Personality Controls**: Checkboxes for global and per-channel personality settings
 - ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
 - ✅ **Comprehensive Testing Suite**: 64-test suite validating all systems via `/run_tests` (2025-10-13)
 

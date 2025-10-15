@@ -14,6 +14,9 @@ All Phase 2 features have been fully implemented as of 2025-10-14.
 - ✅ **Alternative Nicknames System** (configurable via GUI, supports any custom variations)
 - ✅ **Concurrent Response Limit** (max 3 simultaneous responses to prevent bot overload)
 - ✅ **Discord Reply Feature** (bot uses Discord's native reply UI for all responses)
+- ✅ **Per-Server Emote Filtering** (restrict which servers' emotes are available per server)
+- ✅ **Per-Server Alternative Nicknames** (server-specific nicknames with flexible matching, falls back to global)
+- ✅ **GUI Server Manager Redesign** (server-first interface with channels, nicknames, and emote sources per server)
 
 ###  Phase 2 Core Features:
 
