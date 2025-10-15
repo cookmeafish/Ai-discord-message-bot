@@ -77,7 +77,10 @@ class EventsCog(commands.Cog):
             if message.reference.resolved.author.id == self.bot.user.id:
                 is_reply_to_bot = True
 
-        was_directed_at_bot = is_mentioned or is_reply_to_bot
+        # Check if bot's name is mentioned in message content (case-insensitive)
+        bot_name_mentioned = self.bot.user.name.lower() in message.content.lower()
+
+        was_directed_at_bot = is_mentioned or is_reply_to_bot or bot_name_mentioned
 
         # Only log and respond to messages from active channels
         # (but bot still has access to ALL historical data when responding)
@@ -129,17 +132,12 @@ class EventsCog(commands.Cog):
         EventsCog._processing_messages.add(message.id)
 
         try:
-            # Check if we should respond based on random chance or direct mention
-            channel_config = config.get('channel_settings', {}).get(str(message.channel.id), {})
-            rand_chance = channel_config.get('random_reply_chance', config.get('random_reply_chance', 0.0))
-            is_random_reply = random.random() < rand_chance
-
             # Check if message has images/attachments
             has_images = len(message.attachments) > 0
 
-            # Respond if directed at bot or if random chance triggers or if has images
-            if was_directed_at_bot or is_random_reply or has_images:
-                self.logger.info(f"Generating response for message from {message.author.name} (directed={was_directed_at_bot}, random={is_random_reply}, has_images={has_images})")
+            # Respond ONLY if directed at bot (mentioned, replied to, or name mentioned)
+            if was_directed_at_bot:
+                self.logger.info(f"Generating response for message from {message.author.name} (mentioned={is_mentioned}, reply={is_reply_to_bot}, name_mentioned={bot_name_mentioned}, has_images={has_images})")
 
                 async with message.channel.typing():
                     try:
