@@ -266,10 +266,10 @@ class EventsCog(commands.Cog):
                         else:
                             self.logger.warning(f"AI handler returned empty response for message {message.id}")
 
-                    except Exception as e:
-                        self.logger.error(f"Failed to generate AI response: {e}", exc_info=True)
-                        # Optionally send an error message to the channel
-                        await message.reply("Sorry, I encountered an error while processing that.")
+                except Exception as e:
+                    self.logger.error(f"Failed to generate AI response: {e}", exc_info=True)
+                    # Optionally send an error message to the channel
+                    await message.reply("Sorry, I encountered an error while processing that.")
                 finally:
                     # Always decrement active response counter
                     EventsCog._active_responses -= 1
