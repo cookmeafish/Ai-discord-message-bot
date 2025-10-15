@@ -65,6 +65,7 @@
         "purpose": "To chat with users and assist with server tasks."
     },
     "alternative_nicknames": [],
+    "server_emote_sources": {},
     "channel_settings": {
         "1427004937442951342": {
             "personality_traits": "chill, low-energy, concise, casual",

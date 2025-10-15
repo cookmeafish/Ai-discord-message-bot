@@ -223,7 +223,7 @@ class EventsCog(commands.Cog):
                                     )
 
                                     if ai_response_text:
-                                        final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
+                                        final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text, message.guild.id)
                                         sent_message = await message.reply(final_response)
                                         self.logger.info(f"Sent image response: {final_response[:50]}...")
                                     else:
@@ -258,7 +258,7 @@ class EventsCog(commands.Cog):
 
                         # Replace emote tags and send response
                         if ai_response_text:
-                            final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
+                            final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text, message.guild.id)
                             sent_message = await message.reply(final_response)
                             self.logger.info(f"Sent response: {final_response[:50]}...")
 

@@ -46,19 +46,61 @@ class EmoteOrchestrator:
         """
         return ", ".join(f":{name}:" for name in self.emotes.keys()) if self.emotes else "No emotes loaded"
 
-    def replace_emote_tags(self, text):
+    def get_emotes_for_guild(self, guild_id):
+        """
+        Gets emotes available for a specific guild based on server_emote_sources config.
+
+        Args:
+            guild_id: Discord guild ID (int or str)
+
+        Returns:
+            dict: Filtered emotes dict {name: emote_object}
+        """
+        guild_id = str(guild_id)
+
+        # Get config to check emote sources
+        config = self.bot.config_manager.get_config()
+        server_emote_sources = config.get('server_emote_sources', {})
+
+        # If guild not configured, return all emotes (backward compatible)
+        if guild_id not in server_emote_sources:
+            return self.emotes
+
+        # Get list of allowed guild IDs for this server
+        allowed_guild_ids = server_emote_sources[guild_id]
+        if not allowed_guild_ids:
+            return self.emotes  # Empty list = all emotes
+
+        # Filter emotes to only those from allowed guilds
+        filtered_emotes = {}
+        for guild in self.bot.guilds:
+            if str(guild.id) in [str(gid) for gid in allowed_guild_ids]:
+                for emote in guild.emojis:
+                    if emote.name not in filtered_emotes:
+                        filtered_emotes[emote.name] = emote
+
+        return filtered_emotes
+
+    def replace_emote_tags(self, text, guild_id=None):
         """
         Finds all occurrences of :emote_name: in a string and replaces them
         with the actual Discord emote string if the emote exists.
 
-        This function correctly replaces only :emote_name: tags (not already-formatted Discord emotes).
+        Optionally filters emotes based on guild_id if provided.
+
+        Args:
+            text: The text to process
+            guild_id: Optional guild ID to filter emotes (uses server_emote_sources config)
         """
         if not text:
             return text
 
+        # Get appropriate emote set (filtered or all)
+        emotes_to_use = self.get_emotes_for_guild(guild_id) if guild_id else self.emotes
+
         def replace_match(match):
             tag_name = match.group(1)
-            emote = self.get_emote(tag_name)
+            emote = emotes_to_use.get(tag_name)
             if emote:
                 # Build the proper Discord emote format
                 if emote.animated:
@@ -67,11 +109,11 @@ class EmoteOrchestrator:
                     return f'<:{emote.name}:{emote.id}>'
             else:
                 # If emote is not found, leave the original tag unchanged and log warning
-                print(f"WARNING: Emote ':{tag_name}:' not found. Available emotes: {', '.join(self.emotes.keys())}")
+                print(f"WARNING: Emote ':{tag_name}:' not found. Available emotes: {', '.join(emotes_to_use.keys())}")
                 return match.group(0)
 
         try:
-            # CRITICAL FIX: This regex ONLY matches :word: patterns that are NOT already 
+            # CRITICAL FIX: This regex ONLY matches :word: patterns that are NOT already
             # part of a Discord emote format <:name:id> or <a:name:id>
             # The negative lookbehind (?<!<) ensures we don't match emotes after '<'
             # The negative lookbehind (?<!<a) ensures we don't match animated emotes after '<a'

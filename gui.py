@@ -109,34 +109,14 @@ class BotGUI(ctk.CTk):
 
         self.right_frame = ctk.CTkFrame(self)
         self.right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nswe")
-        
-        ctk.CTkLabel(self.right_frame, text="Channel-Specific Personalities", font=("Roboto", 18, "bold")).pack(pady=(10, 15))
-        ctk.CTkLabel(self.right_frame, text="Activate the bot in specific channels with unique instructions.", wraplength=450).pack(pady=(0, 10), padx=10)
 
-        ctk.CTkLabel(self.right_frame, text="Channel ID to Activate/Modify:").pack(padx=10, anchor="w")
-        self.channel_id_entry = ctk.CTkEntry(self.right_frame)
-        self.channel_id_entry.pack(fill="x", padx=10, pady=2)
-        
-        ctk.CTkLabel(self.right_frame, text="Channel-Specific Purpose/Instructions:").pack(padx=10, anchor="w", pady=(10,0))
-        self.channel_purpose_textbox = ctk.CTkTextbox(self.right_frame, height=100)
-        self.channel_purpose_textbox.pack(fill="x", padx=10, pady=2)
-        self.channel_purpose_textbox.insert("1.0", "Example: Strictly answer user questions based on the server rules. Be formal and direct.")
+        ctk.CTkLabel(self.right_frame, text="Server Manager", font=("Roboto", 18, "bold")).pack(pady=(10, 15))
+        ctk.CTkLabel(self.right_frame, text="Manage bot settings for each Discord server.", wraplength=450).pack(pady=(0, 10), padx=10)
 
-        # Add Channel button
-        self.add_channel_button = ctk.CTkButton(
-            self.right_frame,
-            text="Add Channel",
-            command=self.add_channel,
-            fg_color="#28a745",
-            hover_color="#218838",
-            width=120
-        )
-        self.add_channel_button.pack(padx=10, pady=(5, 10))
-
-        ctk.CTkLabel(self.right_frame, text="Currently Active Channels:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
-        self.active_channels_frame = ctk.CTkScrollableFrame(self.right_frame, height=100)
-        self.active_channels_frame.pack(fill="x", padx=10)
-        self.update_active_channels_display()
+        ctk.CTkLabel(self.right_frame, text="Active Servers:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
+        self.server_list_frame = ctk.CTkScrollableFrame(self.right_frame, height=150)
+        self.server_list_frame.pack(fill="x", padx=10)
+        self.update_server_list()
 
         ctk.CTkLabel(self.right_frame, text="Bot Console Output:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
         self.log_textbox = ctk.CTkTextbox(self.right_frame, height=300)
@@ -187,7 +167,7 @@ class BotGUI(ctk.CTk):
                 current_modified = os.path.getmtime(CONFIG_FILE)
                 if current_modified > self.config_last_modified:
                     # Config file was modified externally, refresh the display
-                    self.update_active_channels_display()
+                    self.update_server_list()
                     self.config_last_modified = current_modified
         except Exception as e:
             # Silently handle errors to avoid disrupting GUI
@@ -211,59 +191,193 @@ class BotGUI(ctk.CTk):
         print("GUI is closing, ensuring bot process is terminated...")
         self.stop_bot()
         self.destroy()
-        
-    def update_active_channels_display(self):
-        self.config = self.config_manager.get_config()
 
-        # Batch widget updates to prevent flashing
-        self.active_channels_frame.update_idletasks()
+    def _scan_server_databases(self):
+        """
+        Scans the database folder for server database files.
+        Returns list of (guild_id, server_name) tuples.
+        """
+        import re
+        servers = []
+        db_folder = "database"
 
-        for widget in self.active_channels_frame.winfo_children():
+        if not os.path.exists(db_folder):
+            return servers
+
+        for filename in os.listdir(db_folder):
+            if filename.endswith('_data.db') and filename != '_data.db':
+                # Parse filename format: {guild_id}_{servername}_data.db
+                match = re.match(r'^(\d+)_(.+)_data\.db$', filename)
+                if match:
+                    guild_id = match.group(1)
+                    server_name = match.group(2)
+                    servers.append((guild_id, server_name))
+
+        return servers
+
+    def update_server_list(self):
+        """Refreshes the server list display."""
+        # Clear existing widgets
+        for widget in self.server_list_frame.winfo_children():
             widget.destroy()
 
-        settings = self.config.get('channel_settings', {})
-        if not settings:
-            ctk.CTkLabel(self.active_channels_frame, text="No specific channels configured yet.").pack(anchor="w")
+        # Scan for server databases
+        servers = self._scan_server_databases()
+
+        if not servers:
+            ctk.CTkLabel(self.server_list_frame, text="No servers found. Use /activate in Discord to activate the bot on a server.").pack(anchor="w", padx=5)
             return
 
-        for channel_id, channel_config in settings.items():
-            purpose = channel_config.get('purpose', 'Default purpose')
+        # Display each server
+        for guild_id, server_name in servers:
+            server_frame = ctk.CTkFrame(self.server_list_frame, fg_color="transparent")
+            server_frame.pack(fill="x", pady=2)
 
-            # Create a frame for each channel row
-            channel_frame = ctk.CTkFrame(self.active_channels_frame, fg_color="transparent")
-            channel_frame.pack(fill="x", pady=2)
-
-            # Channel info label
-            display_text = f"ID: {channel_id} - Purpose: {purpose[:35]}..."
-            ctk.CTkLabel(channel_frame, text=display_text, wraplength=300, justify="left").pack(side="left", anchor="w")
-
-            # Button container
-            button_frame = ctk.CTkFrame(channel_frame, fg_color="transparent")
-            button_frame.pack(side="right")
+            # Server name label
+            ctk.CTkLabel(server_frame, text=server_name, font=("Roboto", 11)).pack(side="left", anchor="w", padx=5)
 
             # Edit button
             edit_btn = ctk.CTkButton(
-                button_frame,
-                text="Edit",
-                command=lambda cid=channel_id, cfg=channel_config: self.edit_channel(cid, cfg),
-                width=60,
+                server_frame,
+                text="Edit Settings",
+                command=lambda gid=guild_id, sname=server_name: self.open_server_settings(gid, sname),
+                width=100,
                 height=24,
                 fg_color="#17a2b8",
                 hover_color="#138496"
             )
-            edit_btn.pack(side="left", padx=2)
+            edit_btn.pack(side="right", padx=2)
 
-            # Delete button
-            delete_btn = ctk.CTkButton(
-                button_frame,
-                text="Remove",
-                command=lambda cid=channel_id: self.remove_channel(cid),
-                width=70,
-                height=24,
-                fg_color="#dc3545",
-                hover_color="#c82333"
+    def open_server_settings(self, guild_id, server_name):
+        """Opens the Server Settings Dialog for a specific server."""
+        # Create settings window
+        settings_window = ctk.CTkToplevel(self)
+        settings_window.title(f"Server Settings - {server_name}")
+        settings_window.geometry("650x700")
+        settings_window.resizable(True, True)
+        settings_window.minsize(550, 600)
+        settings_window.grab_set()
+
+        # Server name display
+        ctk.CTkLabel(settings_window, text=f"Server: {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(settings_window, text=f"Guild ID: {guild_id}", font=("Roboto", 10)).pack(pady=(0, 20))
+
+        # Active Channels Section
+        ctk.CTkLabel(settings_window, text="Active Channels:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(10, 5))
+
+        channels_frame = ctk.CTkScrollableFrame(settings_window, height=200)
+        channels_frame.pack(fill="x", padx=20, pady=5)
+
+        def refresh_channels():
+            """Refresh the channels list for this server."""
+            for widget in channels_frame.winfo_children():
+                widget.destroy()
+
+            config = self.config_manager.get_config()
+            channel_settings = config.get('channel_settings', {})
+
+            # Filter channels by guild (we'll need to infer this from the database or config)
+            # For now, show all channels with a note
+            server_channels = []
+            for channel_id, channel_config in channel_settings.items():
+                # TODO: In future, store guild_id in channel_settings to properly filter
+                # For now, display all channels
+                server_channels.append((channel_id, channel_config))
+
+            if not server_channels:
+                ctk.CTkLabel(channels_frame, text="No channels activated yet. Use /activate in Discord.").pack(anchor="w", padx=5)
+            else:
+                for channel_id, channel_config in server_channels:
+                    channel_row = ctk.CTkFrame(channels_frame, fg_color="transparent")
+                    channel_row.pack(fill="x", pady=2)
+
+                    purpose = channel_config.get('purpose', 'Default purpose')[:40]
+                    ctk.CTkLabel(channel_row, text=f"{channel_id}: {purpose}...").pack(side="left", anchor="w")
+
+                    edit_ch_btn = ctk.CTkButton(
+                        channel_row,
+                        text="Edit",
+                        command=lambda cid=channel_id, cfg=channel_config: [self.edit_channel(cid, cfg), refresh_channels()],
+                        width=60,
+                        height=24,
+                        fg_color="#17a2b8",
+                        hover_color="#138496"
+                    )
+                    edit_ch_btn.pack(side="right", padx=2)
+
+        refresh_channels()
+
+        # Emote Sources Section
+        ctk.CTkLabel(settings_window, text="Emote Sources:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
+        ctk.CTkLabel(settings_window, text="Select which servers' emotes can be used:", font=("Roboto", 10)).pack(padx=20, anchor="w")
+
+        emote_frame = ctk.CTkScrollableFrame(settings_window, height=150)
+        emote_frame.pack(fill="x", padx=20, pady=5)
+
+        # Get all available servers
+        all_servers = self._scan_server_databases()
+
+        # Get current emote source configuration
+        config = self.config_manager.get_config()
+        server_emote_sources = config.get('server_emote_sources', {})
+        current_sources = server_emote_sources.get(guild_id, [])
+
+        # Create checkbox for each server
+        emote_checkboxes = {}
+        for srv_guild_id, srv_name in all_servers:
+            var = ctk.BooleanVar(value=(srv_guild_id in current_sources if current_sources else True))
+            checkbox = ctk.CTkCheckBox(
+                emote_frame,
+                text=srv_name,
+                variable=var
             )
-            delete_btn.pack(side="left", padx=2)
+            checkbox.pack(anchor="w", padx=5, pady=2)
+            emote_checkboxes[srv_guild_id] = var
+
+        # Buttons frame
+        button_frame = ctk.CTkFrame(settings_window, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        def save_settings():
+            # Save emote sources
+            selected_sources = [gid for gid, var in emote_checkboxes.items() if var.get()]
+
+            current_config = self.config_manager.get_config()
+            if 'server_emote_sources' not in current_config:
+                current_config['server_emote_sources'] = {}
+
+            current_config['server_emote_sources'][guild_id] = selected_sources
+            self.config_manager.update_config(current_config)
+
+            print(f"Updated server settings for {server_name}")
+            self.log_to_console(f"Updated server settings for {server_name}")
+            settings_window.destroy()
+
+        # Save button
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save Settings",
+            command=save_settings,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=settings_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        cancel_btn.pack(side="left", padx=10)
+
+    def update_active_channels_display(self):
+        """Legacy method - redirects to update_server_list for backward compatibility."""
+        self.update_server_list()
 
     def edit_channel(self, channel_id, channel_config):
         """Opens a dialog to edit channel settings."""
