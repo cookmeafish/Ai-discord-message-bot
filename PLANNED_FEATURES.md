@@ -50,6 +50,17 @@ All Phase 2 features have been fully implemented as of 2025-10-14:
 
 - **Roleplay Actions with Italic Formatting**: Bot formats actions as italics (e.g., "*walks over to the counter*") for more immersive roleplay interactions
 - **Concurrent Reply Handling Investigation**: Investigate how the bot handles multiple simultaneous replies (10+ people chatting with bot at once). Current behavior with concurrent Discord mentions/replies needs testing for potential race conditions, database conflicts, or API rate limiting issues.
+- **AI Image Generation with Natural Detection**: Bot can draw "childlike" images based on user requests
+  - **Provider**: Together.ai API ($0.002/image, 99.9% uptime SLA)
+  - **Natural language detection**: "draw a cat", "sketch a house", "make me a picture of..."
+  - **Slash command backup**: `/draw <description>`
+  - **Style**: Childlike prompts ("crayon drawing", "kindergarten art", "simple 2D sketch")
+  - **Rate limiting**: 5 drawings per user per day
+  - **Cost**: ~$2 per 1,000 images (2,500 images for $5 minimum purchase)
+  - **Implementation**: New `image_generation` intent + `modules/image_generator.py` wrapper
+  - **Integration**: Uses existing intent classification system (same pattern as memory_storage)
+  - **Estimated effort**: 5-6 hours total
+  - **Why Together.ai**: Only provider with 99.9% uptime SLA, no cold starts, excellent Python SDK
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
 - Advanced relationship dynamics (jealousy, loyalty tracking)
