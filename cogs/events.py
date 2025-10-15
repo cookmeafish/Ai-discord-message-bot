@@ -167,7 +167,7 @@ class EventsCog(commands.Cog):
 
                                     if ai_response_text:
                                         final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
-                                        sent_message = await message.channel.send(final_response)
+                                        sent_message = await message.reply(final_response)
                                         self.logger.info(f"Sent image response: {final_response[:50]}...")
                                     else:
                                         self.logger.warning(f"Image processing returned no response")
@@ -202,7 +202,7 @@ class EventsCog(commands.Cog):
                         # Replace emote tags and send response
                         if ai_response_text:
                             final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text)
-                            sent_message = await message.channel.send(final_response)
+                            sent_message = await message.reply(final_response)
                             self.logger.info(f"Sent response: {final_response[:50]}...")
 
                             # Note: The bot's message will be logged when it triggers on_message
@@ -212,7 +212,7 @@ class EventsCog(commands.Cog):
                     except Exception as e:
                         self.logger.error(f"Failed to generate AI response: {e}", exc_info=True)
                         # Optionally send an error message to the channel
-                        await message.channel.send("Sorry, I encountered an error while processing that.")
+                        await message.reply("Sorry, I encountered an error while processing that.")
 
         finally:
             # Always remove from processing set

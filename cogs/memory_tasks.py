@@ -234,7 +234,7 @@ Response (number or NO_CONTRADICTION):"""
         }
 
     @app_commands.command(name="consolidate_memory", description="Manually trigger memory consolidation (Admin only)")
-    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
     async def consolidate_memory_command(self, interaction: discord.Interaction):
         """
         Admin slash command to manually trigger memory consolidation.
