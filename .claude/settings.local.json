@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebSearch",
+      "WebFetch(domain:www.together.ai)",
+      "Bash(pip show:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []

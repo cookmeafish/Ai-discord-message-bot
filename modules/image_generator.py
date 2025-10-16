@@ -117,13 +117,14 @@ class ImageGenerator:
             if hasattr(response, 'data') and len(response.data) > 0:
                 image_data = response.data[0]
 
-                # Together.ai returns base64 encoded image in b64_json format
-                if hasattr(image_data, 'b64_json'):
+                # Together.ai returns base64 encoded image in b64_json format OR a URL
+                # Check which format is provided
+                if hasattr(image_data, 'b64_json') and image_data.b64_json is not None:
                     import base64
                     image_bytes = base64.b64decode(image_data.b64_json)
                     return image_bytes, None
                 # Or it might return a URL
-                elif hasattr(image_data, 'url'):
+                elif hasattr(image_data, 'url') and image_data.url is not None:
                     import httpx
                     async with httpx.AsyncClient() as client:
                         img_response = await client.get(image_data.url)

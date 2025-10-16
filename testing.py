@@ -303,7 +303,78 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "Update Relationship Metrics", False, f"Error: {e}")
 
-        # Test 3: Clean up test user
+        # Test 3: Metric locks functionality
+        try:
+            # Set locks for some metrics
+            self.db_manager.update_relationship_metrics(
+                test_user_id,
+                respect_locks=False,  # Bypass locks for initial setup
+                rapport=5,
+                rapport_locked=1,
+                anger=3,
+                anger_locked=1
+            )
+
+            # Try to update locked metrics (should be blocked)
+            self.db_manager.update_relationship_metrics(
+                test_user_id,
+                respect_locks=True,
+                rapport=9,  # Locked, shouldn't change
+                anger=8,    # Locked, shouldn't change
+                trust=6     # Not locked, should change
+            )
+
+            # Verify locked metrics didn't change, but unlocked did
+            metrics = self.db_manager.get_relationship_metrics(test_user_id)
+            locks_work = (
+                metrics["rapport"] == 5 and  # Should stay 5 (locked)
+                metrics["anger"] == 3 and    # Should stay 3 (locked)
+                metrics["trust"] == 6        # Should change to 6 (not locked)
+            )
+
+            self._log_test(
+                category,
+                "Metric Lock Functionality",
+                locks_work,
+                f"Locked metrics protected: rapport={metrics['rapport']} (locked), anger={metrics['anger']} (locked), trust={metrics['trust']} (unlocked)" if locks_work else f"Lock protection failed: {metrics}"
+            )
+        except Exception as e:
+            self._log_test(category, "Metric Lock Functionality", False, f"Error: {e}")
+
+        # Test 4: Get all users with metrics
+        try:
+            all_users = self.db_manager.get_all_users_with_metrics()
+            has_test_user = any(u['user_id'] == test_user_id for u in all_users)
+
+            self._log_test(
+                category,
+                "Get All Users With Metrics",
+                has_test_user,
+                f"Found {len(all_users)} users including test user" if has_test_user else f"Test user not found in {len(all_users)} users"
+            )
+        except Exception as e:
+            self._log_test(category, "Get All Users With Metrics", False, f"Error: {e}")
+
+        # Test 5: Metric lock columns exist
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("PRAGMA table_info(relationship_metrics)")
+            columns = [row[1] for row in cursor.fetchall()]
+            cursor.close()
+
+            lock_columns = ['rapport_locked', 'anger_locked', 'trust_locked', 'formality_locked']
+            all_exist = all(col in columns for col in lock_columns)
+
+            self._log_test(
+                category,
+                "Metric Lock Columns Exist",
+                all_exist,
+                "All lock columns present" if all_exist else f"Missing lock columns: {[c for c in lock_columns if c not in columns]}"
+            )
+        except Exception as e:
+            self._log_test(category, "Metric Lock Columns Exist", False, f"Error: {e}")
+
+        # Test 6: Clean up test user
         try:
             cursor = self.db_manager.conn.cursor()
             cursor.execute("DELETE FROM relationship_metrics WHERE user_id = ?", (test_user_id,))

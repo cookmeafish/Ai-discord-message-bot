@@ -153,6 +153,9 @@ class BotGUI(ctk.CTk):
         self.consolidate_button = ctk.CTkButton(self.bottom_frame, text="Test Memory Consolidation", command=self.test_memory_consolidation, fg_color="#17a2b8", hover_color="#138496")
         self.consolidate_button.pack(side="left", padx=(0, 20), pady=10)
 
+        self.user_manager_button = ctk.CTkButton(self.bottom_frame, text="User Manager", command=self.open_user_manager, fg_color="#6f42c1", hover_color="#5a32a3")
+        self.user_manager_button.pack(side="left", padx=(0, 20), pady=10)
+
         self.start_button = ctk.CTkButton(self.bottom_frame, text="Start Bot", command=self.start_bot, fg_color="#28a745", hover_color="#218838")
         self.start_button.pack(side="right", padx=20, pady=10)
 
@@ -217,39 +220,61 @@ class BotGUI(ctk.CTk):
         """
         Scans the database folder for server database files.
         Returns list of (guild_id, server_name) tuples.
-        Filters out old-format databases if a new-format one exists for the same server.
+        Supports:
+        - New structure: database/{server_name}/{guild_id}_data.db
+        - Legacy structures for backward compatibility
         """
         import re
         servers = []
-        old_format_servers = []
-        server_names_with_guild_id = set()
         db_folder = "database"
 
         if not os.path.exists(db_folder):
             return servers
 
-        # First pass: collect all servers
-        for filename in os.listdir(db_folder):
-            if filename.endswith('_data.db') and filename != '_data.db':
-                # Try new format first: {guild_id}_{servername}_data.db
-                match = re.match(r'^(\d+)_(.+)_data\.db$', filename)
+        for item in os.listdir(db_folder):
+            item_path = os.path.join(db_folder, item)
+
+            # Check if it's a directory
+            if os.path.isdir(item_path):
+                # Look for database files in this folder
+                for filename in os.listdir(item_path):
+                    # New format: {guild_id}_data.db
+                    match = re.match(r'^(\d+)_data\.db$', filename)
+                    if match:
+                        guild_id = match.group(1)
+                        server_name = item  # Folder name is server name
+                        servers.append((guild_id, server_name))
+                        break
+                    # Legacy format: data.db
+                    elif filename == "data.db":
+                        # Try to extract guild_id from folder name
+                        folder_match = re.match(r'^(\d+)_(.+)$', item)
+                        if folder_match:
+                            guild_id = folder_match.group(1)
+                            server_name = folder_match.group(2)
+                        elif item.isdigit():
+                            guild_id = item
+                            server_name = f"Server {guild_id}"
+                        else:
+                            guild_id = "unknown"
+                            server_name = item
+                        servers.append((guild_id, server_name))
+                        break
+
+            # Very old flat structure: database/{guild_id}_{servername}_data.db
+            elif item.endswith('_data.db') and item != '_data.db':
+                match = re.match(r'^(\d+)_(.+)_data\.db$', item)
                 if match:
                     guild_id = match.group(1)
                     server_name = match.group(2)
                     servers.append((guild_id, server_name))
-                    server_names_with_guild_id.add(server_name)
                 else:
-                    # Try old format: {servername}_data.db (no guild_id prefix)
-                    match = re.match(r'^(.+)_data\.db$', filename)
+                    # Ancient format: {servername}_data.db (no guild_id)
+                    match = re.match(r'^(.+)_data\.db$', item)
                     if match:
                         server_name = match.group(1)
-                        guild_id = "unknown"  # Mark as unknown for old format
-                        old_format_servers.append((guild_id, server_name))
-
-        # Second pass: only add old-format servers if no new-format version exists
-        for guild_id, server_name in old_format_servers:
-            if server_name not in server_names_with_guild_id:
-                servers.append((guild_id, server_name))
+                        guild_id = "unknown"
+                        servers.append((guild_id, server_name))
 
         return servers
 
@@ -329,8 +354,10 @@ class BotGUI(ctk.CTk):
                     channel_row = ctk.CTkFrame(channels_frame, fg_color="transparent")
                     channel_row.pack(fill="x", pady=2)
 
-                    purpose = channel_config.get('purpose', 'Default purpose')[:40]
-                    ctk.CTkLabel(channel_row, text=f"{channel_id}: {purpose}...").pack(side="left", anchor="w")
+                    # Display channel name if available, otherwise show channel ID
+                    channel_name = channel_config.get('channel_name', f'Channel {channel_id}')
+                    purpose = channel_config.get('purpose', 'Default purpose')[:30]
+                    ctk.CTkLabel(channel_row, text=f"#{channel_name}: {purpose}...").pack(side="left", anchor="w")
 
                     edit_ch_btn = ctk.CTkButton(
                         channel_row,
@@ -456,8 +483,10 @@ class BotGUI(ctk.CTk):
         # Make it modal (but this doesn't prevent minimize)
         edit_window.grab_set()
 
-        # Channel ID display (non-editable)
-        ctk.CTkLabel(edit_window, text=f"Channel ID: {channel_id}", font=("Roboto", 14, "bold")).pack(pady=(20, 10))
+        # Channel ID and Name display
+        channel_name = channel_config.get('channel_name', 'Unknown')
+        ctk.CTkLabel(edit_window, text=f"Channel: #{channel_name}", font=("Roboto", 14, "bold")).pack(pady=(20, 5))
+        ctk.CTkLabel(edit_window, text=f"Channel ID: {channel_id}", font=("Roboto", 10)).pack(pady=(0, 10))
 
         # Purpose/Instructions editor
         ctk.CTkLabel(edit_window, text="Channel Purpose/Instructions:").pack(padx=20, anchor="w", pady=(10, 0))
@@ -672,17 +701,8 @@ class BotGUI(ctk.CTk):
         if 'steps' not in new_config['image_generation']:
             new_config['image_generation']['steps'] = 4
 
-        channel_id = self.channel_id_entry.get()
-        channel_purpose = self.channel_purpose_textbox.get("1.0", "end-1c")
-        if channel_id.isdigit() and channel_purpose.strip():
-            if 'channel_settings' not in new_config:
-                new_config['channel_settings'] = {}
-
-            new_channel_setting = new_config['default_personality'].copy()
-            new_channel_setting['purpose'] = channel_purpose
-            new_config['channel_settings'][channel_id] = new_channel_setting
-            print(f"Channel {channel_id} setting prepared.")
-            self.log_to_console(f"Channel {channel_id} activated.")
+        # Note: Channel activation is now handled through Server Manager UI or /activate command in Discord
+        # Legacy manual channel addition code removed
 
         self.config_manager.update_config(new_config)
 
@@ -750,6 +770,305 @@ class BotGUI(ctk.CTk):
             self.log_textbox.configure(state="disabled")
         else:
             print("Bot is not running or has already stopped.")
+
+    def open_user_manager(self):
+        """Opens the User Manager window to view and edit user relationship metrics."""
+        from database.db_manager import DBManager
+
+        # Create user manager window
+        user_window = ctk.CTkToplevel(self)
+        user_window.title("User Manager")
+        user_window.geometry("900x700")
+        user_window.resizable(True, True)
+        user_window.minsize(700, 600)
+
+        # Title
+        ctk.CTkLabel(user_window, text="User Relationship Manager", font=("Roboto", 18, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(user_window, text="View and edit relationship metrics for users in each server", font=("Roboto", 10)).pack(pady=(0, 20))
+
+        # Server selector
+        ctk.CTkLabel(user_window, text="Select Server:", font=("Roboto", 12, "bold")).pack(padx=20, anchor="w")
+
+        server_selector_frame = ctk.CTkFrame(user_window, fg_color="transparent")
+        server_selector_frame.pack(fill="x", padx=20, pady=5)
+
+        servers = self._scan_server_databases()
+        if not servers:
+            ctk.CTkLabel(user_window, text="No servers found. Use /activate in Discord to set up a server first.").pack(pady=20)
+            return
+
+        server_names = [f"{server_name} ({guild_id})" for guild_id, server_name in servers]
+        selected_server_var = ctk.StringVar(value=server_names[0] if server_names else "")
+
+        server_dropdown = ctk.CTkComboBox(
+            server_selector_frame,
+            variable=selected_server_var,
+            values=server_names,
+            width=400,
+            state="readonly"
+        )
+        server_dropdown.pack(side="left", padx=5)
+
+        # User list frame
+        ctk.CTkLabel(user_window, text="Users:", font=("Roboto", 12, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
+
+        # Column headers
+        headers_frame = ctk.CTkFrame(user_window, fg_color="transparent")
+        headers_frame.pack(fill="x", padx=20)
+
+        ctk.CTkLabel(headers_frame, text="User ID", font=("Roboto", 10, "bold"), width=120).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Rapport", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Anger", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Trust", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Formality", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Actions", font=("Roboto", 10, "bold"), width=80).pack(side="left", padx=2)
+
+        # Scrollable user list
+        user_list_frame = ctk.CTkScrollableFrame(user_window, height=400)
+        user_list_frame.pack(fill="both", expand=True, padx=20, pady=5)
+
+        def refresh_users():
+            """Refresh the user list for the selected server."""
+            # Clear existing widgets
+            for widget in user_list_frame.winfo_children():
+                widget.destroy()
+
+            # Get selected server
+            selected = selected_server_var.get()
+            if not selected:
+                return
+
+            # Parse guild_id from selection
+            guild_id = selected.split("(")[-1].rstrip(")")
+
+            # Find matching server
+            server_folder = None
+            db_filename = None
+            for srv_guild_id, srv_name in servers:
+                if srv_guild_id == guild_id:
+                    # Construct database path
+                    server_folder = os.path.join("database", srv_name)
+                    db_filename = os.path.join(server_folder, f"{srv_guild_id}_data.db")
+                    break
+
+            if not db_filename or not os.path.exists(db_filename):
+                ctk.CTkLabel(user_list_frame, text="Database file not found for this server.").pack(pady=20)
+                return
+
+            # Load users from database
+            try:
+                db_manager = DBManager(db_path=db_filename)
+                users = db_manager.get_all_users_with_metrics()
+                db_manager.close()
+
+                if not users:
+                    ctk.CTkLabel(user_list_frame, text="No users found in this server's database.").pack(pady=20)
+                    return
+
+                # Display each user
+                for user_data in users:
+                    user_row = ctk.CTkFrame(user_list_frame, fg_color="transparent")
+                    user_row.pack(fill="x", pady=2)
+
+                    user_id = user_data['user_id']
+                    ctk.CTkLabel(user_row, text=str(user_id), width=120).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['rapport']), width=70).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['anger']), width=70).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['trust']), width=70).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['formality']), width=70).pack(side="left", padx=2)
+
+                    edit_btn = ctk.CTkButton(
+                        user_row,
+                        text="Edit",
+                        command=lambda ud=user_data, dbf=db_filename: self.open_user_edit_dialog(ud, dbf, refresh_users),
+                        width=80,
+                        height=24,
+                        fg_color="#17a2b8",
+                        hover_color="#138496"
+                    )
+                    edit_btn.pack(side="left", padx=2)
+
+            except Exception as e:
+                ctk.CTkLabel(user_list_frame, text=f"Error loading users: {str(e)}").pack(pady=20)
+                print(f"Error loading users: {e}")
+
+        # Refresh button
+        refresh_btn = ctk.CTkButton(
+            server_selector_frame,
+            text="Load Users",
+            command=refresh_users,
+            width=100,
+            fg_color="#28a745",
+            hover_color="#218838"
+        )
+        refresh_btn.pack(side="left", padx=5)
+
+        # Close button
+        close_btn = ctk.CTkButton(
+            user_window,
+            text="Close",
+            command=user_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        close_btn.pack(pady=20)
+
+    def open_user_edit_dialog(self, user_data, db_filename, refresh_callback):
+        """Opens a dialog to edit a user's relationship metrics and locks."""
+        from database.db_manager import DBManager
+
+        # Create edit window
+        edit_window = ctk.CTkToplevel(self)
+        edit_window.title(f"Edit User {user_data['user_id']}")
+        edit_window.geometry("500x550")
+        edit_window.resizable(False, False)
+        edit_window.grab_set()
+
+        # Title
+        ctk.CTkLabel(edit_window, text=f"Edit User Metrics", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(edit_window, text=f"User ID: {user_data['user_id']}", font=("Roboto", 10)).pack(pady=(0, 20))
+
+        # Metrics frame
+        metrics_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
+        metrics_frame.pack(fill="x", padx=20)
+
+        # Helper function to create metric row
+        def create_metric_row(parent, label, value, locked, min_val, max_val):
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", pady=10)
+
+            # Label
+            ctk.CTkLabel(row, text=f"{label}:", width=80, anchor="w").pack(side="left", padx=5)
+
+            # Value entry
+            entry = ctk.CTkEntry(row, width=80)
+            entry.insert(0, str(value))
+            entry.pack(side="left", padx=5)
+
+            # Range label
+            ctk.CTkLabel(row, text=f"({min_val} to {max_val})", width=70, anchor="w").pack(side="left")
+
+            # Lock checkbox
+            lock_var = ctk.BooleanVar(value=locked)
+            lock_checkbox = ctk.CTkCheckBox(row, text="Lock", variable=lock_var, width=70)
+            lock_checkbox.pack(side="left", padx=10)
+            ToolTip(lock_checkbox, f"Prevent automatic updates to {label.lower()} from sentiment analysis")
+
+            return entry, lock_var
+
+        # Create metric rows
+        rapport_entry, rapport_lock_var = create_metric_row(
+            metrics_frame, "Rapport",
+            user_data['rapport'],
+            user_data.get('rapport_locked', False),
+            0, 10
+        )
+
+        anger_entry, anger_lock_var = create_metric_row(
+            metrics_frame, "Anger",
+            user_data['anger'],
+            user_data.get('anger_locked', False),
+            0, 10
+        )
+
+        trust_entry, trust_lock_var = create_metric_row(
+            metrics_frame, "Trust",
+            user_data['trust'],
+            user_data.get('trust_locked', False),
+            0, 10
+        )
+
+        formality_entry, formality_lock_var = create_metric_row(
+            metrics_frame, "Formality",
+            user_data['formality'],
+            user_data.get('formality_locked', False),
+            -5, 5
+        )
+
+        # Info text
+        ctk.CTkLabel(
+            edit_window,
+            text="Locked metrics won't be automatically updated by the bot's sentiment analysis.",
+            font=("Roboto", 9),
+            text_color="gray"
+        ).pack(pady=20)
+
+        # Buttons frame
+        button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        def save_changes():
+            try:
+                # Validate and get new values
+                new_rapport = int(rapport_entry.get())
+                new_anger = int(anger_entry.get())
+                new_trust = int(trust_entry.get())
+                new_formality = int(formality_entry.get())
+
+                # Validate ranges
+                if not (0 <= new_rapport <= 10):
+                    self.log_to_console("Error: Rapport must be between 0 and 10")
+                    return
+                if not (0 <= new_anger <= 10):
+                    self.log_to_console("Error: Anger must be between 0 and 10")
+                    return
+                if not (0 <= new_trust <= 10):
+                    self.log_to_console("Error: Trust must be between 0 and 10")
+                    return
+                if not (-5 <= new_formality <= 5):
+                    self.log_to_console("Error: Formality must be between -5 and 5")
+                    return
+
+                # Update database
+                db_manager = DBManager(db_path=db_filename)
+                db_manager.update_relationship_metrics(
+                    user_data['user_id'],
+                    respect_locks=False,  # We're manually editing, so ignore current locks
+                    rapport=new_rapport,
+                    anger=new_anger,
+                    trust=new_trust,
+                    formality=new_formality,
+                    rapport_locked=1 if rapport_lock_var.get() else 0,
+                    anger_locked=1 if anger_lock_var.get() else 0,
+                    trust_locked=1 if trust_lock_var.get() else 0,
+                    formality_locked=1 if formality_lock_var.get() else 0
+                )
+                db_manager.close()
+
+                self.log_to_console(f"Updated metrics for user {user_data['user_id']}")
+                print(f"Updated metrics for user {user_data['user_id']}")
+
+                refresh_callback()
+                edit_window.destroy()
+
+            except ValueError:
+                self.log_to_console("Error: All metric values must be valid integers")
+            except Exception as e:
+                self.log_to_console(f"Error saving changes: {str(e)}")
+                print(f"Error saving changes: {e}")
+
+        # Save button
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save Changes",
+            command=save_changes,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=edit_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        cancel_btn.pack(side="left", padx=10)
 
     def test_memory_consolidation(self):
         """

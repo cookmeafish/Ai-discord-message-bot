@@ -183,27 +183,41 @@ class AIHandler:
             'allow_technical_language': technical
         }
 
-    def _load_server_info(self, channel_config):
+    def _load_server_info(self, channel_config, guild_id, server_name):
         """
         Loads formal server information from text files if enabled for this channel.
         Used for formal channels like rules, moderation, etc.
 
+        Server info is stored per-server to prevent cross-contamination:
+        Server_Info/{server_name}/*.txt
+
         Args:
             channel_config: Channel configuration dictionary
+            guild_id: Discord guild ID
+            server_name: Discord server name
 
         Returns:
             String containing server info, or empty string if not enabled
         """
         import os
+        import re
 
         # Check if server info is enabled for this channel
         if not channel_config.get('use_server_info', False):
             return ""
 
-        server_info_dir = "Server_Info"
+        # Sanitize server name for folder path
+        sanitized_name = re.sub(r'[<>:"/\\|?*]', '_', server_name)
+        sanitized_name = sanitized_name[:50].strip('. ')
+        if not sanitized_name:
+            sanitized_name = "server"
+
+        # Per-server folder: Server_Info/{server_name}/
+        server_info_dir = os.path.join("Server_Info", sanitized_name)
 
         # Check if directory exists
         if not os.path.exists(server_info_dir):
+            print(f"AI Handler: Server info directory not found: {server_info_dir}")
             return ""
 
         # Load all .txt files from the directory
@@ -968,7 +982,7 @@ Acknowledge this new information with a short, natural, human-like response base
 
         elif intent == "factual_question":
             personality_mode = self._get_personality_mode(personality_config)
-            server_info = self._load_server_info(personality_config)
+            server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
             system_prompt = (
                 f"{identity_prompt}\n"
@@ -1152,7 +1166,7 @@ Respond with ONLY the fact ID number or "NONE".
         
         else:  # Covers "casual_chat" and "memory_recall"
             personality_mode = self._get_personality_mode(personality_config)
-            server_info = self._load_server_info(personality_config)
+            server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
             system_prompt = (
                 f"{identity_prompt}\n"

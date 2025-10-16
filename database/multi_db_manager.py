@@ -35,27 +35,53 @@ class MultiDBManager:
             sanitized = "server"
         return sanitized
 
-    def _get_db_filename(self, server_name, guild_id):
+    def _get_server_folder(self, guild_id, server_name):
         """
-        Generates database filename: {guild_id}_{servername}_data.db
-        Guild ID ensures uniqueness even if servers share names or get renamed.
+        Returns the folder path for a specific server.
+        Structure: database/{server_name}/
+        Folder uses human-readable server name for easy identification.
         """
         sanitized_name = self._sanitize_server_name(server_name)
-        return f"{guild_id}_{sanitized_name}_data.db"
+        return os.path.join(self.db_folder, sanitized_name)
+
+    def _get_db_path(self, guild_id, server_name):
+        """
+        Returns the database file path for a specific server.
+        Structure: database/{server_name}/{guild_id}_data.db
+        Folder: Human-readable server name
+        File: Guild ID ensures uniqueness (handles server renames)
+        """
+        server_folder = self._get_server_folder(guild_id, server_name)
+        db_filename = f"{guild_id}_data.db"
+        return os.path.join(server_folder, db_filename)
 
     def _discover_existing_databases(self):
         """
-        Scans the database folder for existing *_data.db files
-        and loads them into memory.
+        Scans the database folder for existing server subdirectories.
+        Supports:
+        - New format: {server_name}/{guild_id}_data.db
+        - Legacy formats for backward compatibility
         """
         if not os.path.exists(self.db_folder):
             return
 
-        for filename in os.listdir(self.db_folder):
-            if filename.endswith('_data.db') and filename != '_data.db':
-                # Extract guild_id from filename if possible
-                # For now, we'll load them on-demand when needed
-                pass
+        for item in os.listdir(self.db_folder):
+            item_path = os.path.join(self.db_folder, item)
+            # Check if it's a directory
+            if os.path.isdir(item_path):
+                # Look for database files in this folder
+                for filename in os.listdir(item_path):
+                    # New format: {guild_id}_data.db
+                    match = re.match(r'^(\d+)_data\.db$', filename)
+                    if match:
+                        guild_id = match.group(1)
+                        print(f"Discovered existing database for guild {guild_id} in folder '{item}'")
+                        break
+                    # Legacy format: data.db
+                    elif filename == "data.db":
+                        print(f"Discovered legacy database in folder '{item}'")
+                        break
+                # Databases will be loaded on-demand when accessed
 
     def get_or_create_db(self, guild_id, server_name):
         """
@@ -63,7 +89,7 @@ class MultiDBManager:
 
         Args:
             guild_id: Discord guild ID (int or str)
-            server_name: Discord server name (str)
+            server_name: Discord server name (str, used for folder naming and logging)
 
         Returns:
             DBManager instance for this server
@@ -74,12 +100,15 @@ class MultiDBManager:
         if guild_id in self.db_instances:
             return self.db_instances[guild_id]
 
-        # Create new database instance
-        db_filename = self._get_db_filename(server_name, guild_id)
-        db_path = os.path.join(self.db_folder, db_filename)
+        # Create server folder if it doesn't exist
+        server_folder = self._get_server_folder(guild_id, server_name)
+        os.makedirs(server_folder, exist_ok=True)
+
+        # Get database path
+        db_path = self._get_db_path(guild_id, server_name)
 
         print(f"Creating/loading database for server '{server_name}' (ID: {guild_id})")
-        print(f"Database file: {db_path}")
+        print(f"Database path: {db_path}")
 
         # Create DBManager with custom path
         db_manager = DBManager(db_path=db_path)

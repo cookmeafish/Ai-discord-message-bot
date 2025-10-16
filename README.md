@@ -4,7 +4,7 @@ This is an advanced, context-aware AI Discord bot designed for natural and engag
 
 ## Key Features
 
-- **Per-Server Database Isolation**: Each Discord server gets its own database file (`database/{ServerName}_data.db`) preventing cross-contamination of data between servers. Bot personality, user relationships, and memories are completely isolated per server.
+- **Per-Server Database Isolation**: Each Discord server gets its own database folder and file (`database/{ServerName}/{guild_id}_data.db`) with human-readable folder names. This prevents cross-contamination of data between servers. Bot personality, user relationships, and memories are completely isolated per server.
 
 - **Advanced Conversational AI**: Responds intelligently to mentions and replies using the context of recent conversation and long-term memory.
 
@@ -87,11 +87,14 @@ After the bot is running, go to any Discord server where the bot is installed an
 ```
 
 This will:
-- Create a server-specific database (`database/{ServerName}_data.db`)
+- Create a server folder (`database/{ServerName}/`)
+- Create a database file (`{guild_id}_data.db`) in that folder
 - Populate the bot's default personality for THIS server only
 - Initialize all necessary tables for this server
 
-Each server gets its own isolated database with its own bot personality, user relationships, and memories!
+Each server gets its own isolated folder and database with its own bot personality, user relationships, and memories!
+
+Example structure: `database/Mistel Fiech's Server/1260857723193528360_data.db`
 
 ## Configuration
 
@@ -334,21 +337,29 @@ See `SYSTEM_ARCHITECTURE.md` for detailed component descriptions.
 
 ## Database
 
-The bot uses **per-server SQLite databases** (`database/{ServerName}_data.db`) with the following tables in each:
+The bot uses **per-server SQLite databases** with a user-friendly folder structure:
 
+**Structure**: `database/{ServerName}/{guild_id}_data.db`
+- Folder uses human-readable server name for easy identification
+- Filename includes Discord guild ID for uniqueness (handles server renames)
+- Example: `database/Mistel Fiech's Server/1260857723193528360_data.db`
+
+**Tables in each database**:
 - `bot_identity` - Bot's personality (traits, lore, facts) - unique per server
 - `relationship_metrics` - Per-user relationship tracking (auto-created on first interaction)
 - `long_term_memory` - Facts about users with source attribution
 - `global_state` - Server-specific bot states (moods, etc.)
 - `short_term_message_log` - Up to 500 messages rolling buffer (server-wide, not per-channel)
-- `database/archive/` - JSON archives of consolidated messages (per-server)
-- `Server_Info/` - Text files with server rules, policies, and formal information (in root directory)
 
-**Per-Server Isolation**: Each server has completely separate data. Bot personality, user memories, and relationship metrics do not cross between servers.
+**Per-Server Folders**:
+- `database/{ServerName}/archive/` - JSON archives of consolidated messages (isolated per server)
+- `Server_Info/{ServerName}/` - Text files with server rules, policies, and formal information (isolated per server)
+
+**Per-Server Isolation**: Each server has completely separate data with its own folder. Bot personality, user memories, relationship metrics, archives, and server information do not cross between servers.
 
 **Server-Wide Context**: Short-term memory includes messages from ALL channels in the server, allowing the bot to maintain context across channels.
 
-**Server Information**: Store server rules, policies, and formal documentation as `.txt` files in `Server_Info/` directory (located in project root). Enable per-channel via GUI to make the bot reference these files when responding (ideal for rules/moderation channels).
+**Server Information**: Store server rules, policies, and formal documentation as `.txt` files in `Server_Info/{ServerName}/` directory. Enable per-channel via GUI to make the bot reference these files when responding (ideal for rules/moderation channels).
 
 **SQLite Optimization**: Auto-vacuum is enabled to automatically reclaim space after message deletion.
 
@@ -373,10 +384,12 @@ For detailed solutions, log file locations, and advanced troubleshooting, see TR
 
 All Phase 2 features have been implemented:
 - ✅ **Per-Server Database Isolation**: Separate database file per Discord server
+- ✅ **User-Friendly Database Structure**: `database/{ServerName}/{guild_id}_data.db` for easy server identification (2025-10-15)
+- ✅ **Per-Server Folder Isolation**: Separate folders for databases, archives, and server info - zero cross-contamination (2025-10-15)
 - ✅ **Memory Consolidation System**: AI-powered fact extraction using GPT-4o
 - ✅ **Smart Contradiction Detection**: Prevents duplicate/conflicting facts during consolidation (2025-10-13)
 - ✅ **Natural Memory Correction**: Bot updates facts when users make corrections (2025-10-13)
-- ✅ **Message Archival**: Automatic JSON backup before deletion (per-server)
+- ✅ **Message Archival**: Automatic JSON backup before deletion (per-server in `database/{ServerName}/archive/`)
 - ✅ **Auto-trigger Consolidation**: Runs when server reaches 500 messages
 - ✅ **Database Optimization**: SQLite auto-vacuum enabled
 - ✅ **GUI Server Manager**: Server-first interface with per-server channel, nickname, and emote configuration (2025-10-14)

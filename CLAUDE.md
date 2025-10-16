@@ -23,13 +23,19 @@ pip install -r requirements.txt
 ```
 
 ### Database Management
-The bot uses **per-server SQLite databases** (`database/{ServerName}_data.db`). Each Discord server gets its own isolated database file.
+The bot uses **per-server SQLite databases** with a human-readable folder structure. Each Discord server gets its own folder and database file.
+
+**Database Structure**:
+- Folder: `database/{ServerName}/` (human-readable server name)
+- File: `{guild_id}_data.db` (Discord guild ID ensures uniqueness)
+- Example: `database/Mistel Fiech's Server/1260857723193528360_data.db`
 
 **Database Creation Flow**:
 1. User runs `/activate` in a Discord server
-2. Bot creates `database/{SanitizedServerName}_data.db` for that server
-3. All tables are initialized via `database/schemas.py`
-4. Bot's default personality is auto-populated for that server (can be customized)
+2. Bot creates folder `database/{SanitizedServerName}/`
+3. Bot creates database file `{guild_id}_data.db` in that folder
+4. All tables are initialized via `database/schemas.py`
+5. Bot's default personality is auto-populated for that server (can be customized)
 
 **Multi-Database Architecture**:
 - `database/multi_db_manager.py` - Central manager for all server databases
@@ -50,8 +56,8 @@ python scripts/populate_bot_identity.py
 ### 2. Dual-Layer Memory System (Per-Server)
 - **Short-Term (500 messages)**: Full message transcripts in `short_term_message_log` table, **server-wide across all channels** (not filtered by channel)
 - **Long-Term**: Summarized facts in `long_term_memory` table with source attribution
-- **Archive**: After memory consolidation, short-term messages are archived to `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json` before deletion
-- **Per-Server Independence**: Each server has its own memory systems with no cross-contamination
+- **Archive**: After memory consolidation, short-term messages are archived to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json` before deletion
+- **Per-Server Independence**: Each server has its own memory systems with no cross-contamination (separate folders, databases, and archives)
 - **Cross-Channel Context**: Bot maintains conversation context across all channels within a server, allowing it to reference information mentioned in any channel
 
 ### 3. Configuration via config.json
@@ -68,7 +74,7 @@ See `AI_GUIDELINES.md` Section 4 for details on centralized configuration requir
 The bot has a configurable personality mode that controls immersion and language:
 - **Immersive Character Mode** (`immersive_character`): When enabled (default: true), bot believes it IS the character, not an AI
 - **Allow Technical Language** (`allow_technical_language`): When disabled (default: false), bot forbidden from using robotic terms like "cached", "stored", "database"
-- **Use Server Information** (`use_server_info`): When enabled (default: false), bot loads text files from `Server_Info/` directory (located in project root) for rules, policies, and formal documentation
+- **Use Server Information** (`use_server_info`): When enabled (default: false), bot loads text files from `Server_Info/{ServerName}/` directory for rules, policies, and formal documentation (per-server isolation)
 - **Roleplay Formatting** (`enable_roleplay_formatting`): When enabled (default: true), bot formats physical actions in italics (e.g., *walks over*, *sighs deeply*). Only works when Immersive Character Mode is enabled.
 
 **Configuration hierarchy:**
@@ -136,9 +142,10 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `database/multi_db_manager.py` - Central manager for all server databases
 - `database/db_manager.py` - Individual database operations (accepts custom db_path)
 - `database/schemas.py` - Table definitions
-- `database/{ServerName}_data.db` - Per-server SQLite databases (auto-created on /activate)
-- `database/archive/` - JSON archives of consolidated messages (per-server)
-- `Server_Info/` - Text files with server rules, policies, and formal documentation (in project root)
+- `database/{ServerName}/{guild_id}_data.db` - Per-server SQLite databases (auto-created on /activate)
+  - Example: `database/Mistel Fiech's Server/1260857723193528360_data.db`
+- `database/{ServerName}/archive/` - JSON archives of consolidated messages (per-server isolation)
+- `Server_Info/{ServerName}/` - Text files with server rules, policies, and formal documentation (per-server isolation)
 
 ### Configuration
 - `config.json` - All configurable bot parameters (model names, limits, channel settings, per-server settings, image generation)
@@ -155,15 +162,33 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Config**: `config.json` under `image_generation` section
   - **GUI Integration**: Checkbox for enable/disable, field for daily limit
 
-### GUI Server Manager (2025-10-14)
+### GUI Server Manager (2025-10-14, Updated 2025-10-15)
 The GUI provides a server-first interface for managing bot settings:
-- **Main View**: Lists all active Discord servers (scans `database/*_data.db` files)
+- **Main View**: Lists all active Discord servers (scans `database/{ServerName}/{guild_id}_data.db` files)
 - **Server Settings Dialog**: Opened via "Edit Settings" button for each server
   - **Active Channels**: View and edit channels activated for that server
   - **Alternative Nicknames**: Server-specific nicknames the bot responds to
   - **Emote Sources**: Checkbox selection of which servers provide emotes
-- **Database Scanning**: Supports both old `{servername}_data.db` and new `{guild_id}_{servername}_data.db` formats
+- **Database Scanning**: Supports new structure `{ServerName}/{guild_id}_data.db` and legacy formats for backward compatibility
 - **Auto-refresh**: GUI refreshes server list when config.json changes
+- **User-Friendly**: Server folders use human-readable names, making it easy to identify which folder belongs to which server
+
+### GUI User Manager (2025-10-15)
+The GUI provides a User Management interface for viewing and editing user relationship metrics:
+- **Accessed via**: Purple "User Manager" button in main GUI window
+- **Server Selector**: Dropdown to choose which server's users to manage
+- **User List Display**: Shows all users with relationship metrics in the selected server's database
+  - Columns: User ID, Rapport, Anger, Trust, Formality
+  - Only shows users that exist in the database (no placeholder/empty users)
+- **Edit Dialog**: Per-user editor opened by clicking "Edit" button
+  - **Editable Fields**: All 4 metrics (Rapport 0-10, Anger 0-10, Trust 0-10, Formality -5 to +5)
+  - **Individual Metric Locks**: Each metric has its own lock toggle checkbox
+    - Locked metrics won't be automatically updated by sentiment analysis
+    - Tooltips explain lock functionality on hover
+  - **Range Validation**: Ensures values stay within valid bounds
+  - **Manual Override**: GUI editing bypasses locks (respect_locks=False)
+- **Per-Server Isolation**: Each server's users are completely separate
+- **Real-Time Updates**: Changes take effect immediately in bot behavior
 
 ## Key Database Tables (Per-Server)
 
@@ -185,8 +210,16 @@ Per-user relationship tracking:
 - `trust` (0-10) - Openness/vulnerability
 - `anger` (0-10) - Defensiveness/sarcasm
 - `formality` (-5 to +5) - Speech style (casual to formal)
+- `rapport_locked`, `anger_locked`, `trust_locked`, `formality_locked` (0/1) - Lock flags to prevent automatic updates (2025-10-15)
 
-Auto-updates based on user sentiment. Manual adjustment via `/user_set_metrics` command.
+**Metric Locking (2025-10-15)**:
+- Individual lock toggles for each metric prevent automatic sentiment-based updates
+- Locked metrics can still be manually edited via GUI User Manager or `/user_set_metrics`
+- `db_manager.update_relationship_metrics(user_id, respect_locks=True, ...)` honors locks during sentiment analysis
+- `respect_locks=False` parameter allows manual overrides (used by GUI and admin commands)
+- Accessible via GUI User Manager with tooltips explaining functionality
+
+Auto-updates based on user sentiment (unless locked). Manual adjustment via `/user_set_metrics` command or GUI User Manager.
 
 ### long_term_memory
 User-associated facts with source attribution:
@@ -215,7 +248,7 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
   - If contradiction detected, old fact is **updated** instead of creating duplicate
   - If no contradiction, fact is added as new
 - Facts are saved to (or updated in) that server's `long_term_memory` with source attribution
-- All short-term messages are then archived to `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
+- All short-term messages are then archived to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
 - After archival, short-term table is cleared for that server
 - Triggered automatically when server reaches 500 messages
 - Triggered manually via `/consolidate_memory` command (admin only, per-server)
@@ -253,12 +286,12 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 76 tests across 19 categories
+  - Runs 79 tests across 19 categories
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (3), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Cleanup Verification (5)
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Cleanup Verification (5)
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 ## AI Model Configuration
@@ -311,7 +344,7 @@ The bot blends two emotional sources:
 
 This blending happens in `ai_handler.generate_response()` via the system prompt.
 
-## Formal Server Information System
+## Formal Server Information System (Updated 2025-10-15)
 
 For formal channels (rules, moderation, support, etc.), the bot can load text files instead of relying on personality database:
 
@@ -319,11 +352,17 @@ For formal channels (rules, moderation, support, etc.), the bot can load text fi
 **Use Cases**: Server rules, moderation policies, FAQs, channel instructions
 
 **Implementation (`modules/ai_handler.py`):**
-- `_load_server_info(channel_config)` checks if `use_server_info` is enabled
-- Loads ALL `.txt` files from `Server_Info/` directory in project root
+- `_load_server_info(channel_config, guild_id, server_name)` checks if `use_server_info` is enabled
+- Loads ALL `.txt` files from `Server_Info/{ServerName}/` directory (per-server isolation)
 - Returns formatted string with file contents
 - Injected into system prompt for `factual_question` and `casual_chat` intents
 - Bot prioritizes server info over personality when answering questions
+
+**Per-Server Isolation:**
+- Each server has its own `Server_Info/{ServerName}/` folder
+- Example: `Server_Info/Mistel Fiech's Server/rules.txt`
+- Prevents cross-contamination of server rules and policies
+- Server name is sanitized for filesystem safety
 
 **Configuration:**
 - Enable per-channel via GUI: Edit Channel → Check "Use Server Information"
@@ -332,10 +371,10 @@ For formal channels (rules, moderation, support, etc.), the bot can load text fi
 - Files are excluded from git by default to protect sensitive information
 
 **File Format:**
-- Create `.txt` files in `Server_Info/` directory (project root)
+- Create `.txt` files in `Server_Info/{ServerName}/` directory
 - UTF-8 encoding
 - Name files descriptively (e.g., `server_rules.txt`, `moderation_policy.txt`)
-- All `.txt` files are loaded automatically when enabled
+- All `.txt` files in the server's folder are loaded automatically when enabled
 
 **Best Practices:**
 - Use with "Allow Technical Language" enabled for formal tone
@@ -369,20 +408,24 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
 
 ### Phase 2 (COMPLETED ✅)
 - ✅ **Per-Server Database Isolation**: Separate database file per Discord server
+- ✅ **User-Friendly Database Structure**: `database/{ServerName}/{guild_id}_data.db` for easy server identification (2025-10-15)
+- ✅ **Per-Server Server_Info Folders**: `Server_Info/{ServerName}/` prevents cross-contamination of server rules (2025-10-15)
 - ✅ **Memory consolidation system**: AI-powered fact extraction using GPT-4o
 - ✅ **Smart Contradiction Detection**: Semantic similarity search and AI-powered duplicate prevention (2025-10-13)
 - ✅ **Memory Correction System**: Natural language memory updates via intent classification (2025-10-13)
-- ✅ **Automatic archival**: Short-term messages to JSON before deletion (per-server)
+- ✅ **Automatic archival**: Short-term messages to JSON before deletion (per-server in `database/{ServerName}/archive/`)
 - ✅ **Auto-trigger at 500 messages**: Per-server consolidation threshold
 - ✅ **SQLite auto-vacuum**: Database optimization enabled
 - ✅ **Personality Mode System**: Immersive character mode with natural language enforcement
 - ✅ **GUI Personality Controls**: Per-channel personality settings with hover tooltips
 - ✅ **Server-Wide Short-Term Memory**: Context maintained across all channels within a server
-- ✅ **Formal Server Information System**: Load text files for rules/policies in formal channels
+- ✅ **Formal Server Information System**: Load text files for rules/policies in formal channels (per-server)
 - ✅ **Improved Intent Classification**: Better distinction between memory_recall and factual_question
 - ✅ **Bot Self-Lore Extraction**: Automated extraction of relevant lore for emotional context (2025-10-13)
 - ✅ **Roleplay Action Formatting**: Automatic italic formatting of physical actions for immersive roleplay (2025-10-15)
 - ✅ **AI Image Generation**: Natural language-triggered childlike drawings via Together.ai FLUX.1-schnell (2025-10-15)
+- ✅ **Relationship Metric Locks**: Individual lock toggles for each metric to prevent automatic sentiment analysis updates (2025-10-15)
+- ✅ **GUI User Manager**: Visual interface for viewing and editing user relationship metrics with lock controls (2025-10-15)
 
 ### Phase 3 (PLANNED)
 - ⏳ **Proactive engagement subsystem**: Planned
@@ -420,20 +463,23 @@ Update `_build_relationship_context()` in `modules/ai_handler.py` to add prompt 
 
 ## Important Notes
 
-- **Per-Server Architecture**: Each Discord server has its own database file. Always use `bot.get_server_db(guild_id, guild_name)` to get the correct database instance.
+- **Per-Server Architecture**: Each Discord server has its own database folder and file. Always use `bot.get_server_db(guild_id, guild_name)` to get the correct database instance.
+- **Database Structure (2025-10-15)**: `database/{ServerName}/{guild_id}_data.db` - Human-readable folder name, guild_id in filename for uniqueness
 - **Database Isolation**: Bot personality, user relationships, and memories are completely separate per server. No data sharing between servers.
+- **Archive Isolation (2025-10-15)**: Each server's archives stored in `database/{ServerName}/archive/` - no cross-contamination
+- **Server Info Isolation (2025-10-15)**: Each server's rules/policies stored in `Server_Info/{ServerName}/` - prevents cross-contamination
 - **Server-Wide Memory**: Short-term memory is NOT filtered by channel. Bot maintains context across all channels within a server.
 - **Per-Server Emote Filtering (2025-10-14)**: Servers can restrict which servers' emotes are available via `server_emote_sources` config. Managed through GUI Server Manager.
 - **Per-Server Alternative Nicknames (2025-10-14)**: Each server can configure custom nicknames via `server_alternative_nicknames` config. Falls back to global `alternative_nicknames` for backward compatibility.
-- **Server Info**: Text files in `Server_Info/` directory (project root) are loaded per-channel when `use_server_info` is enabled. Default: OFF.
-- **GUI Server Manager**: Server-first interface for managing channels, nicknames, and emote sources per server. Scans database folder to display all active servers.
+- **GUI Server Manager**: Server-first interface for managing channels, nicknames, and emote sources per server. Scans database folder to display all active servers with human-readable names.
 - **GUI Tooltips**: Hover over personality mode checkboxes in channel editor to see explanations. Implemented using `ToolTip` class in `gui.py`.
+- **Migration Script**: `scripts/migrate_to_final_structure.py` converts legacy database formats to new structure
 - **No Emoji in Console Output**: Avoid emojis in print statements due to Windows console compatibility. Use text or disable logging emoji.
 - **Discord Intents Required**: `messages`, `message_content`, `guilds`, `members` must be enabled in Discord Developer Portal.
 - **Database Thread Safety**: SQLite connection uses `check_same_thread=False` - safe for Discord.py's async environment but not for true multi-threading.
 - **Message Deduplication**: `EventsCog._processing_messages` set prevents duplicate processing of the same message ID.
 - **Database Optimization**: SQLite auto-vacuum is enabled (`PRAGMA auto_vacuum = FULL`) to automatically reclaim space after message deletion during consolidation.
-- **Archive Format**: Archived messages are stored as JSON with metadata: `archived_at`, `message_count`, and full `messages` array with all fields (per-server).
+- **Archive Format**: Archived messages are stored as JSON with metadata: `archived_at`, `message_count`, and full `messages` array with all fields (per-server in respective server's archive folder).
 
 ## Documentation Files
 

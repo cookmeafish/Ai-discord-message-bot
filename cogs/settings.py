@@ -35,7 +35,7 @@ class SettingsCog(commands.Cog):
             _populate_bot_identity_if_empty(db_manager, logger)
 
         final_settings = self.bot.config_manager.add_or_update_channel_setting(
-            channel_id, purpose, random_reply_chance
+            channel_id, purpose, random_reply_chance, channel_name=interaction.channel.name
         )
 
         reply_chance_percent = final_settings.get('random_reply_chance', 0.0) * 100

@@ -49,24 +49,27 @@ class ConfigManager:
         self._save_config(self.config)
         print("ConfigManager: Configuration updated and saved.")
 
-    def add_or_update_channel_setting(self, channel_id: str, purpose: str = None, random_reply_chance: float = None):
+    def add_or_update_channel_setting(self, channel_id: str, purpose: str = None, random_reply_chance: float = None, channel_name: str = None):
         """Activates the bot in a channel, copying the default personality and allowing overrides."""
         if 'channel_settings' not in self.config:
             self.config['channel_settings'] = {}
-        
+
         new_setting = self.config['default_personality'].copy()
-        
+
         if purpose:
             new_setting['purpose'] = purpose
-        
+
         if random_reply_chance is not None:
             new_setting['random_reply_chance'] = random_reply_chance
         else:
             new_setting['random_reply_chance'] = self.config.get('random_reply_chance', 0.05)
-        
+
+        if channel_name:
+            new_setting['channel_name'] = channel_name
+
         self.config['channel_settings'][channel_id] = new_setting
         self._save_config(self.config)
-        print(f"ConfigManager: Activated channel {channel_id}.")
+        print(f"ConfigManager: Activated channel {channel_id} ({channel_name}).")
         return new_setting
 
     def update_channel_personality(self, channel_id: str, new_traits: str):

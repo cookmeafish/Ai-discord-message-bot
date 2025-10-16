@@ -1,6 +1,7 @@
 # database/db_manager.py
 import sqlite3
 import os
+import re
 from . import schemas
 from .input_validator import InputValidator
 import datetime
@@ -521,31 +522,48 @@ class DBManager:
 
     def get_relationship_metrics(self, user_id):
         """
-        Retrieves relationship metrics for a user.
+        Retrieves relationship metrics for a user, including lock status.
         Auto-creates a record with default values (0,0,0,0) if none exists.
 
         Args:
             user_id: Discord user ID
 
         Returns:
-            Dictionary with anger, rapport, trust, formality values
+            Dictionary with anger, rapport, trust, formality values and their lock status
         """
-        query = "SELECT anger, rapport, trust, formality FROM relationship_metrics WHERE user_id = ?"
+        # Check if lock columns exist first
+        cursor = self.conn.cursor()
+        cursor.execute("PRAGMA table_info(relationship_metrics)")
+        columns = [row[1] for row in cursor.fetchall()]
+        has_locks = 'rapport_locked' in columns
+
+        if has_locks:
+            query = "SELECT anger, rapport, trust, formality, rapport_locked, anger_locked, trust_locked, formality_locked FROM relationship_metrics WHERE user_id = ?"
+        else:
+            query = "SELECT anger, rapport, trust, formality FROM relationship_metrics WHERE user_id = ?"
+
         insert_query = "INSERT INTO relationship_metrics (user_id, anger, rapport, trust, formality) VALUES (?, 0, 0, 0, 0)"
 
         try:
-            cursor = self.conn.cursor()
             cursor.execute(query, (user_id,))
             row = cursor.fetchone()
 
             if row:
                 cursor.close()
-                return {
+                result = {
                     "anger": row[0],
                     "rapport": row[1],
                     "trust": row[2],
                     "formality": row[3]
                 }
+                if has_locks:
+                    result.update({
+                        "rapport_locked": bool(row[4]),
+                        "anger_locked": bool(row[5]),
+                        "trust_locked": bool(row[6]),
+                        "formality_locked": bool(row[7])
+                    })
+                return result
             else:
                 # Ensure user exists in users table first (for foreign key constraint)
                 cursor.close()
@@ -557,72 +575,163 @@ class DBManager:
                 self.conn.commit()
                 cursor.close()
                 print(f"DATABASE: Auto-created relationship metrics for user {user_id} with defaults (0,0,0,0)")
-                return {
+                result = {
                     "anger": 0,
                     "rapport": 0,
                     "trust": 0,
                     "formality": 0
                 }
+                if has_locks:
+                    result.update({
+                        "rapport_locked": False,
+                        "anger_locked": False,
+                        "trust_locked": False,
+                        "formality_locked": False
+                    })
+                return result
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get relationship metrics for user {user_id}: {e}")
-            return {"anger": 0, "rapport": 0, "trust": 0, "formality": 0}
+            result = {"anger": 0, "rapport": 0, "trust": 0, "formality": 0}
+            if has_locks:
+                result.update({
+                    "rapport_locked": False,
+                    "anger_locked": False,
+                    "trust_locked": False,
+                    "formality_locked": False
+                })
+            return result
 
-    def update_relationship_metrics(self, user_id, **kwargs):
+    def update_relationship_metrics(self, user_id, respect_locks=True, **kwargs):
         """
         Updates relationship metrics for a user.
-        
+
         Args:
             user_id: Discord user ID
-            **kwargs: anger, rapport, trust, formality (any combination)
+            respect_locks: If True, won't update locked metrics (default: True)
+            **kwargs: anger, rapport, trust, formality, rapport_locked, anger_locked, trust_locked, formality_locked (any combination)
         """
         # First, ensure a record exists
         check_query = "SELECT user_id FROM relationship_metrics WHERE user_id = ?"
         insert_query = "INSERT INTO relationship_metrics (user_id) VALUES (?)"
-        
+
         try:
             cursor = self.conn.cursor()
             cursor.execute(check_query, (user_id,))
             if cursor.fetchone() is None:
                 cursor.execute(insert_query, (user_id,))
                 self.conn.commit()
-            
-            # Now update the metrics (with whitelist validation)
+
+            # If respecting locks, check which metrics are locked
+            locked_metrics = set()
+            if respect_locks:
+                cursor.execute("PRAGMA table_info(relationship_metrics)")
+                columns = [row[1] for row in cursor.fetchall()]
+                has_locks = 'rapport_locked' in columns
+
+                if has_locks:
+                    cursor.execute("SELECT rapport_locked, anger_locked, trust_locked, formality_locked FROM relationship_metrics WHERE user_id = ?", (user_id,))
+                    row = cursor.fetchone()
+                    if row:
+                        if row[0]: locked_metrics.add('rapport')
+                        if row[1]: locked_metrics.add('anger')
+                        if row[2]: locked_metrics.add('trust')
+                        if row[3]: locked_metrics.add('formality')
+
+            # Now update the metrics (with whitelist validation and lock checking)
             updates = []
             params = []
             for key, value in kwargs.items():
                 # SECURITY: Whitelist validation for column names
-                if InputValidator.validate_metric_key(key):
+                if InputValidator.validate_metric_key(key) or key.endswith('_locked'):
+                    # Skip locked metrics unless we're updating the lock itself
+                    if key in locked_metrics and respect_locks:
+                        print(f"DATABASE: Skipped updating locked metric '{key}' for user {user_id}")
+                        continue
+
                     updates.append(f"{key} = ?")
                     params.append(value)
                 else:
                     print(f"DATABASE: Rejected invalid metric key: {key}")
-            
+
             if updates:
                 query = f"UPDATE relationship_metrics SET {', '.join(updates)} WHERE user_id = ?"
                 params.append(user_id)
                 cursor.execute(query, params)
                 self.conn.commit()
                 print(f"DATABASE: Updated relationship metrics for user {user_id}")
-            
+
             cursor.close()
         except Exception as e:
             print(f"DATABASE ERROR: Failed to update relationship metrics for user {user_id}: {e}")
+
+    def get_all_users_with_metrics(self):
+        """
+        Retrieves all users that have relationship metrics in the database.
+
+        Returns:
+            List of dictionaries with user_id and their metrics (including locks if available)
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            # Check if lock columns exist
+            cursor.execute("PRAGMA table_info(relationship_metrics)")
+            columns = [row[1] for row in cursor.fetchall()]
+            has_locks = 'rapport_locked' in columns
+
+            if has_locks:
+                query = """
+                SELECT user_id, anger, rapport, trust, formality,
+                       rapport_locked, anger_locked, trust_locked, formality_locked
+                FROM relationship_metrics
+                ORDER BY user_id
+                """
+            else:
+                query = """
+                SELECT user_id, anger, rapport, trust, formality
+                FROM relationship_metrics
+                ORDER BY user_id
+                """
+
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            cursor.close()
+
+            users = []
+            for row in rows:
+                user_data = {
+                    "user_id": row[0],
+                    "anger": row[1],
+                    "rapport": row[2],
+                    "trust": row[3],
+                    "formality": row[4]
+                }
+                if has_locks:
+                    user_data.update({
+                        "rapport_locked": bool(row[5]),
+                        "anger_locked": bool(row[6]),
+                        "trust_locked": bool(row[7]),
+                        "formality_locked": bool(row[8])
+                    })
+                users.append(user_data)
+
+            return users
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get all users with metrics: {e}")
+            return []
 
     # --- Archival and Cleanup Methods ---
 
     def archive_and_clear_short_term_memory(self):
         """
-        Archives all short-term messages to a JSON file in database/archive/,
+        Archives all short-term messages to a JSON file in the server's archive folder,
         then deletes them from the short_term_message_log table.
 
         Returns:
             Tuple of (archived_count, deleted_count, archive_filename)
         """
         import json
-
-        # Create archive directory if it doesn't exist
-        archive_dir = os.path.join(DB_FOLDER, "archive")
-        os.makedirs(archive_dir, exist_ok=True)
 
         try:
             # Get ALL messages from short_term_message_log (no time filter)
@@ -651,13 +760,35 @@ class DBManager:
                 "directed_at_bot": bool(row[5])
             } for row in rows]
 
-            # Extract guild_id from db_path (format: {guild_id}_{name}_data.db)
+            # Determine archive directory based on db_path structure
+            # New format: database/{server_name}/{guild_id}_data.db -> database/{server_name}/archive/
+            # Legacy formats handled for backward compatibility
+            db_dir = os.path.dirname(self.db_path)
             db_filename = os.path.basename(self.db_path)
-            guild_id = db_filename.split('_')[0] if '_' in db_filename else "unknown"
 
-            # Create archive filename with guild_id and timestamp
-            archive_timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            archive_filename = f"short_term_archive_{guild_id}_{archive_timestamp}.json"
+            # Try to extract guild_id from filename
+            match = re.match(r'^(\d+)_data\.db$', db_filename)
+            if match:
+                # New format: {guild_id}_data.db in a server folder
+                guild_id = match.group(1)
+                archive_dir = os.path.join(db_dir, "archive")
+                archive_timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                archive_filename = f"short_term_archive_{archive_timestamp}.json"
+            elif db_filename == "data.db":
+                # Legacy folder structure: data.db
+                archive_dir = os.path.join(db_dir, "archive")
+                guild_id = os.path.basename(db_dir)  # Use folder name as guild_id
+                archive_timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                archive_filename = f"short_term_archive_{archive_timestamp}.json"
+            else:
+                # Very old flat structure: database/{guild_id}_{name}_data.db
+                archive_dir = os.path.join(DB_FOLDER, "archive")
+                guild_id = db_filename.split('_')[0] if '_' in db_filename else "unknown"
+                archive_timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                archive_filename = f"short_term_archive_{guild_id}_{archive_timestamp}.json"
+
+            # Create archive directory if it doesn't exist
+            os.makedirs(archive_dir, exist_ok=True)
             archive_path = os.path.join(archive_dir, archive_filename)
 
             # Write to JSON file
