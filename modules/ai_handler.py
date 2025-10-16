@@ -153,10 +153,14 @@ class AIHandler:
 
         # Add roleplay formatting instructions if enabled
         if channel_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']:
-            identity_prompt += "\n**ROLEPLAY ACTIONS**:\n"
-            identity_prompt += "When describing physical actions or gestures, write them naturally.\n"
-            identity_prompt += "Examples: walks over to the counter, sighs deeply, waves hello, looks around nervously\n"
-            identity_prompt += "Keep actions short and natural - don't overuse them.\n"
+            identity_prompt += "\n**ROLEPLAY ACTIONS - CRITICAL**:\n"
+            identity_prompt += "Express physical reactions to match your emotional state, ESPECIALLY when topics trigger your lore/facts.\n"
+            identity_prompt += "- When afraid/nervous: quivers, hides, freezes, backs away, trembles\n"
+            identity_prompt += "- When angry: glares, clenches fists, tenses up\n"
+            identity_prompt += "- When sad: sighs, looks down, slumps\n"
+            identity_prompt += "- When excited: jumps, bounces, grins\n"
+            identity_prompt += "Write actions as short sentences starting with the verb (e.g., 'trembles nervously' NOT 'I tremble').\n"
+            identity_prompt += "Actions will be automatically formatted in italics.\n"
 
         return identity_prompt
 

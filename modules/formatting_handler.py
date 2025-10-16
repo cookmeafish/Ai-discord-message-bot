@@ -15,12 +15,12 @@ class FormattingHandler:
 
     def __init__(self):
         """Initialize the formatting handler with action verb patterns."""
-        # 50+ action verbs across 8 categories
+        # 60+ action verbs across 9 categories
         self.action_verbs = {
             # Movement
             'walks', 'walk', 'runs', 'run', 'jumps', 'jump', 'steps', 'step',
             'moves', 'move', 'approaches', 'approach', 'enters', 'enter', 'leaves', 'leave',
-            'dashes', 'dash', 'sprints', 'sprint', 'strides', 'stride',
+            'dashes', 'dash', 'sprints', 'sprint', 'strides', 'stride', 'backs', 'back',
 
             # Gestures
             'waves', 'wave', 'points', 'point', 'nods', 'nod', 'shakes', 'shake',
@@ -41,15 +41,20 @@ class FormattingHandler:
 
             # Physical contact
             'touches', 'touch', 'grabs', 'grab', 'holds', 'hold', 'hugs', 'hug',
-            'pats', 'pat', 'pushes', 'push', 'pulls', 'pull',
+            'pats', 'pat', 'pushes', 'push', 'pulls', 'pull', 'clenches', 'clench',
 
             # Posture/Position
             'sits', 'sit', 'stands', 'stand', 'leans', 'lean', 'kneels', 'kneel',
-            'crouches', 'crouch', 'lies', 'lie', 'rises', 'rise',
+            'crouches', 'crouch', 'lies', 'lie', 'rises', 'rise', 'slumps', 'slump',
+
+            # Fear/Anxiety reactions
+            'quivers', 'quiver', 'trembles', 'tremble', 'hides', 'hide', 'freezes', 'freeze',
+            'tenses', 'tense', 'flinches', 'flinch', 'recoils', 'recoil',
 
             # Other actions
             'reaches', 'reach', 'stretches', 'stretch', 'turns', 'turn', 'spins', 'spin',
-            'tilts', 'tilt', 'adjusts', 'adjust', 'fidgets', 'fidget', 'pauses', 'pause'
+            'tilts', 'tilt', 'adjusts', 'adjust', 'fidgets', 'fidget', 'pauses', 'pause',
+            'bounces', 'bounce'
         }
 
         # Create regex pattern for action verbs
