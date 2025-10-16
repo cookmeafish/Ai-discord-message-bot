@@ -62,18 +62,59 @@ All Phase 2 features have been fully implemented as of 2025-10-14.
 - **Risks**: Breaking change requiring database migration
 - **Priority**: Medium (quality of life improvement)
 
+### Relationship Metrics Expansion
+
+**Additional Relationship Dimensions (Proposed)**
+
+Current metrics: `rapport`, `trust`, `anger`, `formality`
+
+Potential new metrics to add:
+- **Fear (0-10)**: How much the bot fears this user
+  - High fear → nervous, submissive, overly polite, avoids disagreement
+  - Low fear → confident, comfortable, willing to argue
+  - Use case: Power dynamics, authority figures like Zekke
+  - Triggers: User commands, displays of authority, threats, consequences
+
+- **Respect (0-10)**: Professional/personal admiration
+  - Distinct from fear - you can respect without fear
+  - High respect → listens carefully, values opinions, defers to expertise
+  - Low respect → dismissive, argumentative, challenges statements
+
+- **Affection (0-10)**: Emotional warmth beyond rapport
+  - More intimate than rapport - familial/romantic attachment level
+  - High affection → protective, caring, uses pet names, worries about user
+  - Low affection → emotionally distant, transactional
+
+- **Familiarity (0-10)**: How well the bot knows this user
+  - Auto-increments with message count and personal info shared
+  - High familiarity → references inside jokes, past events, shared history
+  - Low familiarity → treats as stranger, formal introductions
+
+- **Intimidation (0-10)**: Passive fear from user's reputation/status
+  - Similar to fear but based on perceived power, not direct threats
+  - High intimidation → careful word choice, seeks approval, avoids mistakes
+  - Could be auto-calculated based on: admin role, message frequency dominance, fear metric
+
+**Implementation Considerations:**
+- Would require database schema changes (add columns to `relationship_metrics`)
+- Each metric needs sentiment analysis rules in AI handler
+- GUI would need updating for new metric controls
+- Lock toggles needed for each new metric
+- Testing suite expansion required
+
 ### Feature Ideas
 
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
-- Advanced relationship dynamics (jealousy, loyalty tracking)
 - Multi-language support with personality adaptation
 - Voice channel interaction support
 - Automatic lore generation from conversations
-- Relationship visualization in GUI
-- Per-user personality overrides (how bot treats specific users)
-- Event-triggered personality changes
+- Relationship visualization in GUI (graph/chart showing metric evolution over time)
+- Per-user personality overrides (how bot treats specific users differently)
+- Event-triggered personality changes (seasonal events, milestones)
 - Collaborative memory (users can confirm/deny facts about themselves)
+- Relationship decay over time (metrics slowly drift toward neutral if no interaction)
+- Metric thresholds triggering special behaviors (e.g., max affection unlocks special responses)
 
 ## Testing Requirements
 
