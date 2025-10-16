@@ -156,11 +156,11 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `modules/image_generator.py` - Together.ai API integration for AI image generation
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
   - **Style**: Childlike crayon drawings ("kindergarten art style")
-  - **Rate Limiting**: 5 images per user per day (configurable)
+  - **Rate Limiting**: 5 images per user every 2 hours (configurable via `max_per_user_per_period` and `reset_period_hours`)
   - **Cost**: $0.002 per image (~$2 per 1,000 images)
   - **Intent**: `image_generation` - Natural language detection ("draw me a cat", "sketch a house")
   - **Config**: `config.json` under `image_generation` section
-  - **GUI Integration**: Checkbox for enable/disable, field for daily limit
+  - **GUI Integration**: Checkbox for enable/disable, field for period limit and reset hours
 
 ### GUI Server Manager (2025-10-14, Updated 2025-10-15)
 The GUI provides a server-first interface for managing bot settings:

@@ -46,7 +46,8 @@
     },
     "image_generation": {
         "enabled": true,
-        "max_per_user_per_day": 5,
+        "max_per_user_per_period": 5,
+        "reset_period_hours": 2,
         "style_prefix": "Childlike crayon drawing, kindergarten art style, simple 2D sketch",
         "model": "black-forest-labs/FLUX.1-schnell",
         "width": 512,

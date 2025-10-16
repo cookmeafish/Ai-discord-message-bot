@@ -36,7 +36,7 @@ This is an advanced, context-aware AI Discord bot designed for natural and engag
 
 - **Roleplay Action Formatting**: Automatically detects and formats physical actions in italics (e.g., *walks over to the counter*, *sighs deeply*) for more immersive roleplay interactions. Only formats clear action sentences that start with action verbs. Configurable per-channel and requires Immersive Character Mode to be enabled.
 
-- **AI Image Generation**: Bot can draw "childlike" crayon-style images when users ask naturally (e.g., "draw me a cat", "sketch a house"). Uses Together.ai's FLUX.1-schnell model with automatic intent detection, rate limiting (5 images per user per day), and configurable via GUI. Responses include personality-appropriate captions in character.
+- **AI Image Generation**: Bot can draw "childlike" crayon-style images when users ask naturally (e.g., "draw me a cat", "sketch a house"). Uses Together.ai's FLUX.1-schnell model with automatic intent detection, rate limiting (5 images per user every 2 hours), and configurable via GUI. Responses include personality-appropriate captions in character.
 
 - **Memory Consolidation (Per-Server)**: Automated system that extracts facts from conversations using GPT-4o, archives message history to JSON, and clears short-term memory. Each server's consolidation runs independently at 500 messages or via `/consolidate_memory` command.
 
@@ -105,7 +105,7 @@ Example structure: `database/Mistel Fiech's Server/1260857723193528360_data.db`
 3. Adjust global settings:
    - Random reply chance
    - Enable image generation (checkbox)
-   - Max images per user per day (default: 5)
+   - Max images per user per period (default: 5 every 2 hours)
    - Default personality traits and lore
 4. Use the **Server Manager** to configure per-server settings:
    - View all active Discord servers

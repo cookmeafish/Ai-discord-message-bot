@@ -820,16 +820,18 @@ class DBManager:
 
     # --- Image Rate Limiting Methods ---
 
-    def increment_user_image_count(self, user_id):
+    def increment_user_image_count(self, user_id, reset_period_hours=1):
         """
         Increments the image count for a user. Creates a new record if none exists.
-        Resets hourly/daily counts if appropriate time has passed.
+        Resets count if the specified period has passed.
 
         Args:
             user_id: Discord user ID
+            reset_period_hours: Hours before count resets (default: 1 for hourly, can be 2 for image generation)
         """
         now = datetime.datetime.utcnow()
         today = now.date().isoformat()
+        period_seconds = reset_period_hours * 3600
 
         try:
             cursor = self.conn.cursor()
@@ -842,8 +844,8 @@ class DBManager:
                 last_image_time_str, hourly_count, daily_count, date = row
                 last_image_time = datetime.datetime.fromisoformat(last_image_time_str)
 
-                # Check if we need to reset hourly count (more than 1 hour ago)
-                if (now - last_image_time).total_seconds() >= 3600:
+                # Check if we need to reset hourly count based on period
+                if (now - last_image_time).total_seconds() >= period_seconds:
                     hourly_count = 0
 
                 # Check if we need to reset daily count (different day)
@@ -869,7 +871,7 @@ class DBManager:
 
             self.conn.commit()
             cursor.close()
-            print(f"DATABASE: Incremented image count for user {user_id}")
+            print(f"DATABASE: Incremented image count for user {user_id} (period: {reset_period_hours}h)")
 
         except Exception as e:
             print(f"DATABASE ERROR: Failed to increment image count for user {user_id}: {e}")
@@ -939,6 +941,43 @@ class DBManager:
 
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get daily image count for user {user_id}: {e}")
+            return 0
+
+    def get_user_image_generation_count(self, user_id, period_hours):
+        """
+        Gets the number of generated images (AI drawings) a user has requested within a time period.
+        Uses the same user_image_stats table but checks against the configurable period.
+
+        Args:
+            user_id: Discord user ID
+            period_hours: Number of hours for the reset period (e.g., 2 for every 2 hours)
+
+        Returns:
+            Integer count of images generated within the period
+        """
+        now = datetime.datetime.utcnow()
+        period_seconds = period_hours * 3600
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT last_image_time, hourly_count FROM user_image_stats WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            cursor.close()
+
+            if not row:
+                return 0
+
+            last_image_time_str, count = row
+            last_image_time = datetime.datetime.fromisoformat(last_image_time_str)
+
+            # If more than period_hours has passed, count is 0
+            if (now - last_image_time).total_seconds() >= period_seconds:
+                return 0
+
+            return count
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get image generation count for user {user_id}: {e}")
             return 0
 
     def close(self):

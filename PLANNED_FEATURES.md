@@ -37,7 +37,7 @@ All Phase 2 features have been fully implemented as of 2025-10-14.
 - ✅ Improved Intent Classification (memory_recall vs factual_question)
 - ✅ **Comprehensive Testing Suite** (76 tests across 19 categories, accessible via `/run_tests`)
 - ✅ **Roleplay Actions with Italic Formatting** (automatic detection and formatting of physical actions, configurable per-channel) - Implemented 2025-10-15
-- ✅ **AI Image Generation with Natural Detection** (childlike drawings via Together.ai, $0.002/image, 5/day limit) - Implemented 2025-10-15
+- ✅ **AI Image Generation with Natural Detection** (childlike drawings via Together.ai, $0.002/image, 5 per 2-hour period) - Implemented 2025-10-15
 
 ## Phase 3 (Planned)
 

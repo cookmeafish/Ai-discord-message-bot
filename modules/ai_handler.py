@@ -822,13 +822,14 @@ LORE: Worked as a marine biologist before becoming self-aware
 
             # Check rate limiting for image generation
             img_gen_config = self.config.get('image_generation', {})
-            max_per_day = img_gen_config.get('max_per_user_per_day', 5)
+            max_per_period = img_gen_config.get('max_per_user_per_period', 5)
+            reset_period_hours = img_gen_config.get('reset_period_hours', 2)
 
-            # Use the existing image tracking system
-            daily_count = db_manager.get_user_image_count_today(author.id)
+            # Use the configurable period tracking system
+            period_count = db_manager.get_user_image_generation_count(author.id, reset_period_hours)
 
-            if daily_count >= max_per_day:
-                return f"I've drawn my limit for today ({max_per_day} drawings). My crayons need a break! Try again tomorrow."
+            if period_count >= max_per_period:
+                return f"I've drawn my limit ({max_per_period} drawings every {reset_period_hours} hours). My crayons need a break! Try again later."
 
             try:
                 # Generate the image
@@ -869,7 +870,7 @@ Respond naturally as if you tried to draw but messed up or ran into problems.
 
                 # Success! Image generated, now send it
                 # Increment the image count AFTER successful generation
-                db_manager.increment_user_image_count(author.id)
+                db_manager.increment_user_image_count(author.id, reset_period_hours)
 
                 # Generate a brief, natural response to go with the image
                 personality_mode = self._get_personality_mode(personality_config)
