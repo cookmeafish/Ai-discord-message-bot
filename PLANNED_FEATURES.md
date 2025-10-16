@@ -104,6 +104,7 @@ Potential new metrics to add:
 
 ### Feature Ideas
 
+- **GUI Image Generation Controls**: Add fields to GUI for configuring image generation rate limiting (max_per_user_per_period and reset_period_hours)
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
 - Multi-language support with personality adaptation
