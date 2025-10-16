@@ -135,12 +135,12 @@ class BotGUI(ctk.CTk):
         ctk.CTkLabel(self.right_frame, text="Manage bot settings for each Discord server.", wraplength=450).pack(pady=(0, 10), padx=10)
 
         ctk.CTkLabel(self.right_frame, text="Active Servers:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
-        self.server_list_frame = ctk.CTkScrollableFrame(self.right_frame, height=150)
+        self.server_list_frame = ctk.CTkScrollableFrame(self.right_frame, height=75)
         self.server_list_frame.pack(fill="x", padx=10)
         self.update_server_list()
 
         ctk.CTkLabel(self.right_frame, text="Bot Console Output:", font=("Roboto", 12, "bold")).pack(pady=(10, 5), padx=10, anchor="w")
-        self.log_textbox = ctk.CTkTextbox(self.right_frame, height=300)
+        self.log_textbox = ctk.CTkTextbox(self.right_frame, height=150)
         self.log_textbox.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         self.log_textbox.configure(state="disabled")
 
@@ -152,9 +152,6 @@ class BotGUI(ctk.CTk):
 
         self.consolidate_button = ctk.CTkButton(self.bottom_frame, text="Test Memory Consolidation", command=self.test_memory_consolidation, fg_color="#17a2b8", hover_color="#138496")
         self.consolidate_button.pack(side="left", padx=(0, 20), pady=10)
-
-        self.user_manager_button = ctk.CTkButton(self.bottom_frame, text="User Manager", command=self.open_user_manager, fg_color="#6f42c1", hover_color="#5a32a3")
-        self.user_manager_button.pack(side="left", padx=(0, 20), pady=10)
 
         self.start_button = ctk.CTkButton(self.bottom_frame, text="Start Bot", command=self.start_bot, fg_color="#28a745", hover_color="#218838")
         self.start_button.pack(side="right", padx=20, pady=10)
@@ -297,7 +294,7 @@ class BotGUI(ctk.CTk):
             server_frame.pack(fill="x", pady=2)
 
             # Server name label
-            ctk.CTkLabel(server_frame, text=server_name, font=("Roboto", 11)).pack(side="left", anchor="w", padx=5)
+            ctk.CTkLabel(server_frame, text=server_name, font=("Roboto", 13)).pack(side="left", anchor="w", padx=5)
 
             # Edit button
             edit_btn = ctk.CTkButton(
@@ -316,154 +313,88 @@ class BotGUI(ctk.CTk):
         # Create settings window
         settings_window = ctk.CTkToplevel(self)
         settings_window.title(f"Server Settings - {server_name}")
-        settings_window.geometry("650x700")
+        settings_window.geometry("600x500")
         settings_window.resizable(True, True)
-        settings_window.minsize(550, 600)
-        settings_window.grab_set()
+        settings_window.minsize(500, 400)
+
+        # Bring window to front
+        settings_window.lift()
+        settings_window.focus_force()
+        settings_window.attributes('-topmost', True)
+        settings_window.after(100, lambda: settings_window.attributes('-topmost', False))
+        # Don't use grab_set() here so child windows can appear on top
 
         # Server name display
         ctk.CTkLabel(settings_window, text=f"Server: {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
-        ctk.CTkLabel(settings_window, text=f"Guild ID: {guild_id}", font=("Roboto", 10)).pack(pady=(0, 20))
+        ctk.CTkLabel(settings_window, text=f"Guild ID: {guild_id}", font=("Roboto", 12)).pack(pady=(0, 10))
+        ctk.CTkLabel(settings_window, text="Select a setting category to configure:", font=("Roboto", 12)).pack(pady=(0, 20))
 
-        # Active Channels Section
-        ctk.CTkLabel(settings_window, text="Active Channels:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(10, 5))
+        # Buttons frame for all categories
+        buttons_frame = ctk.CTkFrame(settings_window, fg_color="transparent")
+        buttons_frame.pack(fill="both", expand=True, padx=40, pady=20)
 
-        channels_frame = ctk.CTkScrollableFrame(settings_window, height=200)
-        channels_frame.pack(fill="x", padx=20, pady=5)
-
-        def refresh_channels():
-            """Refresh the channels list for this server."""
-            for widget in channels_frame.winfo_children():
-                widget.destroy()
-
-            config = self.config_manager.get_config()
-            channel_settings = config.get('channel_settings', {})
-
-            # Filter channels by guild_id
-            server_channels = []
-            for channel_id, channel_config in channel_settings.items():
-                channel_guild_id = channel_config.get('guild_id', 'unknown')
-                # Match channels that belong to this guild, or show unknown channels for old-format servers
-                if channel_guild_id == guild_id or (guild_id == "unknown" and channel_guild_id == 'unknown'):
-                    server_channels.append((channel_id, channel_config))
-
-            if not server_channels:
-                ctk.CTkLabel(channels_frame, text="No channels activated yet. Use /activate in Discord.").pack(anchor="w", padx=5)
-            else:
-                for channel_id, channel_config in server_channels:
-                    channel_row = ctk.CTkFrame(channels_frame, fg_color="transparent")
-                    channel_row.pack(fill="x", pady=2)
-
-                    # Display channel name if available, otherwise show channel ID
-                    channel_name = channel_config.get('channel_name', f'Channel {channel_id}')
-                    purpose = channel_config.get('purpose', 'Default purpose')[:30]
-                    ctk.CTkLabel(channel_row, text=f"#{channel_name}: {purpose}...").pack(side="left", anchor="w")
-
-                    edit_ch_btn = ctk.CTkButton(
-                        channel_row,
-                        text="Edit",
-                        command=lambda cid=channel_id, cfg=channel_config: [self.edit_channel(cid, cfg), refresh_channels()],
-                        width=60,
-                        height=24,
-                        fg_color="#17a2b8",
-                        hover_color="#138496"
-                    )
-                    edit_ch_btn.pack(side="right", padx=2)
-
-        refresh_channels()
-
-        # Alternative Nicknames Section
-        ctk.CTkLabel(settings_window, text="Alternative Nicknames:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
-        ctk.CTkLabel(settings_window, text="Comma-separated nicknames the bot responds to (e.g., 'drfish, dr fish'):", font=("Roboto", 10)).pack(padx=20, anchor="w")
-
-        nicknames_entry = ctk.CTkEntry(settings_window, width=500)
-        nicknames_entry.pack(padx=20, pady=5, fill="x")
-
-        # Get current server-specific nicknames
-        config = self.config_manager.get_config()
-        server_nicknames = config.get('server_alternative_nicknames', {})
-        current_nicknames = server_nicknames.get(guild_id, [])
-        if current_nicknames:
-            nicknames_entry.insert(0, ', '.join(current_nicknames))
-
-        # Emote Sources Section
-        ctk.CTkLabel(settings_window, text="Emote Sources:", font=("Roboto", 14, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
-        ctk.CTkLabel(settings_window, text="Select which servers' emotes can be used:", font=("Roboto", 10)).pack(padx=20, anchor="w")
-
-        emote_frame = ctk.CTkScrollableFrame(settings_window, height=120)
-        emote_frame.pack(fill="x", padx=20, pady=5)
-
-        # Get all available servers
-        all_servers = self._scan_server_databases()
-
-        # Get current emote source configuration
-        config = self.config_manager.get_config()
-        server_emote_sources = config.get('server_emote_sources', {})
-        current_sources = server_emote_sources.get(guild_id, [])
-
-        # Create checkbox for each server
-        emote_checkboxes = {}
-        for srv_guild_id, srv_name in all_servers:
-            var = ctk.BooleanVar(value=(srv_guild_id in current_sources if current_sources else True))
-            checkbox = ctk.CTkCheckBox(
-                emote_frame,
-                text=srv_name,
-                variable=var
-            )
-            checkbox.pack(anchor="w", padx=5, pady=2)
-            emote_checkboxes[srv_guild_id] = var
-
-        # Buttons frame
-        button_frame = ctk.CTkFrame(settings_window, fg_color="transparent")
-        button_frame.pack(pady=20)
-
-        def save_settings():
-            # Save alternative nicknames
-            nicknames_str = nicknames_entry.get().strip()
-            current_config = self.config_manager.get_config()
-
-            if 'server_alternative_nicknames' not in current_config:
-                current_config['server_alternative_nicknames'] = {}
-
-            if nicknames_str:
-                current_config['server_alternative_nicknames'][guild_id] = [nick.strip() for nick in nicknames_str.split(',') if nick.strip()]
-            else:
-                current_config['server_alternative_nicknames'][guild_id] = []
-
-            # Save emote sources
-            selected_sources = [gid for gid, var in emote_checkboxes.items() if var.get()]
-
-            if 'server_emote_sources' not in current_config:
-                current_config['server_emote_sources'] = {}
-
-            current_config['server_emote_sources'][guild_id] = selected_sources
-            self.config_manager.update_config(current_config)
-
-            print(f"Updated server settings for {server_name}")
-            self.log_to_console(f"Updated server settings for {server_name}")
-            settings_window.destroy()
-
-        # Save button
-        save_btn = ctk.CTkButton(
-            button_frame,
-            text="Save Settings",
-            command=save_settings,
-            fg_color="#28a745",
-            hover_color="#218838",
-            width=120
+        # Active Channels Button
+        channels_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Active Channels",
+            command=lambda: self.open_channels_manager(guild_id, server_name),
+            fg_color="#0d6efd",
+            hover_color="#0b5ed7",
+            text_color="white",
+            height=50,
+            font=("Roboto", 14, "bold")
         )
-        save_btn.pack(side="left", padx=10)
+        channels_btn.pack(fill="x", pady=10)
 
-        # Cancel button
-        cancel_btn = ctk.CTkButton(
-            button_frame,
-            text="Cancel",
+        # Alternative Nicknames Button
+        nicknames_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Alternative Nicknames",
+            command=lambda: self.open_nicknames_manager(guild_id, server_name),
+            fg_color="#198754",
+            hover_color="#157347",
+            text_color="white",
+            height=50,
+            font=("Roboto", 14, "bold")
+        )
+        nicknames_btn.pack(fill="x", pady=10)
+
+        # Emote Sources Button
+        emotes_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Emote Sources",
+            command=lambda: self.open_emotes_manager(guild_id, server_name),
+            fg_color="#fd7e14",
+            hover_color="#e06610",
+            text_color="white",
+            height=50,
+            font=("Roboto", 14, "bold")
+        )
+        emotes_btn.pack(fill="x", pady=10)
+
+        # User Management Button
+        users_btn = ctk.CTkButton(
+            buttons_frame,
+            text="User Management",
+            command=lambda: self.open_user_manager_for_server(guild_id, server_name),
+            fg_color="#6f42c1",
+            hover_color="#59359a",
+            text_color="white",
+            height=50,
+            font=("Roboto", 14, "bold")
+        )
+        users_btn.pack(fill="x", pady=10)
+
+        # Close button at bottom
+        close_btn = ctk.CTkButton(
+            settings_window,
+            text="Close",
             command=settings_window.destroy,
             fg_color="#6c757d",
             hover_color="#5a6268",
             width=120
         )
-        cancel_btn.pack(side="left", padx=10)
+        close_btn.pack(pady=20)
 
     def update_active_channels_display(self):
         """Legacy method - redirects to update_server_list for backward compatibility."""
@@ -771,6 +702,376 @@ class BotGUI(ctk.CTk):
         else:
             print("Bot is not running or has already stopped.")
 
+    def open_channels_manager(self, guild_id, server_name):
+        """Opens the Active Channels manager for a specific server."""
+        # Create channels window
+        channels_window = ctk.CTkToplevel(self)
+        channels_window.title(f"Active Channels - {server_name}")
+        channels_window.geometry("700x600")
+        channels_window.resizable(True, True)
+        channels_window.minsize(600, 500)
+
+        # Bring window to front (do this BEFORE grab_set)
+        channels_window.lift()
+        channels_window.focus_force()
+        channels_window.attributes('-topmost', True)
+        channels_window.after(100, lambda: channels_window.attributes('-topmost', False))
+        channels_window.after(200, channels_window.grab_set)  # Grab after window is visible
+
+        # Title
+        ctk.CTkLabel(channels_window, text=f"Active Channels - {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(channels_window, text="Channels activated for this server via /activate command", font=("Roboto", 10)).pack(pady=(0, 20))
+
+        # Channels list frame
+        channels_frame = ctk.CTkScrollableFrame(channels_window, height=400)
+        channels_frame.pack(fill="both", expand=True, padx=20, pady=5)
+
+        def refresh_channels():
+            """Refresh the channels list for this server."""
+            for widget in channels_frame.winfo_children():
+                widget.destroy()
+
+            config = self.config_manager.get_config()
+            channel_settings = config.get('channel_settings', {})
+
+            # Filter channels by guild_id
+            server_channels = []
+            for channel_id, channel_config in channel_settings.items():
+                channel_guild_id = channel_config.get('guild_id', 'unknown')
+                # Match channels that belong to this guild, or show unknown channels for old-format servers
+                if channel_guild_id == guild_id or (guild_id == "unknown" and channel_guild_id == 'unknown'):
+                    server_channels.append((channel_id, channel_config))
+
+            if not server_channels:
+                ctk.CTkLabel(channels_frame, text="No channels activated yet. Use /activate in Discord.").pack(anchor="w", padx=5, pady=20)
+            else:
+                for channel_id, channel_config in server_channels:
+                    channel_row = ctk.CTkFrame(channels_frame, fg_color="transparent")
+                    channel_row.pack(fill="x", pady=2)
+
+                    # Display channel name if available, otherwise show channel ID
+                    channel_name = channel_config.get('channel_name', f'Channel {channel_id}')
+                    purpose = channel_config.get('purpose', 'Default purpose')[:40]
+                    ctk.CTkLabel(channel_row, text=f"#{channel_name}: {purpose}...", width=400, anchor="w").pack(side="left", anchor="w", padx=5)
+
+                    edit_ch_btn = ctk.CTkButton(
+                        channel_row,
+                        text="Edit",
+                        command=lambda cid=channel_id, cfg=channel_config: [self.edit_channel(cid, cfg), refresh_channels()],
+                        width=80,
+                        height=28,
+                        fg_color="#17a2b8",
+                        hover_color="#138496"
+                    )
+                    edit_ch_btn.pack(side="right", padx=2)
+
+        refresh_channels()
+
+        # Close button
+        close_btn = ctk.CTkButton(
+            channels_window,
+            text="Close",
+            command=channels_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        close_btn.pack(pady=20)
+
+    def open_nicknames_manager(self, guild_id, server_name):
+        """Opens the Alternative Nicknames manager for a specific server."""
+        # Create nicknames window
+        nicknames_window = ctk.CTkToplevel(self)
+        nicknames_window.title(f"Alternative Nicknames - {server_name}")
+        nicknames_window.geometry("600x400")
+        nicknames_window.resizable(True, True)
+        nicknames_window.minsize(500, 300)
+
+        # Bring window to front (do this BEFORE grab_set)
+        nicknames_window.lift()
+        nicknames_window.focus_force()
+        nicknames_window.attributes('-topmost', True)
+        nicknames_window.after(100, lambda: nicknames_window.attributes('-topmost', False))
+        nicknames_window.after(200, nicknames_window.grab_set)  # Grab after window is visible
+
+        # Title
+        ctk.CTkLabel(nicknames_window, text=f"Alternative Nicknames - {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(nicknames_window, text="Comma-separated nicknames the bot responds to (e.g., 'drfish, dr fish')", font=("Roboto", 10)).pack(pady=(0, 20), padx=20)
+
+        # Nicknames entry
+        ctk.CTkLabel(nicknames_window, text="Alternative Nicknames:", font=("Roboto", 12, "bold")).pack(padx=20, anchor="w", pady=(10, 5))
+
+        nicknames_entry = ctk.CTkEntry(nicknames_window, width=500, height=40, font=("Roboto", 12))
+        nicknames_entry.pack(padx=20, pady=10, fill="x")
+
+        # Get current server-specific nicknames
+        config = self.config_manager.get_config()
+        server_nicknames = config.get('server_alternative_nicknames', {})
+        current_nicknames = server_nicknames.get(guild_id, [])
+        if current_nicknames:
+            nicknames_entry.insert(0, ', '.join(current_nicknames))
+
+        # Info label
+        info_frame = ctk.CTkFrame(nicknames_window, fg_color="transparent")
+        info_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            info_frame,
+            text="The bot will respond when mentioned by these nicknames in addition to @mentions and replies.\nSeparate multiple nicknames with commas.",
+            font=("Roboto", 10),
+            text_color="gray",
+            justify="left"
+        ).pack(anchor="w")
+
+        # Buttons frame
+        button_frame = ctk.CTkFrame(nicknames_window, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        def save_nicknames():
+            nicknames_str = nicknames_entry.get().strip()
+            current_config = self.config_manager.get_config()
+
+            if 'server_alternative_nicknames' not in current_config:
+                current_config['server_alternative_nicknames'] = {}
+
+            if nicknames_str:
+                current_config['server_alternative_nicknames'][guild_id] = [nick.strip() for nick in nicknames_str.split(',') if nick.strip()]
+            else:
+                current_config['server_alternative_nicknames'][guild_id] = []
+
+            self.config_manager.update_config(current_config)
+            print(f"Updated alternative nicknames for {server_name}")
+            self.log_to_console(f"Updated alternative nicknames for {server_name}")
+            nicknames_window.destroy()
+
+        # Save button
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save",
+            command=save_nicknames,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=nicknames_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        cancel_btn.pack(side="left", padx=10)
+
+    def open_emotes_manager(self, guild_id, server_name):
+        """Opens the Emote Sources manager for a specific server."""
+        # Create emotes window
+        emotes_window = ctk.CTkToplevel(self)
+        emotes_window.title(f"Emote Sources - {server_name}")
+        emotes_window.geometry("600x500")
+        emotes_window.resizable(True, True)
+        emotes_window.minsize(500, 400)
+
+        # Bring window to front (do this BEFORE grab_set)
+        emotes_window.lift()
+        emotes_window.focus_force()
+        emotes_window.attributes('-topmost', True)
+        emotes_window.after(100, lambda: emotes_window.attributes('-topmost', False))
+        emotes_window.after(200, emotes_window.grab_set)  # Grab after window is visible
+
+        # Title
+        ctk.CTkLabel(emotes_window, text=f"Emote Sources - {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(emotes_window, text="Select which servers' emotes the bot can use in this server", font=("Roboto", 10)).pack(pady=(0, 20))
+
+        # Emote sources frame
+        emote_frame = ctk.CTkScrollableFrame(emotes_window, height=300)
+        emote_frame.pack(fill="both", expand=True, padx=20, pady=5)
+
+        # Get all available servers
+        all_servers = self._scan_server_databases()
+
+        # Get current emote source configuration
+        config = self.config_manager.get_config()
+        server_emote_sources = config.get('server_emote_sources', {})
+        current_sources = server_emote_sources.get(guild_id, [])
+
+        # Create checkbox for each server
+        emote_checkboxes = {}
+        for srv_guild_id, srv_name in all_servers:
+            var = ctk.BooleanVar(value=(srv_guild_id in current_sources if current_sources else True))
+            checkbox = ctk.CTkCheckBox(
+                emote_frame,
+                text=f"{srv_name} ({srv_guild_id})",
+                variable=var,
+                font=("Roboto", 12)
+            )
+            checkbox.pack(anchor="w", padx=5, pady=5)
+            emote_checkboxes[srv_guild_id] = var
+
+        # Buttons frame
+        button_frame = ctk.CTkFrame(emotes_window, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        def save_emotes():
+            selected_sources = [gid for gid, var in emote_checkboxes.items() if var.get()]
+            current_config = self.config_manager.get_config()
+
+            if 'server_emote_sources' not in current_config:
+                current_config['server_emote_sources'] = {}
+
+            current_config['server_emote_sources'][guild_id] = selected_sources
+            self.config_manager.update_config(current_config)
+
+            print(f"Updated emote sources for {server_name}")
+            self.log_to_console(f"Updated emote sources for {server_name}")
+            emotes_window.destroy()
+
+        # Save button
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save",
+            command=save_emotes,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=emotes_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        cancel_btn.pack(side="left", padx=10)
+
+    def open_user_manager_for_server(self, guild_id, server_name):
+        """Opens the User Manager window pre-filtered for a specific server."""
+        from database.db_manager import DBManager
+
+        # Construct database path
+        server_folder = os.path.join("database", server_name)
+        db_filename = os.path.join(server_folder, f"{guild_id}_data.db")
+
+        if not os.path.exists(db_filename):
+            self.log_to_console(f"Error: Database file not found for server {server_name}")
+            return
+
+        # Create user manager window
+        user_window = ctk.CTkToplevel(self)
+        user_window.title(f"User Manager - {server_name}")
+        user_window.geometry("700x700")
+        user_window.resizable(True, True)
+        user_window.minsize(650, 600)
+
+        # Aggressively bring window to front and keep it there longer
+        user_window.attributes('-topmost', True)
+        user_window.lift()
+        user_window.focus_force()
+        user_window.after(50, user_window.lift)
+        user_window.after(100, user_window.lift)
+        user_window.after(150, user_window.lift)
+        user_window.after(500, lambda: user_window.attributes('-topmost', False))
+        # Don't use grab_set() so all windows can be managed independently
+
+        # Title
+        ctk.CTkLabel(user_window, text=f"User Relationship Manager - {server_name}", font=("Roboto", 18, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(user_window, text="View and edit relationship metrics for users in this server", font=("Roboto", 12)).pack(pady=(0, 20))
+
+        # User list frame
+        ctk.CTkLabel(user_window, text="Users:", font=("Roboto", 12, "bold")).pack(padx=20, anchor="w", pady=(15, 5))
+
+        # Column headers
+        headers_frame = ctk.CTkFrame(user_window, fg_color="transparent")
+        headers_frame.pack(fill="x", padx=20)
+
+        ctk.CTkLabel(headers_frame, text="Username", font=("Roboto", 10, "bold"), width=140).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="User ID", font=("Roboto", 10, "bold"), width=130).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Rapport", font=("Roboto", 10, "bold"), width=65).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Anger", font=("Roboto", 10, "bold"), width=65).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Trust", font=("Roboto", 10, "bold"), width=65).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Formality", font=("Roboto", 10, "bold"), width=75).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Actions", font=("Roboto", 10, "bold"), width=75).pack(side="left", padx=2)
+
+        # Scrollable user list
+        user_list_frame = ctk.CTkScrollableFrame(user_window, height=500)
+        user_list_frame.pack(fill="both", expand=True, padx=20, pady=5)
+
+        def refresh_users():
+            """Refresh the user list for this server."""
+            # Clear existing widgets
+            for widget in user_list_frame.winfo_children():
+                widget.destroy()
+
+            # Load users from database
+            try:
+                db_manager = DBManager(db_path=db_filename)
+                users = db_manager.get_all_users_with_metrics()
+
+                if not users:
+                    db_manager.close()
+                    ctk.CTkLabel(user_list_frame, text="No users found in this server's database.").pack(pady=20)
+                    return
+
+                # Display each user
+                for user_data in users:
+                    user_row = ctk.CTkFrame(user_list_frame, fg_color="transparent")
+                    user_row.pack(fill="x", pady=2)
+
+                    user_id = user_data['user_id']
+
+                    # Fetch most recent username from nicknames table
+                    cursor = db_manager.conn.cursor()
+                    cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1", (user_id,))
+                    username_result = cursor.fetchone()
+                    username = username_result[0] if username_result else "Unknown"
+
+                    # Display username and user ID
+                    ctk.CTkLabel(user_row, text=username, width=140).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_id), width=130).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['rapport']), width=65).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['anger']), width=65).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['trust']), width=65).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['formality']), width=75).pack(side="left", padx=2)
+
+                    edit_btn = ctk.CTkButton(
+                        user_row,
+                        text="Edit",
+                        command=lambda ud=user_data, dbf=db_filename: self.open_user_edit_dialog(ud, dbf, refresh_users),
+                        width=75,
+                        height=24,
+                        font=("Roboto", 11),
+                        fg_color="#17a2b8",
+                        hover_color="#138496"
+                    )
+                    edit_btn.pack(side="left", padx=2)
+
+                db_manager.close()
+
+            except Exception as e:
+                ctk.CTkLabel(user_list_frame, text=f"Error loading users: {str(e)}").pack(pady=20)
+                print(f"Error loading users: {e}")
+
+        # Load users immediately
+        refresh_users()
+
+        # Close button
+        close_btn = ctk.CTkButton(
+            user_window,
+            text="Close",
+            command=user_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        close_btn.pack(pady=20)
+
     def open_user_manager(self):
         """Opens the User Manager window to view and edit user relationship metrics."""
         from database.db_manager import DBManager
@@ -778,9 +1079,15 @@ class BotGUI(ctk.CTk):
         # Create user manager window
         user_window = ctk.CTkToplevel(self)
         user_window.title("User Manager")
-        user_window.geometry("900x700")
+        user_window.geometry("700x700")
         user_window.resizable(True, True)
-        user_window.minsize(700, 600)
+        user_window.minsize(650, 600)
+
+        # Bring window to front
+        user_window.lift()
+        user_window.focus_force()
+        user_window.attributes('-topmost', True)
+        user_window.after(100, lambda: user_window.attributes('-topmost', False))
 
         # Title
         ctk.CTkLabel(user_window, text="User Relationship Manager", font=("Roboto", 18, "bold")).pack(pady=(20, 10))
@@ -816,12 +1123,13 @@ class BotGUI(ctk.CTk):
         headers_frame = ctk.CTkFrame(user_window, fg_color="transparent")
         headers_frame.pack(fill="x", padx=20)
 
-        ctk.CTkLabel(headers_frame, text="User ID", font=("Roboto", 10, "bold"), width=120).pack(side="left", padx=2)
-        ctk.CTkLabel(headers_frame, text="Rapport", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
-        ctk.CTkLabel(headers_frame, text="Anger", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
-        ctk.CTkLabel(headers_frame, text="Trust", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
-        ctk.CTkLabel(headers_frame, text="Formality", font=("Roboto", 10, "bold"), width=70).pack(side="left", padx=2)
-        ctk.CTkLabel(headers_frame, text="Actions", font=("Roboto", 10, "bold"), width=80).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Username", font=("Roboto", 10, "bold"), width=140).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="User ID", font=("Roboto", 10, "bold"), width=130).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Rapport", font=("Roboto", 10, "bold"), width=65).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Anger", font=("Roboto", 10, "bold"), width=65).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Trust", font=("Roboto", 10, "bold"), width=65).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Formality", font=("Roboto", 10, "bold"), width=75).pack(side="left", padx=2)
+        ctk.CTkLabel(headers_frame, text="Actions", font=("Roboto", 10, "bold"), width=75).pack(side="left", padx=2)
 
         # Scrollable user list
         user_list_frame = ctk.CTkScrollableFrame(user_window, height=400)
@@ -859,9 +1167,9 @@ class BotGUI(ctk.CTk):
             try:
                 db_manager = DBManager(db_path=db_filename)
                 users = db_manager.get_all_users_with_metrics()
-                db_manager.close()
 
                 if not users:
+                    db_manager.close()
                     ctk.CTkLabel(user_list_frame, text="No users found in this server's database.").pack(pady=20)
                     return
 
@@ -871,22 +1179,34 @@ class BotGUI(ctk.CTk):
                     user_row.pack(fill="x", pady=2)
 
                     user_id = user_data['user_id']
-                    ctk.CTkLabel(user_row, text=str(user_id), width=120).pack(side="left", padx=2)
-                    ctk.CTkLabel(user_row, text=str(user_data['rapport']), width=70).pack(side="left", padx=2)
-                    ctk.CTkLabel(user_row, text=str(user_data['anger']), width=70).pack(side="left", padx=2)
-                    ctk.CTkLabel(user_row, text=str(user_data['trust']), width=70).pack(side="left", padx=2)
-                    ctk.CTkLabel(user_row, text=str(user_data['formality']), width=70).pack(side="left", padx=2)
+
+                    # Fetch most recent username from nicknames table
+                    cursor = db_manager.conn.cursor()
+                    cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1", (user_id,))
+                    username_result = cursor.fetchone()
+                    username = username_result[0] if username_result else "Unknown"
+
+                    # Display username and user ID
+                    ctk.CTkLabel(user_row, text=username, width=140).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_id), width=130).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['rapport']), width=65).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['anger']), width=65).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['trust']), width=65).pack(side="left", padx=2)
+                    ctk.CTkLabel(user_row, text=str(user_data['formality']), width=75).pack(side="left", padx=2)
 
                     edit_btn = ctk.CTkButton(
                         user_row,
                         text="Edit",
                         command=lambda ud=user_data, dbf=db_filename: self.open_user_edit_dialog(ud, dbf, refresh_users),
-                        width=80,
+                        width=75,
                         height=24,
+                        font=("Roboto", 11),
                         fg_color="#17a2b8",
                         hover_color="#138496"
                     )
                     edit_btn.pack(side="left", padx=2)
+
+                db_manager.close()
 
             except Exception as e:
                 ctk.CTkLabel(user_list_frame, text=f"Error loading users: {str(e)}").pack(pady=20)
@@ -918,16 +1238,33 @@ class BotGUI(ctk.CTk):
         """Opens a dialog to edit a user's relationship metrics and locks."""
         from database.db_manager import DBManager
 
+        # Fetch username from database
+        try:
+            db_manager = DBManager(db_path=db_filename)
+            cursor = db_manager.conn.cursor()
+            cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1", (user_data['user_id'],))
+            username_result = cursor.fetchone()
+            username = username_result[0] if username_result else "Unknown"
+            db_manager.close()
+        except:
+            username = "Unknown"
+
         # Create edit window
         edit_window = ctk.CTkToplevel(self)
-        edit_window.title(f"Edit User {user_data['user_id']}")
+        edit_window.title(f"Edit User - {username}")
         edit_window.geometry("500x550")
         edit_window.resizable(False, False)
-        edit_window.grab_set()
+
+        # Bring window to front
+        edit_window.lift()
+        edit_window.focus_force()
+        edit_window.attributes('-topmost', True)
+        edit_window.after(100, lambda: edit_window.attributes('-topmost', False))
+        # Don't use grab_set() so User Manager stays accessible
 
         # Title
         ctk.CTkLabel(edit_window, text=f"Edit User Metrics", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
-        ctk.CTkLabel(edit_window, text=f"User ID: {user_data['user_id']}", font=("Roboto", 10)).pack(pady=(0, 20))
+        ctk.CTkLabel(edit_window, text=f"{username} (ID: {user_data['user_id']})", font=("Roboto", 10)).pack(pady=(0, 20))
 
         # Metrics frame
         metrics_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
