@@ -672,6 +672,784 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
+    # ==================== GLOBAL BOT CONFIGURATION COMMANDS ====================
+
+    @app_commands.command(name="config_set_reply_chance", description="Set global random reply chance")
+    @app_commands.describe(chance="Random reply chance (0.0-1.0, e.g., 0.05 for 5%)")
+    @app_commands.default_permissions(administrator=True)
+    async def config_set_reply_chance(self, interaction: discord.Interaction, chance: app_commands.Range[float, 0.0, 1.0]):
+        """Set the global random reply chance for the bot."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        config['random_reply_chance'] = chance
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Set global random reply chance to **{chance * 100:.1f}%**\n"
+            f"Bot will randomly respond to {int(chance * 100)} out of every 100 non-mentioned messages.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="config_set_personality", description="Update default personality traits and lore for new servers")
+    @app_commands.describe(
+        traits="Personality traits (comma-separated, optional)",
+        lore="Background lore (optional)"
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def config_set_personality(self, interaction: discord.Interaction, traits: str = None, lore: str = None):
+        """Update the default personality configuration for new servers."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        if not traits and not lore:
+            await interaction.response.send_message(
+                "❌ You must specify at least one parameter: `traits` or `lore`.",
+                ephemeral=True
+            )
+            return
+
+        config = self.bot.config_manager.get_config()
+        if 'default_personality' not in config:
+            config['default_personality'] = {}
+
+        updates = []
+        if traits is not None:
+            config['default_personality']['personality_traits'] = traits
+            updates.append(f"• **Traits**: {traits}")
+
+        if lore is not None:
+            config['default_personality']['lore'] = lore
+            updates.append(f"• **Lore**: {lore}")
+
+        self.bot.config_manager.update_config(config)
+
+        changes_text = "\n".join(updates)
+        await interaction.response.send_message(
+            f"✅ **Updated default personality for new servers:**\n{changes_text}\n\n"
+            f"This affects newly activated servers only. Existing servers keep their personality.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="config_add_global_nickname", description="Add a global alternative nickname")
+    @app_commands.describe(nickname="Nickname the bot should respond to globally (e.g., 'drfish')")
+    @app_commands.default_permissions(administrator=True)
+    async def config_add_global_nickname(self, interaction: discord.Interaction, nickname: str):
+        """Add a global alternative nickname that works on all servers."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+
+        if 'alternative_nicknames' not in config:
+            config['alternative_nicknames'] = []
+
+        # Check if nickname already exists
+        if nickname.lower() in [n.lower() for n in config['alternative_nicknames']]:
+            await interaction.response.send_message(
+                f"⚠️ Global nickname **{nickname}** already exists.",
+                ephemeral=True
+            )
+            return
+
+        config['alternative_nicknames'].append(nickname)
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Added global nickname: **{nickname}**\n"
+            f"Bot will respond to this nickname on ALL servers.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="config_remove_global_nickname", description="Remove a global alternative nickname")
+    @app_commands.describe(nickname="Nickname to remove")
+    @app_commands.default_permissions(administrator=True)
+    async def config_remove_global_nickname(self, interaction: discord.Interaction, nickname: str):
+        """Remove a global alternative nickname."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+
+        if 'alternative_nicknames' not in config or not config['alternative_nicknames']:
+            await interaction.response.send_message(
+                f"ℹ️ No global nicknames configured.",
+                ephemeral=True
+            )
+            return
+
+        # Find matching nickname (case-insensitive)
+        nicknames = config['alternative_nicknames']
+        matching = [n for n in nicknames if n.lower() == nickname.lower()]
+
+        if not matching:
+            await interaction.response.send_message(
+                f"❌ Global nickname **{nickname}** not found.",
+                ephemeral=True
+            )
+            return
+
+        config['alternative_nicknames'].remove(matching[0])
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Removed global nickname: **{matching[0]}**",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="config_list_global_nicknames", description="List all global alternative nicknames")
+    @app_commands.default_permissions(administrator=True)
+    async def config_list_global_nicknames(self, interaction: discord.Interaction):
+        """List all global alternative nicknames configured."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        nicknames = config.get('alternative_nicknames', [])
+
+        if not nicknames:
+            await interaction.response.send_message(
+                f"ℹ️ No global alternative nicknames configured.\n"
+                f"Use `/config_add_global_nickname` to add one.",
+                ephemeral=True
+            )
+            return
+
+        nicknames_text = "\n".join([f"• {n}" for n in nicknames])
+        await interaction.response.send_message(
+            f"📋 **Global Alternative Nicknames (work on all servers):**\n{nicknames_text}",
+            ephemeral=True
+        )
+
+    # ==================== IMAGE GENERATION CONFIGURATION COMMANDS ====================
+
+    @app_commands.command(name="image_config_enable", description="Enable or disable image generation globally")
+    @app_commands.describe(enabled="Should image generation be enabled? (true/false)")
+    @app_commands.default_permissions(administrator=True)
+    async def image_config_enable(self, interaction: discord.Interaction, enabled: bool):
+        """Enable or disable AI image generation globally."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        if 'image_generation' not in config:
+            config['image_generation'] = {}
+
+        config['image_generation']['enabled'] = enabled
+        self.bot.config_manager.update_config(config)
+
+        status = "enabled" if enabled else "disabled"
+        await interaction.response.send_message(
+            f"✅ Image generation **{status}** globally.\n"
+            f"Users {'can now' if enabled else 'can no longer'} request bot to draw images.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="image_config_set_limits", description="Configure rate limiting for image generation")
+    @app_commands.describe(
+        max_per_period="Maximum images per user per period (e.g., 5)",
+        reset_period_hours="Hours before limit resets (e.g., 2)"
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def image_config_set_limits(
+        self,
+        interaction: discord.Interaction,
+        max_per_period: app_commands.Range[int, 1, 100],
+        reset_period_hours: app_commands.Range[int, 1, 168]
+    ):
+        """Configure rate limits for image generation."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        if 'image_generation' not in config:
+            config['image_generation'] = {}
+
+        config['image_generation']['max_per_user_per_period'] = max_per_period
+        config['image_generation']['reset_period_hours'] = reset_period_hours
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Updated image generation limits:\n"
+            f"• **Max per period**: {max_per_period} images\n"
+            f"• **Reset period**: {reset_period_hours} hours\n\n"
+            f"Each user can generate up to {max_per_period} images every {reset_period_hours} hours.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="image_config_view", description="View current image generation settings")
+    @app_commands.default_permissions(administrator=True)
+    async def image_config_view(self, interaction: discord.Interaction):
+        """View current image generation configuration."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        img_config = config.get('image_generation', {})
+
+        enabled = img_config.get('enabled', True)
+        max_per_period = img_config.get('max_per_user_per_period', 5)
+        reset_period = img_config.get('reset_period_hours', 2)
+        model = img_config.get('model', 'black-forest-labs/FLUX.1-schnell')
+        style = img_config.get('style_prefix', 'Childlike crayon drawing')
+
+        embed = discord.Embed(
+            title="🎨 Image Generation Configuration",
+            color=discord.Color.blue()
+        )
+
+        status_emoji = "✅" if enabled else "❌"
+        embed.add_field(name="Status", value=f"{status_emoji} {'Enabled' if enabled else 'Disabled'}", inline=False)
+        embed.add_field(name="Max Per Period", value=f"{max_per_period} images", inline=True)
+        embed.add_field(name="Reset Period", value=f"{reset_period} hours", inline=True)
+        embed.add_field(name="Model", value=model, inline=False)
+        embed.add_field(name="Style", value=style, inline=False)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ==================== STATUS UPDATE CONFIGURATION COMMANDS ====================
+
+    @app_commands.command(name="status_config_enable", description="Enable or disable daily status updates")
+    @app_commands.describe(enabled="Should daily status updates be enabled? (true/false)")
+    @app_commands.default_permissions(administrator=True)
+    async def status_config_enable(self, interaction: discord.Interaction, enabled: bool):
+        """Enable or disable daily AI-generated status updates."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        if 'status_updates' not in config:
+            config['status_updates'] = {}
+
+        config['status_updates']['enabled'] = enabled
+        self.bot.config_manager.update_config(config)
+
+        status = "enabled" if enabled else "disabled"
+        await interaction.response.send_message(
+            f"✅ Daily status updates **{status}** globally.\n"
+            f"Bot will {'now' if enabled else 'no longer'} update its Discord status once per day.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="status_config_set_time", description="Set the time for daily status updates")
+    @app_commands.describe(time="Update time in 24h format (e.g., '14:30' for 2:30 PM)")
+    @app_commands.default_permissions(administrator=True)
+    async def status_config_set_time(self, interaction: discord.Interaction, time: str):
+        """Set the time when daily status updates occur."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        # Validate time format
+        import re
+        if not re.match(r'^\d{1,2}:\d{2}$', time):
+            await interaction.response.send_message(
+                f"❌ Invalid time format. Use 24h format like '14:30' or '09:00'.",
+                ephemeral=True
+            )
+            return
+
+        # Validate time values
+        try:
+            hours, minutes = map(int, time.split(':'))
+            if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                raise ValueError
+        except ValueError:
+            await interaction.response.send_message(
+                f"❌ Invalid time values. Hours must be 0-23, minutes 0-59.",
+                ephemeral=True
+            )
+            return
+
+        config = self.bot.config_manager.get_config()
+        if 'status_updates' not in config:
+            config['status_updates'] = {}
+
+        config['status_updates']['update_time'] = time
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Set daily status update time to **{time}** (24h format).\n"
+            f"Bot will update its status at this time every day.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="status_config_set_source_server", description="Choose which server's personality generates status")
+    @app_commands.describe(server_name="Server name (or 'Most Active Server' for automatic selection)")
+    @app_commands.default_permissions(administrator=True)
+    async def status_config_set_source_server(self, interaction: discord.Interaction, server_name: str):
+        """Set which server's personality should be used for status generation."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        if 'status_updates' not in config:
+            config['status_updates'] = {}
+
+        config['status_updates']['source_server_name'] = server_name
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Set status generation source server to: **{server_name}**\n"
+            f"Daily status updates will use this server's bot personality and lore.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="status_config_view", description="View current status update configuration")
+    @app_commands.default_permissions(administrator=True)
+    async def status_config_view(self, interaction: discord.Interaction):
+        """View current status update configuration."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+        status_config = config.get('status_updates', {})
+
+        enabled = status_config.get('enabled', False)
+        update_time = status_config.get('update_time', '12:00')
+        source_server = status_config.get('source_server_name', 'Most Active Server')
+
+        embed = discord.Embed(
+            title="📊 Status Update Configuration",
+            color=discord.Color.green()
+        )
+
+        status_emoji = "✅" if enabled else "❌"
+        embed.add_field(name="Status", value=f"{status_emoji} {'Enabled' if enabled else 'Disabled'}", inline=False)
+        embed.add_field(name="Update Time", value=update_time, inline=True)
+        embed.add_field(name="Source Server", value=source_server, inline=True)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ==================== CHANNEL CONFIGURATION COMMANDS ====================
+
+    @app_commands.command(name="channel_set_purpose", description="Set channel purpose/instructions")
+    @app_commands.describe(purpose="Instructions for how the bot should behave in this channel")
+    @app_commands.default_permissions(administrator=True)
+    async def channel_set_purpose(self, interaction: discord.Interaction, purpose: str):
+        """Set the purpose/instructions for the current channel."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        channel_id = str(interaction.channel.id)
+        config = self.bot.config_manager.get_config()
+
+        if 'channel_settings' not in config:
+            config['channel_settings'] = {}
+
+        if channel_id not in config['channel_settings']:
+            config['channel_settings'][channel_id] = {}
+
+        config['channel_settings'][channel_id]['purpose'] = purpose
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Set channel purpose for <#{channel_id}>:\n\n**{purpose}**\n\n"
+            f"Bot will follow these instructions when responding in this channel.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="channel_set_reply_chance", description="Set per-channel random reply chance")
+    @app_commands.describe(chance="Random reply chance for this channel (0.0-1.0, e.g., 0.08 for 8%)")
+    @app_commands.default_permissions(administrator=True)
+    async def channel_set_reply_chance(self, interaction: discord.Interaction, chance: app_commands.Range[float, 0.0, 1.0]):
+        """Set the random reply chance for the current channel."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        channel_id = str(interaction.channel.id)
+        config = self.bot.config_manager.get_config()
+
+        if 'channel_settings' not in config:
+            config['channel_settings'] = {}
+
+        if channel_id not in config['channel_settings']:
+            config['channel_settings'][channel_id] = {}
+
+        config['channel_settings'][channel_id]['random_reply_chance'] = chance
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Set random reply chance for <#{channel_id}> to **{chance * 100:.1f}%**\n"
+            f"Bot will randomly respond to {int(chance * 100)} out of every 100 non-mentioned messages in this channel.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="channel_view_settings", description="View all current channel settings")
+    @app_commands.default_permissions(administrator=True)
+    async def channel_view_settings(self, interaction: discord.Interaction):
+        """View all settings for the current channel."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        channel_id = str(interaction.channel.id)
+        config = self.bot.config_manager.get_config()
+
+        channel_config = config.get('channel_settings', {}).get(channel_id, {})
+        global_personality = config.get('personality_mode', {})
+
+        if not channel_config:
+            await interaction.response.send_message(
+                f"ℹ️ No settings configured for <#{channel_id}>. Using global defaults.\n"
+                f"Use `/activate` to activate this channel first.",
+                ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"⚙️ Channel Settings: #{interaction.channel.name}",
+            color=discord.Color.blue()
+        )
+
+        # Basic settings
+        purpose = channel_config.get('purpose', 'Default purpose')
+        embed.add_field(name="Purpose", value=purpose[:1024], inline=False)
+
+        reply_chance = channel_config.get('random_reply_chance', config.get('random_reply_chance', 0.05))
+        embed.add_field(name="Random Reply Chance", value=f"{reply_chance * 100:.1f}%", inline=True)
+
+        # Personality mode
+        immersive = channel_config.get('immersive_character', global_personality.get('immersive_character', True))
+        tech_lang = channel_config.get('allow_technical_language', global_personality.get('allow_technical_language', False))
+        use_server_info = channel_config.get('use_server_info', False)
+        roleplay_fmt = channel_config.get('enable_roleplay_formatting', global_personality.get('enable_roleplay_formatting', True))
+
+        embed.add_field(name="Immersive Character", value="✅ Yes" if immersive else "❌ No", inline=True)
+        embed.add_field(name="Technical Language", value="✅ Allowed" if tech_lang else "❌ Forbidden", inline=True)
+        embed.add_field(name="Use Server Info", value="✅ Yes" if use_server_info else "❌ No", inline=True)
+        embed.add_field(name="Roleplay Formatting", value="✅ Yes" if roleplay_fmt else "❌ No", inline=True)
+
+        # Proactive engagement
+        proactive_enabled = channel_config.get('allow_proactive_engagement', True)
+        proactive_interval = channel_config.get('proactive_check_interval', 30)
+        proactive_threshold = channel_config.get('proactive_threshold', 0.7)
+
+        embed.add_field(name="Proactive Engagement", value="✅ Enabled" if proactive_enabled else "❌ Disabled", inline=True)
+        embed.add_field(name="Check Interval", value=f"{proactive_interval} min", inline=True)
+        embed.add_field(name="Threshold", value=f"{proactive_threshold:.2f}", inline=True)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="channel_list_active", description="List all active channels in this server")
+    @app_commands.default_permissions(administrator=True)
+    async def channel_list_active(self, interaction: discord.Interaction):
+        """List all channels activated in this server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+        channel_settings = config.get('channel_settings', {})
+
+        # Filter channels by guild_id
+        server_channels = []
+        for channel_id, channel_config in channel_settings.items():
+            channel_guild_id = channel_config.get('guild_id', None)
+            if channel_guild_id == guild_id or channel_guild_id is None:
+                server_channels.append((channel_id, channel_config))
+
+        if not server_channels:
+            await interaction.response.send_message(
+                f"ℹ️ No channels activated in this server yet.\n"
+                f"Use `/activate` in a channel to activate it.",
+                ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"📋 Active Channels in {interaction.guild.name}",
+            description=f"Total: {len(server_channels)} channels",
+            color=discord.Color.green()
+        )
+
+        for channel_id, channel_config in server_channels[:15]:  # Limit to 15 to avoid embed limits
+            channel_name = channel_config.get('channel_name', f'Channel {channel_id}')
+            purpose = channel_config.get('purpose', 'Default purpose')[:50]
+
+            embed.add_field(
+                name=f"#{channel_name}",
+                value=f"ID: {channel_id}\n{purpose}...",
+                inline=False
+            )
+
+        if len(server_channels) > 15:
+            embed.set_footer(text=f"Showing 15 of {len(server_channels)} channels")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ==================== SERVER EMOTE MANAGEMENT COMMANDS ====================
+
+    @app_commands.command(name="server_set_emote_sources", description="Configure which servers' emotes are available")
+    @app_commands.describe(
+        action="Action to perform: list, add, remove, or clear",
+        guild_id="Guild ID to add or remove (optional, required for add/remove)"
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def server_set_emote_sources(
+        self,
+        interaction: discord.Interaction,
+        action: str,
+        guild_id: str = None
+    ):
+        """Manage which servers' emotes can be used in this server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        current_guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+
+        if 'server_emote_sources' not in config:
+            config['server_emote_sources'] = {}
+
+        action = action.lower()
+
+        if action == "list":
+            # List available servers and current sources
+            current_sources = config['server_emote_sources'].get(current_guild_id, [])
+            all_servers = []
+
+            # Get all available servers from bot
+            for guild in self.bot.guilds:
+                all_servers.append((str(guild.id), guild.name))
+
+            embed = discord.Embed(
+                title="🎭 Emote Source Configuration",
+                description=f"Server: {interaction.guild.name}",
+                color=discord.Color.blue()
+            )
+
+            if not current_sources:
+                embed.add_field(name="Current Status", value="✅ All emotes from all servers are available (no restrictions)", inline=False)
+            else:
+                sources_text = "\n".join([f"• {gid}" for gid in current_sources])
+                embed.add_field(name="Allowed Servers", value=sources_text, inline=False)
+
+            available_text = "\n".join([f"• `{gid}` - {name}" for gid, name in all_servers[:10]])
+            if len(all_servers) > 10:
+                available_text += f"\n... and {len(all_servers) - 10} more"
+            embed.add_field(name="Available Servers", value=available_text, inline=False)
+
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        elif action == "add":
+            if not guild_id:
+                await interaction.response.send_message(
+                    "❌ You must specify a `guild_id` to add.",
+                    ephemeral=True
+                )
+                return
+
+            if current_guild_id not in config['server_emote_sources']:
+                config['server_emote_sources'][current_guild_id] = []
+
+            if guild_id in config['server_emote_sources'][current_guild_id]:
+                await interaction.response.send_message(
+                    f"⚠️ Guild ID `{guild_id}` is already in the allowed list.",
+                    ephemeral=True
+                )
+                return
+
+            config['server_emote_sources'][current_guild_id].append(guild_id)
+            self.bot.config_manager.update_config(config)
+
+            await interaction.response.send_message(
+                f"✅ Added emote source: `{guild_id}`\n"
+                f"Emotes from this server are now available in {interaction.guild.name}.",
+                ephemeral=True
+            )
+
+        elif action == "remove":
+            if not guild_id:
+                await interaction.response.send_message(
+                    "❌ You must specify a `guild_id` to remove.",
+                    ephemeral=True
+                )
+                return
+
+            if current_guild_id not in config['server_emote_sources'] or guild_id not in config['server_emote_sources'][current_guild_id]:
+                await interaction.response.send_message(
+                    f"❌ Guild ID `{guild_id}` is not in the allowed list.",
+                    ephemeral=True
+                )
+                return
+
+            config['server_emote_sources'][current_guild_id].remove(guild_id)
+            self.bot.config_manager.update_config(config)
+
+            await interaction.response.send_message(
+                f"✅ Removed emote source: `{guild_id}`\n"
+                f"Emotes from this server are no longer available in {interaction.guild.name}.",
+                ephemeral=True
+            )
+
+        elif action == "clear":
+            if current_guild_id in config['server_emote_sources']:
+                del config['server_emote_sources'][current_guild_id]
+                self.bot.config_manager.update_config(config)
+
+            await interaction.response.send_message(
+                f"✅ Cleared all emote restrictions for {interaction.guild.name}.\n"
+                f"All emotes from all servers are now available.",
+                ephemeral=True
+            )
+
+        else:
+            await interaction.response.send_message(
+                f"❌ Invalid action. Must be one of: `list`, `add`, `remove`, `clear`",
+                ephemeral=True
+            )
+
+    # ==================== VIEW/DISCOVERY COMMANDS ====================
+
+    @app_commands.command(name="config_view_all", description="View all global configuration settings")
+    @app_commands.default_permissions(administrator=True)
+    async def config_view_all(self, interaction: discord.Interaction):
+        """View all global bot configuration settings."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        config = self.bot.config_manager.get_config()
+
+        embed = discord.Embed(
+            title="⚙️ Global Bot Configuration",
+            color=discord.Color.blue()
+        )
+
+        # Basic settings
+        reply_chance = config.get('random_reply_chance', 0.05)
+        embed.add_field(name="Random Reply Chance", value=f"{reply_chance * 100:.1f}%", inline=True)
+
+        # Default personality
+        default_personality = config.get('default_personality', {})
+        traits = default_personality.get('personality_traits', 'N/A')
+        lore = default_personality.get('lore', 'N/A')
+        embed.add_field(name="Default Traits", value=traits[:100], inline=False)
+        embed.add_field(name="Default Lore", value=lore[:100], inline=False)
+
+        # Global nicknames
+        global_nicknames = config.get('alternative_nicknames', [])
+        nicknames_text = ", ".join(global_nicknames) if global_nicknames else "None"
+        embed.add_field(name="Global Nicknames", value=nicknames_text[:100], inline=False)
+
+        # Image generation
+        img_config = config.get('image_generation', {})
+        img_enabled = "✅ Enabled" if img_config.get('enabled', True) else "❌ Disabled"
+        img_limits = f"{img_config.get('max_per_user_per_period', 5)}/{img_config.get('reset_period_hours', 2)}h"
+        embed.add_field(name="Image Generation", value=img_enabled, inline=True)
+        embed.add_field(name="Image Limits", value=img_limits, inline=True)
+
+        # Status updates
+        status_config = config.get('status_updates', {})
+        status_enabled = "✅ Enabled" if status_config.get('enabled', False) else "❌ Disabled"
+        status_time = status_config.get('update_time', '12:00')
+        embed.add_field(name="Status Updates", value=status_enabled, inline=True)
+        embed.add_field(name="Status Time", value=status_time, inline=True)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="server_view_settings", description="View all server-specific settings")
+    @app_commands.default_permissions(administrator=True)
+    async def server_view_settings(self, interaction: discord.Interaction):
+        """View all settings specific to this server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+
+        embed = discord.Embed(
+            title=f"🏠 Server Settings: {interaction.guild.name}",
+            color=discord.Color.green()
+        )
+
+        # Alternative nicknames
+        server_nicknames = config.get('server_alternative_nicknames', {}).get(guild_id, [])
+        nicknames_text = ", ".join(server_nicknames) if server_nicknames else "None"
+        embed.add_field(name="Alternative Nicknames", value=nicknames_text[:1024], inline=False)
+
+        # Emote sources
+        emote_sources = config.get('server_emote_sources', {}).get(guild_id, [])
+        if not emote_sources:
+            emotes_text = "All servers (no restrictions)"
+        else:
+            emotes_text = f"{len(emote_sources)} server(s) allowed"
+        embed.add_field(name="Emote Sources", value=emotes_text, inline=True)
+
+        # Status memory
+        status_settings = config.get('server_status_settings', {}).get(guild_id, {})
+        status_memory = status_settings.get('add_to_memory', True)
+        embed.add_field(name="Status Memory", value="✅ Enabled" if status_memory else "❌ Disabled", inline=True)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ==================== MEMORY CONSOLIDATION COMMANDS ====================
+
+    @app_commands.command(name="consolidate_memory", description="Manually trigger memory consolidation for this server")
+    @app_commands.default_permissions(administrator=True)
+    async def consolidate_memory(self, interaction: discord.Interaction):
+        """Manually trigger memory consolidation (extract facts from short-term messages)."""
+        db_manager = self._get_db(interaction)
+        if not db_manager:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        # Defer response as this might take a while
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            # Import consolidation handler
+            from modules.memory_consolidation_handler import consolidate_memory
+
+            # Count messages before consolidation
+            cursor = db_manager.conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM short_term_message_log")
+            message_count = cursor.fetchone()[0]
+
+            if message_count == 0:
+                await interaction.followup.send(
+                    "ℹ️ No messages to consolidate. Short-term memory is empty.",
+                    ephemeral=True
+                )
+                return
+
+            # Perform consolidation
+            facts_extracted = await consolidate_memory(db_manager, interaction.guild.name)
+
+            await interaction.followup.send(
+                f"✅ **Memory consolidation complete!**\n\n"
+                f"• **Messages processed**: {message_count}\n"
+                f"• **Facts extracted**: {facts_extracted}\n"
+                f"• **Archive created**: `database/{interaction.guild.name}/archive/short_term_archive_*.json`\n\n"
+                f"Short-term memory has been cleared and facts saved to long-term memory.",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Error during memory consolidation: {e}\n"
+                f"Check console logs for details.",
+                ephemeral=True
+            )
+
 
 async def setup(bot):
     """Required setup function to load the cog."""

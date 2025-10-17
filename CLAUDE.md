@@ -383,6 +383,42 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
   - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Cleanup Verification (5)
   - **Usage**: Recommended to run after major updates to ensure system stability
 
+### VPS Headless Deployment Commands (2025-10-17)
+
+**CRITICAL FOR VPS**: All GUI settings now have Discord command equivalents for headless VPS deployment. See `AI_GUIDELINES.md` Section 7 for full implementation details.
+
+#### Global Bot Configuration
+- `/config_set_reply_chance` - Set global random reply chance (0.0-1.0)
+- `/config_set_personality` - Update default personality traits/lore for new servers
+- `/config_add_global_nickname` - Add global alternative nickname
+- `/config_remove_global_nickname` - Remove global nickname
+- `/config_list_global_nicknames` - List all global nicknames
+- `/config_view_all` - View all global configuration settings
+
+#### Image Generation Configuration
+- `/image_config_enable` - Enable/disable image generation globally
+- `/image_config_set_limits` - Configure rate limits (max per period, reset hours)
+- `/image_config_view` - View current image generation settings
+
+#### Status Update Configuration
+- `/status_config_enable` - Enable/disable daily status updates
+- `/status_config_set_time` - Set update time (24h format)
+- `/status_config_set_source_server` - Choose which server's personality to use
+- `/status_config_view` - View current status configuration
+
+#### Per-Channel Configuration
+- `/channel_set_purpose` - Set channel purpose/instructions
+- `/channel_set_reply_chance` - Set per-channel random reply chance
+- `/channel_set_proactive` - Configure proactive engagement (enable, interval, threshold)
+- `/channel_view_settings` - View all channel settings
+- `/channel_list_active` - List all active channels in server
+
+#### Per-Server Configuration
+- `/server_set_emote_sources` - Manage emote sources (list/add/remove/clear)
+- `/server_view_settings` - View all server-specific settings
+
+**Note**: All commands are administrator-only and validate guild context. Changes take effect immediately without bot restart.
+
 ## AI Model Configuration
 
 The bot uses task-specific model configurations in `config.json`:

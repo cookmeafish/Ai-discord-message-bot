@@ -105,7 +105,173 @@ All five proposed metrics have been fully implemented:
 
 - ✅ **GUI Image Generation Controls**: Add fields to GUI for configuring image generation rate limiting (max_per_user_per_period and reset_period_hours) - Implemented 2025-10-16
 
-## Phase 4 (PROPOSED)
+## Phase 4 (HIGH PRIORITY - VPS HEADLESS DEPLOYMENT)
+
+### 🚨 CRITICAL: Full Discord Command Parity with GUI
+
+**Problem Statement:**
+The bot is intended for deployment on a headless VPS (Virtual Private Server) where the GUI is inaccessible or difficult to reach. Currently, many critical configuration settings can ONLY be changed through the GUI (gui.py), making remote management nearly impossible.
+
+**Why This Is Critical:**
+- VPS deployments have no display/GUI access
+- SSH access doesn't easily support tkinter GUIs
+- Bot operators need to configure settings without GUI access
+- All GUI functionality MUST be available via Discord commands
+
+**Current Status:**
+Some Discord commands exist, but many GUI settings have NO Discord equivalent. This makes VPS deployment impractical for many use cases.
+
+**Required Implementation: Complete Command Coverage**
+
+All GUI-configurable settings MUST have Discord command equivalents. Below is the comprehensive list of missing commands:
+
+---
+
+#### 1. Global Bot Configuration Commands
+
+**Missing Commands:**
+- `/config_set_reply_chance` - Set global random reply chance (0.0-1.0)
+  - Example: `/config_set_reply_chance chance:0.05`
+  - Current: GUI-only (gui.py:93)
+
+- `/config_set_personality` - Update default personality traits and lore for new servers
+  - Parameters: `traits` (optional), `lore` (optional)
+  - Example: `/config_set_personality traits:"helpful, friendly, curious" lore:"I am a helpful AI..."`
+  - Current: GUI-only (gui.py:156-161)
+
+- `/config_add_global_nickname` - Add global alternative nickname
+  - Example: `/config_add_global_nickname nickname:"drfish"`
+  - Current: GUI-only (gui.py:163-169)
+  - Note: Server-specific nicknames already have `/server_add_nickname` ✅
+
+- `/config_remove_global_nickname` - Remove global alternative nickname
+- `/config_list_global_nicknames` - List all global alternative nicknames
+
+---
+
+#### 2. Image Generation Configuration Commands
+
+**Missing Commands:**
+- `/image_config_enable` - Enable/disable image generation globally
+  - Example: `/image_config_enable enabled:true`
+  - Current: GUI-only (gui.py:97-104)
+
+- `/image_config_set_limits` - Configure rate limiting for image generation
+  - Parameters: `max_per_period` (int), `reset_period_hours` (int)
+  - Example: `/image_config_set_limits max_per_period:5 reset_period_hours:2`
+  - Current: GUI-only (gui.py:106-114)
+
+- `/image_config_view` - View current image generation settings
+  - Shows: enabled status, max per period, reset period hours, model, style
+
+---
+
+#### 3. Status Update Configuration Commands
+
+**Missing Commands:**
+- `/status_config_enable` - Enable/disable daily status updates
+  - Example: `/status_config_enable enabled:true`
+  - Current: GUI-only (gui.py:120-127)
+
+- `/status_config_set_time` - Set daily update time (24h format)
+  - Example: `/status_config_set_time time:"14:30"`
+  - Current: GUI-only (gui.py:129-132)
+
+- `/status_config_set_source_server` - Choose which server's personality generates status
+  - Parameters: `server_name` (string, or "Most Active Server")
+  - Example: `/status_config_set_source_server server_name:"Mistel Fiech's Server"`
+  - Current: GUI-only (gui.py:134-146)
+
+- `/status_config_view` - View current status update configuration
+  - Shows: enabled, update time, source server name
+
+**Note:** `/server_set_status_memory` already exists for per-server memory toggle ✅
+
+---
+
+#### 4. Per-Channel Configuration Commands
+
+**Missing Commands:**
+- `/channel_set_purpose` - Set channel purpose/instructions
+  - Example: `/channel_set_purpose purpose:"Strictly answer user questions based on server rules."`
+  - Current: GUI-only (gui.py:481-485)
+
+- `/channel_set_reply_chance` - Set per-channel random reply chance
+  - Example: `/channel_set_reply_chance chance:0.08`
+  - Current: GUI-only (gui.py:488-492)
+
+- `/channel_set_proactive_interval` - Set proactive engagement check interval (minutes)
+  - Example: `/channel_set_proactive_interval interval:45`
+  - Current: GUI-only (gui.py:554-558)
+
+- `/channel_set_proactive_threshold` - Set engagement threshold (0.0-1.0, higher = more selective)
+  - Example: `/channel_set_proactive_threshold threshold:0.8`
+  - Current: GUI-only (gui.py:560-564)
+
+- `/channel_view_settings` - View all current channel settings
+  - Shows: purpose, reply chance, personality mode, proactive settings, all toggles
+
+**Note:** `/channel_set_personality` already exists for personality mode toggles ✅
+
+---
+
+#### 5. Per-Server Emote Management Commands
+
+**Missing Commands:**
+- `/server_set_emote_sources` - Configure which servers' emotes are available in this server
+  - Parameters: `action` (list/add/remove/clear), `guild_id` (optional)
+  - Examples:
+    - `/server_set_emote_sources action:list` - Show available servers and current sources
+    - `/server_set_emote_sources action:add guild_id:1260857723193528360` - Allow emotes from specific server
+    - `/server_set_emote_sources action:remove guild_id:1260857723193528360` - Remove emote source
+    - `/server_set_emote_sources action:clear` - Remove all restrictions (allow all emotes)
+  - Current: GUI-only (gui.py:1035-1118)
+
+---
+
+#### 6. View/List Commands for Discovery
+
+**Missing Commands:**
+- `/config_view_all` - View all global configuration settings
+  - Shows: reply chance, personality defaults, global nicknames, image gen, status updates
+
+- `/server_view_settings` - View all server-specific settings
+  - Shows: alternative nicknames, emote sources, status memory toggle
+
+- `/channel_list_active` - List all active channels in this server
+  - Shows: channel ID, channel name, purpose (first 50 chars)
+
+---
+
+### Implementation Priority: 🔴 CRITICAL - HIGHEST PRIORITY
+
+This MUST be completed before any other Phase 4 features. VPS deployment is a core requirement, and without full command parity, the bot cannot be effectively managed remotely.
+
+**Estimated Complexity:** Medium-High
+- Create 20+ new admin commands in `cogs/admin.py`
+- Each command must validate permissions (admin only)
+- Each command must update `config.json` via `ConfigManager`
+- Commands must provide clear feedback (success/error messages)
+- Add comprehensive parameter validation
+- Update all documentation (CLAUDE.md, README.md, SYSTEM_ARCHITECTURE.md)
+- Add tests to `testing.py` for new commands
+
+**Acceptance Criteria:**
+- ✅ Every GUI setting has a Discord command equivalent
+- ✅ All commands work correctly on VPS without GUI
+- ✅ Commands provide clear, helpful feedback
+- ✅ Documentation updated with all new commands
+- ✅ Tests added for all new commands
+- ✅ Bot can be fully configured via Discord alone
+
+**Testing Strategy:**
+1. Deploy bot to headless VPS with no GUI access
+2. Configure all settings using ONLY Discord commands
+3. Verify all settings persist correctly in config.json
+4. Verify bot behavior matches GUI-configured behavior
+5. Run `/run_tests` to validate system integrity
+
+---
 
 ### Server_Info Folder System - Fandom & Lore Management
 

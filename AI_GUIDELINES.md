@@ -195,11 +195,11 @@ Here are some other key principles to keep in mind to better understand the code
 This is the most critical section and supersedes all other guidelines in cases of conflict. The primary goal is to provide code that works immediately, without requiring the user to perform any debugging.
 
 -   **Deliver Production-Ready Code Only**: All code provided must be final, clean, and immediately runnable. It **must not** contain any `diff` markers (`+`, `-`) or special tracking comments like `# new code` or `# modified code`. This is separate from standard, helpful comments that explain the code's logic, which are still required.
-    
+
 -   **Always Modify Files Directly**: Use `filesystem:write_file` to update files with complete new content. Never provide snippets and expect the user to manually edit files unless the file is extremely large (>1000 lines) or the user specifically requests snippets only.
-    
+
 -   **Ensure Environment Compatibility**: Avoid using special characters or emojis in `print` statements, logs, or any other console output. All code must be written to be compatible with standard terminal environments, including the Windows console, to prevent `UnicodeEncodeError` crashes.
-    
+
 -   **Mandatory Pre-flight Checks**: Before delivering any code, you must perform a rigorous mental "linting" and review process. This includes:
 
     1.  **Syntax & Indentation Check**: Meticulously verify all Python syntax, paying special attention to indentation, which was the source of a critical failure.
@@ -212,5 +212,128 @@ This is the most critical section and supersedes all other guidelines in cases o
 
     5.  **Testing Validation**: For major changes, remind the user to run `/run_tests` to validate that all systems remain functional after your modifications.
 
+## 7. Discord Command Parity with GUI (VPS Headless Deployment)
+
+**CRITICAL REQUIREMENT**: The bot is designed for deployment on headless VPS (Virtual Private Server) environments where the GUI is inaccessible. All configuration settings that can be changed via the GUI **MUST** have equivalent Discord slash commands for admin users.
+
+### Command Design Requirements
+
+-   **Administrator-Only Access**: All configuration commands must use `@app_commands.default_permissions(administrator=True)` to restrict access to server administrators only.
+
+-   **Guild Context Validation**: Every command must validate that it's being used in a server (not DMs) using:
+    ```python
+    if not interaction.guild:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    ```
+
+-   **ConfigManager Integration**: All commands that modify settings must:
+    1. Load config via `self.bot.config_manager.get_config()`
+    2. Modify the config dictionary
+    3. Save via `self.bot.config_manager.update_config(config)`
+
+-   **Clear Feedback**: Commands must provide clear success/error messages using ephemeral responses:
+    - ✅ Success messages with details of what was changed
+    - ❌ Error messages explaining what went wrong
+    - ℹ️ Informational messages for empty results
+
+-   **Parameter Validation**: Use Discord's built-in parameter validation:
+    - `app_commands.Range[int, min, max]` for numeric ranges
+    - `app_commands.Range[float, min, max]` for decimal ranges
+    - Custom validation logic for formats (e.g., time strings, regex patterns)
+
+-   **View/Discovery Commands**: Provide "view" commands that display current settings using Discord embeds for better readability.
+
+### Required Command Categories
+
+**Global Bot Configuration**:
+- `/config_set_reply_chance` - Set global random reply chance (0.0-1.0)
+- `/config_set_personality` - Update default personality traits/lore for new servers
+- `/config_add_global_nickname` - Add global alternative nicknames
+- `/config_remove_global_nickname` - Remove global nicknames
+- `/config_list_global_nicknames` - List all global nicknames
+- `/config_view_all` - View all global configuration settings
+
+**Image Generation Configuration**:
+- `/image_config_enable` - Enable/disable image generation globally
+- `/image_config_set_limits` - Configure rate limits (max per period, reset hours)
+- `/image_config_view` - View current image generation settings
+
+**Status Update Configuration**:
+- `/status_config_enable` - Enable/disable daily status updates
+- `/status_config_set_time` - Set update time (24h format with validation)
+- `/status_config_set_source_server` - Choose which server's personality to use
+- `/status_config_view` - View current status configuration
+
+**Per-Channel Configuration**:
+- `/channel_set_purpose` - Set channel purpose/instructions
+- `/channel_set_reply_chance` - Set per-channel random reply chance
+- `/channel_set_personality` - Configure personality mode settings (immersive, technical language, server info)
+- `/channel_set_proactive` - Configure proactive engagement settings
+- `/channel_view_settings` - View all channel settings
+- `/channel_list_active` - List all active channels in server
+
+**Per-Server Configuration**:
+- `/server_add_nickname` - Add server-specific alternative nicknames
+- `/server_remove_nickname` - Remove server-specific nicknames
+- `/server_list_nicknames` - List all server nicknames
+- `/server_set_emote_sources` - Manage emote sources (list/add/remove/clear)
+- `/server_set_status_memory` - Toggle status memory logging
+- `/server_view_settings` - View all server-specific settings
+
+**Memory Management**:
+- `/consolidate_memory` - Manually trigger memory consolidation
+
+### Implementation Checklist
+
+When adding new GUI settings, you **MUST**:
+
+1. ✅ Create corresponding Discord command(s) in `cogs/admin.py`
+2. ✅ Use `@app_commands.default_permissions(administrator=True)`
+3. ✅ Validate guild context (reject DMs)
+4. ✅ Implement parameter validation with clear error messages
+5. ✅ Use ConfigManager for all config.json modifications
+6. ✅ Provide clear success/error feedback
+7. ✅ Create a "view" command if the setting is complex
+8. ✅ Document the command in `CLAUDE.md` and `README.md`
+9. ✅ Update `PLANNED_FEATURES.md` if implementing a planned feature
+
+### Example Implementation Pattern
+
+```python
+@app_commands.command(name="config_set_reply_chance", description="Set global random reply chance")
+@app_commands.describe(chance="Random reply chance (0.0-1.0, e.g., 0.05 for 5%)")
+@app_commands.default_permissions(administrator=True)
+async def config_set_reply_chance(self, interaction: discord.Interaction, chance: app_commands.Range[float, 0.0, 1.0]):
+    """Set the global random reply chance for the bot."""
+    # Guild validation
+    if not interaction.guild:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+
+    # Load, modify, save config
+    config = self.bot.config_manager.get_config()
+    config['random_reply_chance'] = chance
+    self.bot.config_manager.update_config(config)
+
+    # Clear feedback
+    await interaction.response.send_message(
+        f"✅ Set global random reply chance to **{chance * 100:.1f}%**\n"
+        f"Bot will randomly respond to {int(chance * 100)} out of every 100 non-mentioned messages.",
+        ephemeral=True
+    )
+```
+
+### Testing Requirements
+
+After implementing new configuration commands:
+
+1. Test on a headless VPS environment with no GUI access
+2. Verify all settings persist correctly in config.json
+3. Verify bot behavior matches GUI-configured behavior
+4. Run `/run_tests` to validate system integrity
+5. Update test suite in `testing.py` if necessary
+
+**Priority**: This is a **CRITICAL** requirement for VPS deployment. Any GUI setting that lacks a Discord command equivalent makes the bot unmanageable on headless servers.
 
 ---
