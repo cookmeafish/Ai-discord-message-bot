@@ -54,6 +54,20 @@
         "height": 512,
         "steps": 4
     },
+    "status_updates": {
+        "enabled": false,
+        "update_time": "12:00",
+        "source_server_name": "Most Active Server"
+    },
+    "server_status_settings": {},
+    "proactive_engagement": {
+        "enabled": false,
+        "check_interval_minutes": 30,
+        "engagement_threshold": 0.7,
+        "cooldown_minutes": 30,
+        "min_messages_to_analyze": 5
+    },
+    "server_proactive_settings": {},
     "safety": {
         "enable_moderation_api": true,
         "enable_rate_limiting": true,

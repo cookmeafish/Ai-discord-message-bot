@@ -160,15 +160,83 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Cost**: $0.002 per image (~$2 per 1,000 images)
   - **Intent**: `image_generation` - Natural language detection ("draw me a cat", "sketch a house")
   - **Config**: `config.json` under `image_generation` section
-  - **GUI Integration**: Checkbox for enable/disable, field for period limit and reset hours
+  - **GUI Integration**: Checkbox for enable/disable, fields for period limit and reset hours
 
-### GUI Server Manager (2025-10-14, Updated 2025-10-15)
+### Daily Status Updates Module (2025-10-16)
+- `modules/status_updater.py` - AI-generated Discord status updates
+- `cogs/status_tasks.py` - Background task for daily status generation
+  - **Frequency**: Once per day at configurable time (default: 12:00)
+  - **AI Generation**: Uses OpenAI to create funny/quirky status based on bot's personality/lore
+  - **Source Server**: Choose which server's personality to use (default: "Most Active Server")
+  - **Max Length**: 128 characters (Discord limit)
+  - **Memory Integration**: Per-server toggle for adding status to short-term memory
+  - **Config**: `config.json` under `status_updates` and `server_status_settings` sections
+  - **GUI Integration**:
+    - Global controls: Enable/disable, update time, source server dropdown
+    - Per-server toggle: "Status Update Settings" button in Server Manager
+
+**Status Update Behavior**:
+- Bot's Discord status changes once per day to reflect "what it's thinking/doing"
+- Examples: "Thinking about fish...", "Contemplating existence", "Avoiding responsibilities"
+- Status is generated using AI based on selected server's bot identity (traits, lore, facts)
+- Optionally logged to each server's short-term memory (configurable per-server, default: enabled)
+- Allows bot to reference its status in conversations ("Why is my status about fish? Well...")
+
+### Proactive Engagement Module (2025-10-16)
+- `modules/proactive_engagement.py` - AI-powered conversation analysis and engagement logic
+- `cogs/proactive_tasks.py` - Background task for periodic channel checking
+  - **Frequency**: Every 30 minutes (configurable via `check_interval_minutes`)
+  - **AI Judging**: Uses OpenAI to score conversation relevance (0.0-1.0 scale)
+  - **Engagement Threshold**: Configurable selectivity (default: 0.7, higher = more selective)
+  - **Cooldown**: 30 minutes per channel to prevent spam
+  - **Self-Reply Prevention**: **CRITICAL** - Skips engagement if last message was from bot
+  - **Multi-Level Control**:
+    - **Global**: Enable/disable for entire bot via `proactive_engagement.enabled`
+    - **Per-Server**: Enable/disable per server via `server_proactive_settings`
+    - **Per-Channel**: Enable/disable per channel via `channel_settings[channel_id].allow_proactive_engagement`
+  - **Config**: `config.json` under `proactive_engagement` section
+  - **GUI Integration**:
+    - Global controls: Enable/disable checkbox, check interval field, engagement threshold slider
+    - Per-channel controls: "Allow Proactive Engagement" checkbox in channel editor (default: true)
+
+**Proactive Engagement Behavior**:
+- Bot scans active channels every N minutes (default: 30)
+- For each channel, fetches last 20 messages
+- **Safety Check #1**: If globally disabled → skip entire cycle
+- **Safety Check #2**: If server-level disabled → skip this server
+- **Safety Check #3**: If channel-level disabled (`allow_proactive_engagement: false`) → skip this channel
+- **Safety Check #4**: If last message author is bot → skip (prevents self-reply loops)
+- **Safety Check #5**: If channel on cooldown → skip
+- **Safety Check #6**: If fewer than 5 messages → skip
+- AI analyzes last 10 messages and scores conversation interest (0.0-1.0)
+- If score ≥ threshold → bot generates and sends proactive response
+- Cooldown timer activated for that channel
+- Bot joins conversations about:
+  - Questions it could answer
+  - Topics related to its personality/interests
+  - Creative or fun discussions
+  - Debates where input would be valuable
+- Bot avoids:
+  - Casual greetings/small talk
+  - Very short exchanges
+  - Private/intimate discussions
+  - Concluded conversations
+
+**Per-Channel Control Use Cases**:
+- Disable in **rules channels** where bot should only respond when mentioned
+- Disable in **announcements** where proactive engagement would be inappropriate
+- Disable in **formal support channels** where bot should wait to be asked
+- Enable in **general/casual channels** where proactive conversation is welcome
+
+### GUI Server Manager (2025-10-14, Updated 2025-10-16)
 The GUI provides a server-first interface for managing bot settings:
 - **Main View**: Lists all active Discord servers (scans `database/{ServerName}/{guild_id}_data.db` files)
 - **Server Settings Dialog**: Opened via "Edit Settings" button for each server
   - **Active Channels**: View and edit channels activated for that server
   - **Alternative Nicknames**: Server-specific nicknames the bot responds to
   - **Emote Sources**: Checkbox selection of which servers provide emotes
+  - **User Management**: View and edit relationship metrics for users in that server
+  - **Status Update Settings**: Toggle whether daily status is added to this server's short-term memory
 - **Database Scanning**: Supports new structure `{ServerName}/{guild_id}_data.db` and legacy formats for backward compatibility
 - **Auto-refresh**: GUI refreshes server list when config.json changes
 - **User-Friendly**: Server folders use human-readable names, making it easy to identify which folder belongs to which server
@@ -427,9 +495,17 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
 - ✅ **Relationship Metric Locks**: Individual lock toggles for each metric to prevent automatic sentiment analysis updates (2025-10-15)
 - ✅ **GUI User Manager**: Visual interface for viewing and editing user relationship metrics with lock controls (2025-10-15)
 
-### Phase 3 (PLANNED)
-- ⏳ **Proactive engagement subsystem**: Planned
-- ⏳ **Dynamic status updates**: Planned
+### Phase 3 (COMPLETED ✅)
+- ✅ **Proactive Engagement Subsystem**: Bot randomly joins conversations based on AI-judged relevance (2025-10-16)
+  - Self-reply prevention to avoid infinite loops
+  - Multi-level control: Global → per-server → per-channel toggles
+  - Per-channel toggle for disabling in serious channels (rules, announcements)
+  - GUI controls for threshold, check interval, and per-channel settings
+- ✅ **Dynamic Status Updates**: AI-generated Discord status reflecting bot's thoughts/mood (2025-10-16)
+  - Daily updates at configurable time
+  - AI generation based on bot's personality/lore from selected server
+  - Per-server toggle for adding status to short-term memory
+  - GUI controls for enable/disable, time scheduling, and server selection
 
 See `PLANNED_FEATURES.md` for detailed roadmap.
 

@@ -101,12 +101,72 @@ class BotGUI(ctk.CTk):
             variable=self.image_gen_enabled_var
         )
         image_gen_checkbox.pack(padx=10, anchor="w", pady=(5, 0))
-        ToolTip(image_gen_checkbox, "Allow bot to generate childlike drawings when users ask.\nRequires Together.ai API key above.\nDefault limit: 5 drawings per user per day.")
+        ToolTip(image_gen_checkbox, "Allow bot to generate childlike drawings when users ask.\nRequires Together.ai API key above.\nImages cost $0.002 each (~$2 per 1,000 images).")
 
-        ctk.CTkLabel(self.left_frame, text="Max Images Per User Per Day:").pack(padx=10, anchor="w", pady=(5, 0))
+        ctk.CTkLabel(self.left_frame, text="Max Images Per User Per Period:").pack(padx=10, anchor="w", pady=(5, 0))
         self.max_images_entry = ctk.CTkEntry(self.left_frame, width=320)
-        self.max_images_entry.pack(padx=10, pady=(0, 20))
-        self.max_images_entry.insert(0, str(img_gen_config.get('max_per_user_per_day', 5)))
+        self.max_images_entry.pack(padx=10, pady=(0, 5))
+        self.max_images_entry.insert(0, str(img_gen_config.get('max_per_user_per_period', 5)))
+
+        ctk.CTkLabel(self.left_frame, text="Reset Period (hours):").pack(padx=10, anchor="w", pady=(5, 0))
+        self.reset_period_entry = ctk.CTkEntry(self.left_frame, width=320)
+        self.reset_period_entry.pack(padx=10, pady=(0, 10))
+        self.reset_period_entry.insert(0, str(img_gen_config.get('reset_period_hours', 2)))
+
+        # Daily Status Update Settings
+        ctk.CTkLabel(self.left_frame, text="Daily Status Updates", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
+
+        status_config = self.config.get('status_updates', {})
+        self.status_enabled_var = ctk.BooleanVar(value=status_config.get('enabled', False))
+        status_checkbox = ctk.CTkCheckBox(
+            self.left_frame,
+            text="Enable Daily Status Updates",
+            variable=self.status_enabled_var
+        )
+        status_checkbox.pack(padx=10, anchor="w", pady=(5, 0))
+        ToolTip(status_checkbox, "Bot generates a funny AI status once per day\nbased on its personality (e.g., 'Thinking about fish...').")
+
+        ctk.CTkLabel(self.left_frame, text="Status Update Time (24h format, e.g., 14:30):").pack(padx=10, anchor="w", pady=(5, 0))
+        self.status_time_entry = ctk.CTkEntry(self.left_frame, width=320)
+        self.status_time_entry.pack(padx=10, pady=(0, 5))
+        self.status_time_entry.insert(0, status_config.get('update_time', '12:00'))
+
+        ctk.CTkLabel(self.left_frame, text="Source Server for Status Generation:").pack(padx=10, anchor="w", pady=(5, 0))
+
+        # We'll populate this dropdown dynamically
+        self.status_source_server_var = ctk.StringVar(value=status_config.get('source_server_name', 'Most Active Server'))
+        self.status_source_dropdown = ctk.CTkComboBox(
+            self.left_frame,
+            variable=self.status_source_server_var,
+            values=['Most Active Server'],  # Will be updated dynamically
+            width=320,
+            state="readonly"
+        )
+        self.status_source_dropdown.pack(padx=10, pady=(0, 10))
+        ToolTip(self.status_source_dropdown, "Choose which server's personality/lore to use for status generation.\n'Most Active Server' automatically picks the busiest one.")
+
+        # Proactive Engagement Settings
+        ctk.CTkLabel(self.left_frame, text="Proactive Engagement", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
+
+        proactive_config = self.config.get('proactive_engagement', {})
+        self.proactive_enabled_var = ctk.BooleanVar(value=proactive_config.get('enabled', False))
+        proactive_checkbox = ctk.CTkCheckBox(
+            self.left_frame,
+            text="Enable Proactive Engagement",
+            variable=self.proactive_enabled_var
+        )
+        proactive_checkbox.pack(padx=10, anchor="w", pady=(5, 0))
+        ToolTip(proactive_checkbox, "Bot randomly joins interesting conversations without being mentioned.\nUses AI to judge conversation relevance.")
+
+        ctk.CTkLabel(self.left_frame, text="Check Interval (minutes):").pack(padx=10, anchor="w", pady=(5, 0))
+        self.proactive_interval_entry = ctk.CTkEntry(self.left_frame, width=320)
+        self.proactive_interval_entry.pack(padx=10, pady=(0, 5))
+        self.proactive_interval_entry.insert(0, str(proactive_config.get('check_interval_minutes', 30)))
+
+        ctk.CTkLabel(self.left_frame, text="Engagement Threshold (0.0-1.0, higher = more selective):").pack(padx=10, anchor="w", pady=(5, 0))
+        self.proactive_threshold_entry = ctk.CTkEntry(self.left_frame, width=320)
+        self.proactive_threshold_entry.pack(padx=10, pady=(0, 20))
+        self.proactive_threshold_entry.insert(0, str(proactive_config.get('engagement_threshold', 0.7)))
 
         ctk.CTkLabel(self.left_frame, text="Default Personality", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
 
@@ -284,6 +344,9 @@ class BotGUI(ctk.CTk):
         # Scan for server databases
         servers = self._scan_server_databases()
 
+        # Update status source dropdown with available servers
+        self._update_status_source_dropdown(servers)
+
         if not servers:
             ctk.CTkLabel(self.server_list_frame, text="No servers found. Use /activate in Discord to activate the bot on a server.").pack(anchor="w", padx=5)
             return
@@ -307,6 +370,11 @@ class BotGUI(ctk.CTk):
                 hover_color="#138496"
             )
             edit_btn.pack(side="right", padx=2)
+
+    def _update_status_source_dropdown(self, servers):
+        """Update the status source dropdown with available servers."""
+        server_names = ['Most Active Server'] + [server_name for _, server_name in servers]
+        self.status_source_dropdown.configure(values=server_names)
 
     def open_server_settings(self, guild_id, server_name):
         """Opens the Server Settings Dialog for a specific server."""
@@ -384,6 +452,19 @@ class BotGUI(ctk.CTk):
             font=("Roboto", 14, "bold")
         )
         users_btn.pack(fill="x", pady=10)
+
+        # Status Update Settings Button
+        status_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Status Update Settings",
+            command=lambda: self.open_status_settings(guild_id, server_name),
+            fg_color="#20c997",
+            hover_color="#1aa179",
+            text_color="white",
+            height=50,
+            font=("Roboto", 14, "bold")
+        )
+        status_btn.pack(fill="x", pady=10)
 
         # Close button at bottom
         close_btn = ctk.CTkButton(
@@ -477,8 +558,19 @@ class BotGUI(ctk.CTk):
             text="Enable Roleplay Formatting",
             variable=roleplay_formatting_var
         )
-        roleplay_formatting_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
+        roleplay_formatting_checkbox.pack(padx=20, anchor="w", pady=(5, 0))
         ToolTip(roleplay_formatting_checkbox, "Format physical actions in italics (e.g., *walks over*).\nOnly works when Immersive Character Mode is enabled.\nMakes roleplay more immersive and natural.")
+
+        # Proactive Engagement Toggle
+        current_allow_proactive = channel_config.get('allow_proactive_engagement', True)
+        allow_proactive_var = ctk.BooleanVar(value=current_allow_proactive)
+        allow_proactive_checkbox = ctk.CTkCheckBox(
+            edit_window,
+            text="Allow Proactive Engagement",
+            variable=allow_proactive_var
+        )
+        allow_proactive_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
+        ToolTip(allow_proactive_checkbox, "Allow bot to randomly join conversations in this channel.\nDisable for serious/formal channels like rules or announcements.")
 
         # Buttons frame
         button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
@@ -506,6 +598,7 @@ class BotGUI(ctk.CTk):
             current_config['channel_settings'][channel_id]['allow_technical_language'] = technical_var.get()
             current_config['channel_settings'][channel_id]['use_server_info'] = server_info_var.get()
             current_config['channel_settings'][channel_id]['enable_roleplay_formatting'] = roleplay_formatting_var.get()
+            current_config['channel_settings'][channel_id]['allow_proactive_engagement'] = allow_proactive_var.get()
 
             self.config_manager.update_config(current_config)
             print(f"Updated channel {channel_id} settings")
@@ -616,9 +709,14 @@ class BotGUI(ctk.CTk):
 
         new_config['image_generation']['enabled'] = self.image_gen_enabled_var.get()
         try:
-            new_config['image_generation']['max_per_user_per_day'] = int(self.max_images_entry.get())
+            new_config['image_generation']['max_per_user_per_period'] = int(self.max_images_entry.get())
         except ValueError:
-            new_config['image_generation']['max_per_user_per_day'] = 5
+            new_config['image_generation']['max_per_user_per_period'] = 5
+
+        try:
+            new_config['image_generation']['reset_period_hours'] = int(self.reset_period_entry.get())
+        except ValueError:
+            new_config['image_generation']['reset_period_hours'] = 2
 
         # Preserve other image_generation settings
         if 'style_prefix' not in new_config['image_generation']:
@@ -631,6 +729,38 @@ class BotGUI(ctk.CTk):
             new_config['image_generation']['height'] = 512
         if 'steps' not in new_config['image_generation']:
             new_config['image_generation']['steps'] = 4
+
+        # Save status update settings
+        if 'status_updates' not in new_config:
+            new_config['status_updates'] = {}
+
+        new_config['status_updates']['enabled'] = self.status_enabled_var.get()
+        new_config['status_updates']['update_time'] = self.status_time_entry.get().strip()
+        new_config['status_updates']['source_server_name'] = self.status_source_server_var.get()
+
+        # Save proactive engagement settings
+        if 'proactive_engagement' not in new_config:
+            new_config['proactive_engagement'] = {}
+
+        new_config['proactive_engagement']['enabled'] = self.proactive_enabled_var.get()
+        try:
+            new_config['proactive_engagement']['check_interval_minutes'] = int(self.proactive_interval_entry.get())
+        except ValueError:
+            new_config['proactive_engagement']['check_interval_minutes'] = 30
+
+        try:
+            threshold = float(self.proactive_threshold_entry.get())
+            # Clamp between 0.0 and 1.0
+            threshold = max(0.0, min(1.0, threshold))
+            new_config['proactive_engagement']['engagement_threshold'] = threshold
+        except ValueError:
+            new_config['proactive_engagement']['engagement_threshold'] = 0.7
+
+        # Preserve other proactive_engagement settings
+        if 'cooldown_minutes' not in new_config['proactive_engagement']:
+            new_config['proactive_engagement']['cooldown_minutes'] = 30
+        if 'min_messages_to_analyze' not in new_config['proactive_engagement']:
+            new_config['proactive_engagement']['min_messages_to_analyze'] = 5
 
         # Note: Channel activation is now handled through Server Manager UI or /activate command in Discord
         # Legacy manual channel addition code removed
@@ -945,6 +1075,97 @@ class BotGUI(ctk.CTk):
             button_frame,
             text="Cancel",
             command=emotes_window.destroy,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            width=120
+        )
+        cancel_btn.pack(side="left", padx=10)
+
+    def open_status_settings(self, guild_id, server_name):
+        """Opens the Status Update Settings dialog for a specific server."""
+        # Create status settings window
+        status_window = ctk.CTkToplevel(self)
+        status_window.title(f"Status Settings - {server_name}")
+        status_window.geometry("550x300")
+        status_window.resizable(True, True)
+        status_window.minsize(500, 250)
+
+        # Bring window to front
+        status_window.lift()
+        status_window.focus_force()
+        status_window.attributes('-topmost', True)
+        status_window.after(100, lambda: status_window.attributes('-topmost', False))
+        status_window.after(200, status_window.grab_set)
+
+        # Title
+        ctk.CTkLabel(status_window, text=f"Status Update Settings - {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(status_window, text="Configure how status updates affect this server", font=("Roboto", 10)).pack(pady=(0, 20))
+
+        # Get current config
+        config = self.config_manager.get_config()
+        server_status_settings = config.get('server_status_settings', {})
+        current_add_to_memory = server_status_settings.get(guild_id, {}).get('add_to_memory', True)
+
+        # Add to memory toggle
+        add_to_memory_var = ctk.BooleanVar(value=current_add_to_memory)
+        add_to_memory_checkbox = ctk.CTkCheckBox(
+            status_window,
+            text="Add daily status to short-term memory",
+            variable=add_to_memory_var,
+            font=("Roboto", 13)
+        )
+        add_to_memory_checkbox.pack(padx=40, anchor="w", pady=(20, 10))
+        ToolTip(add_to_memory_checkbox, "When enabled, the bot's daily status message is added to this\nserver's short-term memory so it can reference it in conversations.")
+
+        # Info frame
+        info_frame = ctk.CTkFrame(status_window, fg_color="transparent")
+        info_frame.pack(fill="both", expand=True, padx=40, pady=20)
+
+        ctk.CTkLabel(
+            info_frame,
+            text="The bot generates a funny status once per day (configured in Global Settings).\nThis toggle controls whether that status is logged to this server's memory.",
+            font=("Roboto", 10),
+            text_color="gray",
+            justify="left",
+            wraplength=450
+        ).pack(anchor="w")
+
+        # Buttons frame
+        button_frame = ctk.CTkFrame(status_window, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        def save_status_settings():
+            current_config = self.config_manager.get_config()
+
+            if 'server_status_settings' not in current_config:
+                current_config['server_status_settings'] = {}
+
+            if guild_id not in current_config['server_status_settings']:
+                current_config['server_status_settings'][guild_id] = {}
+
+            current_config['server_status_settings'][guild_id]['add_to_memory'] = add_to_memory_var.get()
+
+            self.config_manager.update_config(current_config)
+            print(f"Updated status settings for {server_name}")
+            self.log_to_console(f"Updated status settings for {server_name}")
+            status_window.destroy()
+
+        # Save button
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save",
+            command=save_status_settings,
+            fg_color="#28a745",
+            hover_color="#218838",
+            width=120
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Cancel button
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=status_window.destroy,
             fg_color="#6c757d",
             hover_color="#5a6268",
             width=120

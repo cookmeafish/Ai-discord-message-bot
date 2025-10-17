@@ -39,11 +39,22 @@ All Phase 2 features have been fully implemented as of 2025-10-14.
 - ✅ **Roleplay Actions with Italic Formatting** (automatic detection and formatting of physical actions, configurable per-channel) - Implemented 2025-10-15
 - ✅ **AI Image Generation with Natural Detection** (childlike drawings via Together.ai, $0.002/image, 5 per 2-hour period) - Implemented 2025-10-15
 
-## Phase 3 (Planned)
+## Phase 3 (COMPLETED ✅)
 
 ### Proactive Features
-- ⏳ **Proactive Engagement Subsystem**: Bot randomly joins conversations based on context (30-minute checks)
-- ⏳ **Dynamic Status Updates**: AI-generated Discord status reflecting bot's thoughts and mood
+- ✅ **Proactive Engagement Subsystem**: Bot randomly joins conversations based on context (Implemented 2025-10-16)
+  - AI judges conversation relevance using configurable threshold
+  - Periodic checks every 30 minutes (configurable)
+  - Anti-spam: Cooldown timer prevents repeated engagement
+  - **Self-reply prevention**: Skips if last message was from bot
+  - **Multi-level control**: Global → per-server → per-channel toggles
+  - Per-channel toggle: Disable for serious channels (rules, announcements)
+  - GUI controls for threshold, check interval, and per-channel settings
+- ✅ **Dynamic Status Updates**: AI-generated Discord status reflecting bot's thoughts and mood (Implemented 2025-10-16)
+  - Generates funny/quirky status once per day at configurable time
+  - Uses AI based on bot's personality/lore from selected server
+  - Per-server toggle for adding status to short-term memory
+  - GUI controls for enable/disable, time scheduling, and server selection
 
 ### Architecture Improvements
 
@@ -104,7 +115,7 @@ Potential new metrics to add:
 
 ### Feature Ideas
 
-- **GUI Image Generation Controls**: Add fields to GUI for configuring image generation rate limiting (max_per_user_per_period and reset_period_hours)
+- ✅ **GUI Image Generation Controls**: Add fields to GUI for configuring image generation rate limiting (max_per_user_per_period and reset_period_hours) - Implemented 2025-10-16
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
 - Multi-language support with personality adaptation
