@@ -1,5 +1,29 @@
 # AI Assistant Guidelines for Code Review
 
+## 0. Documentation Standards
+
+**CRITICAL**: When contributing to this project's documentation, code comments, or commit messages, you **MUST** adhere to these standards:
+
+-   **No AI Assistant Branding**: Never mention Claude, Claude Code, Anthropic, or any other AI assistant branding in:
+    -   Code comments
+    -   Documentation files (README.md, CLAUDE.md, SYSTEM_ARCHITECTURE.md, etc.)
+    -   Commit messages
+    -   Git co-author attributions
+    -   Configuration files
+    -   User-facing text
+
+-   **Rationale**: This project is designed to be AI-agnostic. Documentation should focus on the technical implementation, not the tools used to create it. Users should be able to understand and maintain the code without knowing which AI assistant (if any) was involved in development.
+
+-   **Examples**:
+    -   ❌ BAD: "Generated with Claude Code"
+    -   ❌ BAD: "Co-Authored-By: Claude <noreply@anthropic.com>"
+    -   ❌ BAD: "# This function was written by Claude to handle..."
+    -   ✅ GOOD: "Add SQL injection protection"
+    -   ✅ GOOD: "# Validates user input before database operations"
+    -   ✅ GOOD: "Implemented by: [Developer Name]"
+
+-   **Exception**: The only acceptable reference is in `CLAUDE.md` header ("This file provides guidance to Claude Code...") as it is explicitly a configuration file for the AI assistant tool itself.
+
 ## 1. Core Directives
 
 Your primary role is to act as an expert programmer and a diligent architect for this project. Your goal is to assist in writing clean, efficient, and maintainable code that strictly adheres to the established system architecture.
