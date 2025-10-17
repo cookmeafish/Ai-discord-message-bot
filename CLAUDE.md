@@ -659,6 +659,82 @@ Update `_build_relationship_context()` in `modules/ai_handler.py` to add prompt 
 - **Database Optimization**: SQLite auto-vacuum is enabled (`PRAGMA auto_vacuum = FULL`) to automatically reclaim space after message deletion during consolidation.
 - **Archive Format**: Archived messages are stored as JSON with metadata: `archived_at`, `message_count`, and full `messages` array with all fields (per-server in respective server's archive folder).
 
+## Security Measures (2025-10-17)
+
+The bot implements defense-in-depth SQL injection protection across multiple layers:
+
+### Message-Level SQL Injection Protection
+
+**CRITICAL**: SQL injection attempts are blocked BEFORE messages reach the AI. This prevents users from manipulating the bot into executing malicious SQL commands through conversation.
+
+**Implementation (`database/input_validator.py`, `cogs/events.py`)**:
+- `InputValidator.validate_message_for_sql_injection()` checks all user messages for SQL patterns
+- Pattern-based detection using regex to minimize false positives
+- Blocks: `DROP TABLE`, `TRUNCATE TABLE`, `UNION SELECT`, `; DROP`, `--`, `/* */`, etc.
+- Allows: Normal conversation about SQL, deletion, execution, etc.
+- Messages are logged BEFORE validation (for admin visibility of attempts)
+- Blocked messages never reach AI handler or enter conversation context
+- Admins can see blocked attempts in logs with `SECURITY:` prefix
+
+**Validation Flow**:
+1. User sends message in Discord
+2. Message passes guild validation
+3. Message is logged to database (for admin audit trail)
+4. **SQL injection validation happens here** ← BEFORE AI
+5. If blocked: silently rejected, logged as security event, no response sent
+6. If allowed: proceeds to AI handler normally
+
+**Example Blocked Patterns**:
+- `DROP TABLE users` → BLOCKED
+- `; DELETE FROM passwords` → BLOCKED
+- `UNION SELECT * FROM users` → BLOCKED
+- `/* comment */ malicious sql` → BLOCKED
+
+**Example Allowed Messages**:
+- `I want to delete from my list` → ALLOWED
+- `Can you execute this for me?` → ALLOWED
+- `What is SQL?` → ALLOWED
+
+### Database-Level Protection
+
+All database operations use parameterized queries (never string interpolation):
+```python
+cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+```
+
+**Additional Protections**:
+- `InputValidator` class validates all user inputs before database operations
+- Whitelist validation for column names (metric keys, bot identity categories)
+- Maximum length checks prevent DoS attacks
+- All `db_manager.py` methods accept only validated parameters
+
+**No Raw SQL Access**:
+- AI handler NEVER executes raw SQL
+- All admin commands use `db_manager` methods (which validate inputs)
+- Cogs and modules cannot bypass validation layer
+
+### Security Architecture Summary
+
+**Layer 1 - Message Level** (NEW 2025-10-17):
+- Blocks SQL-like messages before AI processing
+- Pattern-based detection with low false positive rate
+- Implemented in `cogs/events.py:on_message()`
+
+**Layer 2 - Input Validation**:
+- `InputValidator` class validates all user inputs
+- Used by all database operations
+- Whitelist approach for sensitive parameters
+
+**Layer 3 - Parameterized Queries**:
+- All SQL queries use placeholders (`?`)
+- SQLite driver escapes parameters automatically
+- No string concatenation in queries
+
+**Why This Matters**:
+- Users cannot manipulate bot into executing `DROP TABLE` via conversation
+- Even if AI generates SQL-like text, it never reaches execution layer
+- Defense-in-depth ensures multiple layers must fail before breach
+
 ## Documentation Files
 
 - **SYSTEM_ARCHITECTURE.md** - Complete technical specification (authoritative)

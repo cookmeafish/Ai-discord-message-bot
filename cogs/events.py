@@ -6,6 +6,7 @@ import random
 import asyncio
 import re
 from modules.logging_manager import get_logger
+from database.input_validator import InputValidator
 
 class EventsCog(commands.Cog):
     """
@@ -153,6 +154,16 @@ class EventsCog(commands.Cog):
             self.logger.debug(f"Logged user message to database (directed_at_bot={was_directed_at_bot})")
         except Exception as e:
             self.logger.error(f"Failed to log message to database: {e}")
+
+        # CRITICAL SECURITY: Validate message for SQL injection attempts BEFORE AI processing
+        # This prevents users from manipulating the bot into executing SQL commands
+        # Messages are logged above for admin visibility, but blocked from reaching AI
+        is_valid, error_message = InputValidator.validate_message_for_sql_injection(message.content)
+        if not is_valid:
+            self.logger.warning(f"SECURITY: Blocked SQL injection attempt from {message.author.name} (ID: {message.author.id}): {message.content[:100]}")
+            # Silently reject without revealing security details to potential attacker
+            # Admins can see the attempt in logs
+            return
 
         # Check if we need to trigger memory consolidation
         import os

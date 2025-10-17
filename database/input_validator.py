@@ -87,6 +87,54 @@ class InputValidator:
         return (True, "")
 
     @staticmethod
+    def validate_message_for_sql_injection(content: str) -> tuple[bool, str]:
+        """
+        Validates message content for SQL injection attempts BEFORE AI processing.
+        This prevents users from manipulating the bot into executing SQL commands.
+
+        CRITICAL: This validation happens BEFORE messages reach the AI, preventing
+        SQL-like commands from ever entering the conversation context.
+
+        Uses pattern-based detection to minimize false positives while catching
+        actual SQL injection attempts.
+
+        Args:
+            content: The message content to validate
+
+        Returns:
+            tuple: (is_valid, error_message)
+        """
+        if not content:
+            return (True, "")  # Empty messages are allowed
+
+        # Check for SQL injection attempts using regex patterns
+        # These patterns are more precise than simple keyword matching
+        content_upper = content.upper()
+
+        # Dangerous SQL patterns that should NEVER appear in normal conversation
+        # These are highly specific patterns that indicate SQL injection attempts
+        dangerous_patterns = [
+            r'\bDROP\s+TABLE\b',                    # DROP TABLE
+            r'\bTRUNCATE\s+TABLE\b',                # TRUNCATE TABLE
+            r'\bALTER\s+TABLE\b',                   # ALTER TABLE
+            r'\bCREATE\s+TABLE\b',                  # CREATE TABLE
+            r';\s*DROP\b',                          # ; DROP
+            r';\s*DELETE\b',                        # ; DELETE
+            r'--',                                  # SQL comment
+            r'/\*.*\*/',                            # Multi-line comment
+            r'\bEXEC\s+(SP_|XP_|SYS)',              # EXEC stored_proc (common malicious prefixes)
+            r'\bEXECUTE\s+(SP_|XP_|SYS)',           # EXECUTE stored_proc
+            r'\bUNION\s+(ALL\s+)?SELECT\b',         # UNION SELECT or UNION ALL SELECT
+            r'\bINSERT\s+INTO\s+\w+\s+(VALUES|SELECT)',  # INSERT INTO table VALUES/SELECT
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, content_upper):
+                return (False, "Message rejected: Invalid content detected")
+
+        return (True, "")
+
+    @staticmethod
     def validate_bot_identity_content(content: str) -> tuple[bool, str]:
         """
         Validates bot identity content (traits, lore, facts).
