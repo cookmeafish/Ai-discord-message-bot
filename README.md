@@ -13,12 +13,11 @@ This is an advanced, context-aware AI Discord bot designed for natural and engag
   - **Auto-Populated Identity**: On first `/activate`, a default bot personality is automatically set up for that server (fully customizable)
   - **Real-Time Editing**: Modify traits, lore, and facts through admin commands (per-server)
 
-- **Relationship Metrics**: The bot tracks its relationship with each user through four metrics:
-  - **Rapport** (0-10): How friendly and warm the bot is
-  - **Trust** (0-10): How open and vulnerable the bot acts
-  - **Anger** (0-10): How defensive or sarcastic the bot becomes
-  - **Formality** (-5 to +5): Speech style from very casual to very professional
-  - Metrics automatically update based on interactions and can be manually adjusted
+- **Relationship Metrics**: The bot tracks its relationship with each user through nine metrics (Phase 3 expansion):
+  - **Core Metrics**: Rapport (0-10), Trust (0-10), Anger (0-10), Formality (-5 to +5)
+  - **Expanded Metrics** (2025-10-16): Fear (0-10), Respect (0-10), Affection (0-10), Familiarity (0-10), Intimidation (0-10)
+  - Each metric has individual lock toggles to prevent unwanted automatic updates
+  - Metrics automatically update based on interactions (unless locked) and can be manually adjusted via GUI or Discord commands
 
 - **Emotional Context Blending**: The bot's responses adapt based on both its relationship with users AND emotional topics in its lore (e.g., tragic backstory elements trigger sadness, hated things trigger anger).
 
@@ -167,8 +166,8 @@ The bot's personality is now stored in the database and can be modified in real-
 
 Track and manage the bot's relationships with users:
 
-- `/user_view_metrics` - View relationship metrics for a user
-- `/user_set_metrics` - Manually adjust metrics
+- `/user_view_metrics` - View all 9 relationship metrics for a user
+- `/user_set_metrics` - Manually adjust any of the 9 metrics (Fear, Respect, Affection, Familiarity, Intimidation, Rapport, Trust, Anger, Formality)
 - `/user_view_memory` - See stored facts about a user
 - `/user_add_memory` - Add a memory about a user
 
@@ -188,6 +187,13 @@ Track and manage the bot's relationships with users:
   - `allow_technical_language`: Allow technical terms like "cached", "database" (true/false)
   - Can also be configured globally via GUI or per-channel in the GUI channel editor
 
+### Server Settings Management (2025-10-16)
+
+- `/server_add_nickname` - Add an alternative nickname for the bot in this server
+- `/server_remove_nickname` - Remove an alternative nickname
+- `/server_list_nicknames` - List all alternative nicknames for this server
+- `/server_set_status_memory` - Toggle whether daily status updates are added to this server's short-term memory
+
 **Example**:
 ```
 /user_view_metrics user:@Username
@@ -195,6 +201,8 @@ Track and manage the bot's relationships with users:
 ```
 
 ### How Relationship Metrics Work
+
+**Core Metrics:**
 
 **Rapport** affects friendliness:
 - High (8-10): Casual, jokes around, warm emotes
@@ -212,7 +220,29 @@ Track and manage the bot's relationships with users:
 - High (+3 to +5): Professional, no slang
 - Low (-5 to -3): Very casual, uses contractions
 
-Metrics automatically update based on user interactions (compliments increase rapport, insults increase anger, etc.).
+**Expanded Metrics (Phase 3, 2025-10-16):**
+
+**Fear** affects confidence:
+- High (7-10): Nervous, cautious, deferent responses
+- Low (0-2): Confident and relaxed
+
+**Respect** affects admiration:
+- High (7-10): Admiring tone, values user's opinion
+- Low (0-2): Dismissive or indifferent
+
+**Affection** affects warmth:
+- High (7-10): Warm, caring, emotionally invested
+- Low (0-2): Neutral or emotionally distant
+
+**Familiarity** affects comfort:
+- High (7-10): Comfortable, intimate conversation style
+- Low (0-2): Formal or distant interactions
+
+**Intimidation** affects composure:
+- High (7-10): Cautious, slightly nervous, very polite
+- Low (0-2): Relaxed and casual
+
+Metrics automatically update based on user interactions (unless locked): compliments increase rapport, insults increase anger, power dynamics affect fear/respect/intimidation, emotional bonding affects affection/familiarity.
 
 ## Default Bot Personality
 
@@ -359,7 +389,7 @@ The bot uses **per-server SQLite databases** with a user-friendly folder structu
 
 **Server-Wide Context**: Short-term memory includes messages from ALL channels in the server, allowing the bot to maintain context across channels.
 
-**Server Information**: Store server rules, policies, and formal documentation as `.txt` files in `Server_Info/{ServerName}/` directory. Enable per-channel via GUI to make the bot reference these files when responding (ideal for rules/moderation channels).
+**Server Information**: Store server rules, policies, and formal documentation as `.txt` files in `Server_Info/{ServerName}/` directory. Enable per-channel via GUI to make the bot reference these files when responding (ideal for rules/moderation channels). **PLANNED (Phase 4)**: Hierarchical folder system where channels can select specific folders (e.g., `rules/`, `character_lore/`, `youtuber_lore/`) to load only relevant context, reducing token usage for fandom/roleplay servers.
 
 **SQLite Optimization**: Auto-vacuum is enabled to automatically reclaim space after message deletion.
 
@@ -403,13 +433,68 @@ All Phase 2 features have been implemented:
 - ✅ **Roleplay Action Formatting**: Automatic detection and formatting of physical actions in italics (2025-10-15)
 - ✅ **AI Image Generation**: Natural language-triggered childlike drawings via Together.ai (2025-10-15)
 
-## Phase 3 (Planned)
+## Phase 3 (COMPLETED ✅)
 
-Upcoming features:
-- ⏳ **Automated Daily Consolidation**: Optional scheduled consolidation per server
-- ⏳ **Dynamic Status Updates**: Bot updates its Discord status with AI-generated thoughts
-- ⏳ **Proactive Engagement**: Bot randomly joins conversations based on context
-- ⏳ **Database Migration Tool**: Import old single-database data to per-server format
+All Phase 3 features have been fully implemented:
+- ✅ **Expanded Relationship Metrics** (2025-10-16): Five new metrics for deeper bot-user relationships
+  - Fear, Respect, Affection, Familiarity, Intimidation (all 0-10 scale)
+  - Individual lock toggles for each of the 9 metrics
+  - GUI and Discord command support for viewing and editing
+  - Database migration automatically adds new columns
+- ✅ **Proactive Engagement** (2025-10-16): Bot randomly joins conversations based on AI-judged relevance
+  - AI analyzes conversations and scores interest (0.0-1.0 scale)
+  - Configurable engagement threshold and check interval
+  - Multi-level control: Global → per-server → per-channel toggles
+  - Self-reply prevention to avoid infinite loops
+  - Per-channel disable option for serious channels (rules, announcements)
+- ✅ **Dynamic Status Updates** (2025-10-16): Bot updates its Discord status with AI-generated thoughts
+  - Daily updates at configurable time based on bot's personality/lore
+  - Source server selection (choose which server's personality to use)
+  - Per-server toggle for adding status to short-term memory
+  - Bot can reference its status in conversations
+- ✅ **GUI-Discord Command Parity** (2025-10-16): Server settings manageable via both interfaces
+  - Alternative nicknames: /server_add_nickname, /server_remove_nickname, /server_list_nicknames
+  - Status memory toggle: /server_set_status_memory
+  - Note: Emote sources remain GUI-only due to UI complexity
+
+## Phase 4 (PROPOSED)
+
+**Server_Info Folder System - Fandom & Lore Management**
+
+The proposed Phase 4 introduces a hierarchical folder system for Server_Info, allowing better organization and selective context loading for fandom and roleplay servers:
+
+**Current System**: All `.txt` files in `Server_Info/{ServerName}/` are loaded when enabled
+
+**Proposed System**: Organize into subfolders with per-channel selection:
+```
+Server_Info/{ServerName}/
+├── rules/              # Server rules, channel guidelines
+├── character_lore/     # Character bios for fandom servers
+├── youtuber_lore/      # Creator/youtuber information
+├── world_building/     # Locations, timeline for roleplay
+└── guides/             # FAQs, getting started guides
+```
+
+**Key Features**:
+- **Per-Channel Folder Selection**: Channels select which folders to load (e.g., rules channel loads only `rules/`, roleplay channel loads `character_lore/` + `world_building/`)
+- **Reduced Token Usage**: Only relevant lore loaded per channel = smaller AI prompts
+- **Better Organization**: Clear separation of rules, character lore, world building, guides
+- **GUI Management**: Folder creation, deletion, and file management interface
+- **Discord Command**: `/channel_set_server_info folders:"rules,character_lore"` for remote configuration
+- **Backward Compatible**: Existing configurations continue to work (load all folders by default)
+
+**Use Cases**:
+- Fandom servers with extensive character bios and lore
+- Roleplay servers with world-building documentation
+- Content creator communities with multiple youtuber/creator bios
+- Professional servers with separate policy/guide documents
+
+See `PLANNED_FEATURES.md` for full technical specification and implementation details.
+
+**Other Planned Features**:
+- **Image Generation Prompt Restriction Fix**: Bot currently restricts drawings to fish-related themes. Should accept ANY user request ("draw me a cat", "sketch a house") while maintaining childlike art style.
+
+For complete Phase 4 roadmap, see `PLANNED_FEATURES.md`.
 
 ## Documentation
 

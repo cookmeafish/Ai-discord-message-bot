@@ -126,10 +126,19 @@ class AdminCog(commands.Cog):
             color=discord.Color.green()
         )
 
+        # Core metrics
         embed.add_field(name="Rapport", value=f"{metrics['rapport']}/10", inline=True)
         embed.add_field(name="Trust", value=f"{metrics['trust']}/10", inline=True)
         embed.add_field(name="Anger", value=f"{metrics['anger']}/10", inline=True)
         embed.add_field(name="Formality", value=f"{metrics['formality']} (range: -5 to +5)", inline=False)
+
+        # New expanded metrics (2025-10-16)
+        if 'fear' in metrics:
+            embed.add_field(name="Fear", value=f"{metrics['fear']}/10", inline=True)
+            embed.add_field(name="Respect", value=f"{metrics['respect']}/10", inline=True)
+            embed.add_field(name="Affection", value=f"{metrics['affection']}/10", inline=True)
+            embed.add_field(name="Familiarity", value=f"{metrics['familiarity']}/10", inline=True)
+            embed.add_field(name="Intimidation", value=f"{metrics['intimidation']}/10", inline=True)
 
         # Add interpretation
         interpretations = []
@@ -162,7 +171,12 @@ class AdminCog(commands.Cog):
         rapport="Rapport level (0-10)",
         trust="Trust level (0-10)",
         anger="Anger level (0-10)",
-        formality="Formality level (-5 to +5)"
+        formality="Formality level (-5 to +5)",
+        fear="Fear level (0-10)",
+        respect="Respect level (0-10)",
+        affection="Affection level (0-10)",
+        familiarity="Familiarity level (0-10)",
+        intimidation="Intimidation level (0-10)"
     )
     @app_commands.default_permissions(administrator=True)
     async def user_set_metrics(
@@ -172,7 +186,12 @@ class AdminCog(commands.Cog):
         rapport: app_commands.Range[int, 0, 10] = None,
         trust: app_commands.Range[int, 0, 10] = None,
         anger: app_commands.Range[int, 0, 10] = None,
-        formality: app_commands.Range[int, -5, 5] = None
+        formality: app_commands.Range[int, -5, 5] = None,
+        fear: app_commands.Range[int, 0, 10] = None,
+        respect: app_commands.Range[int, 0, 10] = None,
+        affection: app_commands.Range[int, 0, 10] = None,
+        familiarity: app_commands.Range[int, 0, 10] = None,
+        intimidation: app_commands.Range[int, 0, 10] = None
     ):
         """Manually set relationship metrics for a user."""
         db_manager = self._get_db(interaction)
@@ -189,6 +208,16 @@ class AdminCog(commands.Cog):
             updates['anger'] = anger
         if formality is not None:
             updates['formality'] = formality
+        if fear is not None:
+            updates['fear'] = fear
+        if respect is not None:
+            updates['respect'] = respect
+        if affection is not None:
+            updates['affection'] = affection
+        if familiarity is not None:
+            updates['familiarity'] = familiarity
+        if intimidation is not None:
+            updates['intimidation'] = intimidation
 
         if not updates:
             await interaction.response.send_message(
@@ -197,7 +226,7 @@ class AdminCog(commands.Cog):
             )
             return
 
-        db_manager.update_relationship_metrics(user.id, **updates)
+        db_manager.update_relationship_metrics(user.id, respect_locks=False, **updates)
 
         changes_text = "\n".join([f"• **{k.capitalize()}**: {v}" for k, v in updates.items()])
 
@@ -439,6 +468,207 @@ class AdminCog(commands.Cog):
         await interaction.response.send_message(
             f"✅ **Updated personality mode for <#{channel_id}>:**\n{changes_text}\n\n"
             f"Changes take effect immediately in the next interaction.",
+            ephemeral=True
+        )
+
+    # ==================== SERVER SETTINGS COMMANDS ====================
+
+    @app_commands.command(name="server_add_nickname", description="Add an alternative nickname for the bot in this server")
+    @app_commands.describe(nickname="Nickname the bot should respond to (e.g., 'Dr. Fish')")
+    @app_commands.default_permissions(administrator=True)
+    async def server_add_nickname(self, interaction: discord.Interaction, nickname: str):
+        """Add an alternative nickname the bot will respond to in this server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+
+        if 'server_alternative_nicknames' not in config:
+            config['server_alternative_nicknames'] = {}
+
+        if guild_id not in config['server_alternative_nicknames']:
+            config['server_alternative_nicknames'][guild_id] = []
+
+        # Check if nickname already exists
+        if nickname.lower() in [n.lower() for n in config['server_alternative_nicknames'][guild_id]]:
+            await interaction.response.send_message(
+                f"⚠️ Nickname **{nickname}** already exists for this server.",
+                ephemeral=True
+            )
+            return
+
+        config['server_alternative_nicknames'][guild_id].append(nickname)
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Added nickname: **{nickname}**\n"
+            f"Bot will now respond when mentioned by this name in this server.",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="server_remove_nickname", description="Remove an alternative nickname from this server")
+    @app_commands.describe(nickname="Nickname to remove")
+    @app_commands.default_permissions(administrator=True)
+    async def server_remove_nickname(self, interaction: discord.Interaction, nickname: str):
+        """Remove an alternative nickname from this server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+
+        if 'server_alternative_nicknames' not in config or guild_id not in config['server_alternative_nicknames']:
+            await interaction.response.send_message(
+                f"ℹ️ No nicknames configured for this server.",
+                ephemeral=True
+            )
+            return
+
+        # Find matching nickname (case-insensitive)
+        nicknames = config['server_alternative_nicknames'][guild_id]
+        matching = [n for n in nicknames if n.lower() == nickname.lower()]
+
+        if not matching:
+            await interaction.response.send_message(
+                f"❌ Nickname **{nickname}** not found.",
+                ephemeral=True
+            )
+            return
+
+        config['server_alternative_nicknames'][guild_id].remove(matching[0])
+        self.bot.config_manager.update_config(config)
+
+        await interaction.response.send_message(
+            f"✅ Removed nickname: **{matching[0]}**",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="server_list_nicknames", description="List all alternative nicknames for this server")
+    @app_commands.default_permissions(administrator=True)
+    async def server_list_nicknames(self, interaction: discord.Interaction):
+        """List all alternative nicknames configured for this server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+
+        nicknames = config.get('server_alternative_nicknames', {}).get(guild_id, [])
+
+        if not nicknames:
+            await interaction.response.send_message(
+                f"ℹ️ No alternative nicknames configured for this server.\n"
+                f"Use `/server_add_nickname` to add one.",
+                ephemeral=True
+            )
+            return
+
+        nicknames_text = "\n".join([f"• {n}" for n in nicknames])
+        await interaction.response.send_message(
+            f"📋 **Alternative Nicknames for {interaction.guild.name}:**\n{nicknames_text}",
+            ephemeral=True
+        )
+
+    @app_commands.command(name="server_set_status_memory", description="Toggle whether status updates are added to this server's memory")
+    @app_commands.describe(enabled="Should status updates be added to short-term memory? (true/false)")
+    @app_commands.default_permissions(administrator=True)
+    async def server_set_status_memory(self, interaction: discord.Interaction, enabled: bool):
+        """Configure whether daily status updates are added to this server's short-term memory."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        guild_id = str(interaction.guild.id)
+        config = self.bot.config_manager.get_config()
+
+        if 'server_status_settings' not in config:
+            config['server_status_settings'] = {}
+
+        if guild_id not in config['server_status_settings']:
+            config['server_status_settings'][guild_id] = {}
+
+        config['server_status_settings'][guild_id]['add_to_memory'] = enabled
+        self.bot.config_manager.update_config(config)
+
+        status = "enabled" if enabled else "disabled"
+        await interaction.response.send_message(
+            f"✅ Status update memory logging **{status}** for this server.\n"
+            f"Daily status updates will {'now' if enabled else 'no longer'} be added to short-term memory.",
+            ephemeral=True
+        )
+
+    # ==================== CHANNEL PROACTIVE ENGAGEMENT COMMANDS ====================
+
+    @app_commands.command(name="channel_set_proactive", description="Configure proactive engagement settings for this channel")
+    @app_commands.describe(
+        enabled="Allow bot to proactively join conversations? (true/false)",
+        check_interval="Minutes between proactive engagement checks (default: 30)",
+        threshold="Engagement threshold 0.0-1.0, higher = more selective (default: 0.7)"
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def channel_set_proactive(
+        self,
+        interaction: discord.Interaction,
+        enabled: bool = None,
+        check_interval: app_commands.Range[int, 5, 180] = None,
+        threshold: app_commands.Range[float, 0.0, 1.0] = None
+    ):
+        """Configure proactive engagement settings for the current channel."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        channel_id = str(interaction.channel.id)
+
+        # Get current config
+        config = self.bot.config_manager.get_config()
+        if 'channel_settings' not in config:
+            config['channel_settings'] = {}
+
+        if channel_id not in config['channel_settings']:
+            config['channel_settings'][channel_id] = {}
+
+        # Update proactive engagement settings
+        updates = []
+        if enabled is not None:
+            config['channel_settings'][channel_id]['allow_proactive_engagement'] = enabled
+            updates.append(f"• **Enabled**: {enabled}")
+
+        if check_interval is not None:
+            config['channel_settings'][channel_id]['proactive_check_interval'] = check_interval
+            updates.append(f"• **Check Interval**: {check_interval} minutes")
+
+        if threshold is not None:
+            config['channel_settings'][channel_id]['proactive_threshold'] = threshold
+            updates.append(f"• **Engagement Threshold**: {threshold}")
+
+        if not updates:
+            # Show current settings
+            current_enabled = config['channel_settings'][channel_id].get('allow_proactive_engagement', True)
+            current_interval = config['channel_settings'][channel_id].get('proactive_check_interval', 30)
+            current_threshold = config['channel_settings'][channel_id].get('proactive_threshold', 0.7)
+
+            await interaction.response.send_message(
+                f"📋 **Current Proactive Engagement Settings for <#{channel_id}>:**\n"
+                f"• **Enabled**: {current_enabled}\n"
+                f"• **Check Interval**: {current_interval} minutes\n"
+                f"• **Engagement Threshold**: {current_threshold}\n\n"
+                f"To change settings, provide at least one parameter.",
+                ephemeral=True
+            )
+            return
+
+        # Save config
+        self.bot.config_manager.update_config(config)
+
+        changes_text = "\n".join(updates)
+        await interaction.response.send_message(
+            f"✅ **Updated proactive engagement for <#{channel_id}>:**\n{changes_text}\n\n"
+            f"Changes take effect immediately.",
             ephemeral=True
         )
 

@@ -44,7 +44,7 @@ This component is responsible for processing incoming messages and generating re
 
     -   **Long-Term Memory (Database Query):** A query to the database for the user's profile, including summarized memory facts and relationship metrics. This provides deep, historical context.
 
-    -   **Server Information (Optional):** If enabled for the channel via `use_server_info` setting, the bot loads text files from `Server_Info/` directory (located in project root) containing server rules, policies, and formal documentation. This is prioritized when answering questions about server-specific topics.
+    -   **Server Information (Optional):** If enabled for the channel via `use_server_info` setting or `server_info_folders` list, the bot loads text files from `Server_Info/{ServerName}/` directory containing server rules, policies, character lore, and formal documentation. **PLANNED (Phase 4)**: Hierarchical folder system where channels can select specific folders (e.g., `["rules", "character_lore"]`) to load only relevant context. This allows better organization and reduced token usage for fandom/roleplay servers. Currently loads ALL `.txt` files from the server's directory.
         
 -   **Expressive Emote Integration:** The final output will be processed to include relevant standard and custom server emotes based on the aggregated context and the bot's current persona.
     
@@ -92,15 +92,29 @@ All persistent data is stored in and retrieved from server-specific relational d
     -   `LastMentioned_Timestamp`: The timestamp of the most recent reinforcement.
     -   `ReferenceCount`: An integer counter.
         
--   **Per-User Relationship Metrics Schema:** A table linking the bot to each user, containing:
-    
+-   **Per-User Relationship Metrics Schema:** A table linking the bot to each user, containing 9 total metrics (expanded 2025-10-16):
+
+    **Core Metrics (Original)**:
     -   `user_id`: Discord user ID (primary key)
     -   `Anger`: Integer (0-10) - Bot's defensive/sarcastic level toward user
     -   `Rapport`: Integer (0-10) - Bot's friendliness and warmth toward user
     -   `Trust`: Integer (0-10) - Bot's openness and vulnerability with user
     -   `Formality`: Integer (-5 to +5) - Speech style from casual (-5) to formal (+5)
+
+    **Expanded Metrics (Phase 3, 2025-10-16)**:
+    -   `Fear`: Integer (0-10) - How scared the bot is of the user
+    -   `Respect`: Integer (0-10) - How much the bot admires/respects the user
+    -   `Affection`: Integer (0-10) - Romantic or deep emotional attachment
+    -   `Familiarity`: Integer (0-10) - Comfort level and closeness
+    -   `Intimidation`: Integer (0-10) - How intimidating the user is to the bot
+
+    **Metric Locks (2025-10-15)**:
+    - Each metric has its own lock column (e.g., `rapport_locked`, `fear_locked`, etc.)
+    - Lock flags prevent automatic sentiment-based updates to specific metrics
+    - Manual edits via GUI or `/user_set_metrics` bypass locks (respect_locks=False)
+    - Locks accessible via GUI User Manager and Discord commands
     -   `last_updated`: Timestamp of most recent metric change
-    
+
     **How Metrics Affect Bot Behavior:**
     - **High Rapport (8-10)**: Casual, friendly, jokes around, uses warm emotes
     - **Low Rapport (0-3)**: Distant, brief responses, neutral/cold emotes
@@ -109,13 +123,20 @@ All persistent data is stored in and retrieved from server-specific relational d
     - **High Anger (7-10)**: Defensive, sarcastic, slightly rude, annoyed emotes
     - **High Formality (+3 to +5)**: Professional language, no slang
     - **Low Formality (-5 to -3)**: Slang, contractions, very casual
-    
+    - **High Fear (7-10)**: Nervous, cautious, deferent in responses
+    - **High Respect (7-10)**: Admiring tone, values user's opinion
+    - **High Affection (7-10)**: Warm, caring, emotionally invested
+    - **High Familiarity (7-10)**: Comfortable, intimate conversation style
+    - **High Intimidation (7-10)**: Cautious, formal, slightly nervous
+
     **Automatic Metric Updates:**
-    The AI Handler analyzes user sentiment after each interaction and conservatively updates metrics:
+    The AI Handler analyzes user sentiment after each interaction and conservatively updates unlocked metrics:
     - Compliments/kindness: +1 rapport
     - Personal sharing/vulnerability: +1 trust
     - Insults/rudeness: +1 anger, -1 rapport
     - Professional context: Adjusts formality based on situation
+    - Power dynamics: Adjusts fear, respect, intimidation
+    - Emotional bonding: Adjusts affection, familiarity
         
 -   **Global State Schema:** A simple key-value table to store global bot states, such as the "Daily Mood."
     
@@ -455,7 +476,7 @@ Phase 1 has been fully implemented and is production-ready.
 #### Implemented Features:
 - ✅ **Bot Identity Database System**: Bot's personality (traits, lore, facts) stored in and retrieved from database
 - ✅ **Automatic Identity Population**: First-run script auto-populates a basic default personality (fully customizable)
-- ✅ **Relationship Metrics**: Per-user tracking of rapport, trust, anger, and formality (0-10 scale)
+- ✅ **Relationship Metrics**: Per-user tracking of 9 metrics (rapport, trust, anger, formality, fear, respect, affection, familiarity, intimidation) with individual lock toggles
 - ✅ **Emotional Context Blending**: Bot adjusts responses based on both emotional topics and user relationships
 - ✅ **Channel Formality System**: Channel-level formality settings with optional user-level overrides
 - ✅ **Automatic Metric Updates**: AI analyzes sentiment and updates relationship metrics after interactions
@@ -464,10 +485,11 @@ Phase 1 has been fully implemented and is production-ready.
 
 #### Admin Commands Available:
 - Bot Identity: `/identity_add_trait`, `/identity_add_lore`, `/identity_add_fact`, `/identity_view`
-- User Relationships: `/user_view_metrics`, `/user_set_metrics`, `/user_view_memory`, `/user_add_memory`
+- User Relationships: `/user_view_metrics`, `/user_set_metrics` (all 9 metrics), `/user_view_memory`, `/user_add_memory`
 - Global Mood: `/mood_set`, `/mood_get`
 - Personality Mode: `/channel_set_personality` (configure immersive character, technical language, and server info settings)
-- Testing: `/run_tests` (comprehensive system validation with 64 tests)
+- Server Settings (2025-10-16): `/server_add_nickname`, `/server_remove_nickname`, `/server_list_nicknames`, `/server_set_status_memory`
+- Testing: `/run_tests` (comprehensive system validation with 79 tests)
 
 ### Core System Components: COMPLETED ✅
 - ✅ Core Interaction Handler with Intent Classification (improved memory_recall vs factual_question, 2025-10-12)
@@ -535,7 +557,30 @@ A production-ready testing system accessible via `/run_tests` admin command that
 
 **Usage**: `/run_tests` (admin only, per-server)
 
-### Phase 3: PLANNED
-**Proactive Features**
-- ⏳ **Proactive Engagement Subsystem**: 30-minute scheduled checks (planned)
-- ⏳ **Dynamic Status Subsystem**: AI-generated status updates (planned)
+### Phase 3: COMPLETED ✅
+**Advanced Relationship Dynamics & Proactive Features**
+- ✅ **Expanded Relationship Metrics (2025-10-16)**: Five new metrics for deeper bot-user relationships
+  - Fear (0-10), Respect (0-10), Affection (0-10), Familiarity (0-10), Intimidation (0-10)
+  - Total of 9 metrics per user for nuanced interaction dynamics
+  - Individual lock toggles for each metric to prevent unwanted automatic updates
+  - GUI and Discord command support for viewing and editing all metrics
+  - Database migration automatically adds new columns with sensible defaults
+- ✅ **Proactive Engagement Subsystem (2025-10-16)**: Bot randomly joins conversations based on AI-judged relevance
+  - AI analyzes last 10 messages and scores conversation interest (0.0-1.0 scale)
+  - Engagement threshold controls selectivity (default: 0.7, higher = more selective)
+  - 30-minute check interval and per-channel cooldowns prevent spam
+  - Self-reply prevention to avoid infinite loops
+  - Multi-level control: Global → per-server → per-channel toggles
+  - Per-channel disable option for serious channels (rules, announcements)
+  - GUI controls for threshold, check interval, and per-channel settings
+- ✅ **Dynamic Status Updates (2025-10-16)**: AI-generated Discord status reflecting bot's thoughts/mood
+  - Daily updates at configurable time (default: 12:00)
+  - AI generation based on bot's personality/lore from selected server
+  - Source server selection (default: "Most Active Server")
+  - Per-server toggle for adding status to short-term memory
+  - GUI controls for enable/disable, time scheduling, and server selection
+  - Allows bot to reference its status in conversations
+- ✅ **GUI-Discord Command Parity (2025-10-16)**: Server settings manageable via both GUI and Discord
+  - Alternative nicknames: `/server_add_nickname`, `/server_remove_nickname`, `/server_list_nicknames`
+  - Status memory toggle: `/server_set_status_memory`
+  - Note: Emote sources remain GUI-only due to complexity of multi-select interface

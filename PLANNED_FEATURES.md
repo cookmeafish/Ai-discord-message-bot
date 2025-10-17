@@ -56,66 +56,149 @@ All Phase 2 features have been fully implemented as of 2025-10-14.
   - Per-server toggle for adding status to short-term memory
   - GUI controls for enable/disable, time scheduling, and server selection
 
-### Architecture Improvements
+### Relationship Metrics Expansion (COMPLETED ✅ 2025-10-16)
 
-**Formality Scale Refactor**
-- **Current State**: Formality uses -5 to +5 scale (different from other metrics)
-- **Proposed Change**: Refactor formality to use 0-10 scale for consistency
-- **Requires Changes To**:
-  - `database/schemas.py` - Update relationship_metrics table schema
-  - `database/db_manager.py` - Update validation logic
-  - `modules/ai_handler.py` - Update relationship context prompts (lines 217-244)
-  - All existing data migration scripts
-- **Benefits**:
-  - Consistent metric scaling across all relationship dimensions
-  - Simpler mental model for users and developers
-  - Easier to understand in GUI
-- **Risks**: Breaking change requiring database migration
-- **Priority**: Medium (quality of life improvement)
+**Five New Relationship Dimensions - IMPLEMENTED**
 
-### Relationship Metrics Expansion
+Original 4 metrics: `rapport`, `trust`, `anger`, `formality`
+**New 5 metrics added**: `fear`, `respect`, `affection`, `familiarity`, `intimidation`
 
-**Additional Relationship Dimensions (Proposed)**
+Total: **9 relationship metrics per user**
 
-Current metrics: `rapport`, `trust`, `anger`, `formality`
+All five proposed metrics have been fully implemented:
 
-Potential new metrics to add:
-- **Fear (0-10)**: How much the bot fears this user
+- ✅ **Fear (0-10)**: How much the bot fears this user
   - High fear → nervous, submissive, overly polite, avoids disagreement
   - Low fear → confident, comfortable, willing to argue
-  - Use case: Power dynamics, authority figures like Zekke
-  - Triggers: User commands, displays of authority, threats, consequences
+  - Use case: Power dynamics, authority figures
+  - Database column added with migration script
 
-- **Respect (0-10)**: Professional/personal admiration
+- ✅ **Respect (0-10)**: Professional/personal admiration
   - Distinct from fear - you can respect without fear
   - High respect → listens carefully, values opinions, defers to expertise
   - Low respect → dismissive, argumentative, challenges statements
 
-- **Affection (0-10)**: Emotional warmth beyond rapport
+- ✅ **Affection (0-10)**: Emotional warmth beyond rapport
   - More intimate than rapport - familial/romantic attachment level
   - High affection → protective, caring, uses pet names, worries about user
   - Low affection → emotionally distant, transactional
 
-- **Familiarity (0-10)**: How well the bot knows this user
-  - Auto-increments with message count and personal info shared
+- ✅ **Familiarity (0-10)**: How well the bot knows this user
   - High familiarity → references inside jokes, past events, shared history
   - Low familiarity → treats as stranger, formal introductions
 
-- **Intimidation (0-10)**: Passive fear from user's reputation/status
+- ✅ **Intimidation (0-10)**: Passive fear from user's reputation/status
   - Similar to fear but based on perceived power, not direct threats
   - High intimidation → careful word choice, seeks approval, avoids mistakes
-  - Could be auto-calculated based on: admin role, message frequency dominance, fear metric
 
-**Implementation Considerations:**
-- Would require database schema changes (add columns to `relationship_metrics`)
-- Each metric needs sentiment analysis rules in AI handler
-- GUI would need updating for new metric controls
-- Lock toggles needed for each new metric
-- Testing suite expansion required
+**Implementation Completed:**
+- ✅ Database schema changes (5 new columns + 5 lock columns added to `relationship_metrics`)
+- ✅ Automatic database migration with sensible defaults
+- ✅ GUI User Manager updated for all 9 metrics with lock controls
+- ✅ Discord commands `/user_view_metrics` and `/user_set_metrics` support all 9 metrics
+- ✅ Individual lock toggles for each metric (prevents automatic updates)
+- ✅ Testing suite expanded (Tests 6a & 6b added for new metrics)
+- ✅ AI Handler integration for sentiment-based updates
+- ✅ Documentation updated across all MD files
 
 ### Feature Ideas
 
 - ✅ **GUI Image Generation Controls**: Add fields to GUI for configuring image generation rate limiting (max_per_user_per_period and reset_period_hours) - Implemented 2025-10-16
+
+## Phase 4 (PROPOSED)
+
+### Server_Info Folder System - Fandom & Lore Management
+
+**Problem Statement:**
+Current `Server_Info` loads ALL `.txt` files from a single folder. For fandom servers with extensive lore (character bios, youtuber lore, rules, guides), this becomes unmanageable and loads unnecessary context into AI prompts.
+
+**Proposed Solution: Hierarchical Server_Info Menu System**
+
+**Directory Structure:**
+```
+Server_Info/
+└── {ServerName}/
+    ├── rules/
+    │   ├── server_rules.txt
+    │   └── channel_guidelines.txt
+    ├── character_lore/
+    │   ├── main_character.txt
+    │   ├── side_character1.txt
+    │   └── side_character2.txt
+    ├── youtuber_lore/
+    │   ├── creator1_bio.txt
+    │   └── creator2_bio.txt
+    ├── world_building/
+    │   ├── locations.txt
+    │   └── timeline.txt
+    └── guides/
+        └── getting_started.txt
+```
+
+**Per-Channel Folder Selection:**
+- Instead of `use_server_info: true/false`, channels get `server_info_folders: ["rules", "character_lore"]`
+- AI loads ONLY text files from selected folders
+- GUI provides checkboxes for each available folder
+- Discord command: `/channel_set_server_info folders:"rules,character_lore"`
+
+**Use Cases:**
+- **Rules Channel**: Load only `rules/` folder
+- **Roleplay Channel**: Load `character_lore/` + `world_building/`
+- **General Chat**: Load `rules/` only
+- **Fandom Discussion Channel**: Load all folders for comprehensive lore access
+
+**GUI Implementation:**
+- **Server Manager → Active Channels → Edit Channel Dialog**:
+  - "Server Information Folders" section
+  - Scans `Server_Info/{ServerName}/` for subdirectories
+  - Displays checkbox for each folder found
+  - Multi-select support (user can enable multiple folders)
+
+**Discord Command Implementation:**
+- `/channel_set_server_info` - Configure which folders are loaded for current channel
+  - Parameters:
+    - `folders` (optional): Comma-separated list of folder names (e.g., "rules,character_lore")
+    - `action` (optional): "list" shows available folders, "clear" disables all folders
+  - Examples:
+    - `/channel_set_server_info folders:rules,character_lore` - Enable specific folders
+    - `/channel_set_server_info action:list` - Show all available folders
+    - `/channel_set_server_info action:clear` - Disable server info for this channel
+
+**File Management:**
+- **GUI Button**: "Manage Server Info Folders" in Server Settings Dialog
+  - Lists all folders in `Server_Info/{ServerName}/`
+  - Allows creating new folders (name input)
+  - Allows deleting empty folders
+  - Shows file count per folder
+  - Opens folder in file explorer for manual editing
+
+**Benefits:**
+- **Selective Context**: Only load relevant lore per channel
+- **Reduced Token Usage**: Smaller AI prompts = faster/cheaper responses
+- **Better Organization**: Clear separation of rules, lore, guides
+- **Fandom-Friendly**: Perfect for roleplay servers, fandom communities, content creator communities
+- **Scalability**: Servers can have hundreds of lore files organized cleanly
+
+**Backward Compatibility:**
+- Channels with `use_server_info: true` default to loading ALL folders (current behavior)
+- Empty `server_info_folders` list = load nothing
+- Missing `server_info_folders` field = fall back to old behavior (load everything)
+
+**Implementation Priority:** Medium (very useful for fandom/roleplay servers, but not critical)
+
+**Estimated Complexity:** Medium
+- Modify `_load_server_info()` in `modules/ai_handler.py` to accept folder list
+- Update GUI channel editor to scan and display folders as checkboxes
+- Create Discord command `/channel_set_server_info`
+- Create GUI dialog for managing folders (create, delete, view)
+- Update documentation across all MD files
+- Add tests for folder-based loading
+
+---
+
+### Other Feature Ideas
+
+- **Image Generation Prompt Restriction**: Bot currently restricts drawings to fish-related themes. Should accept ANY user request ("draw me a cat", "sketch a house", etc.) without limiting to bot's personality/lore. The style prefix should remain (childlike crayon drawings) but content should not be restricted.
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
 - Multi-language support with personality adaptation

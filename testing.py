@@ -362,7 +362,8 @@ class BotTestSuite:
             columns = [row[1] for row in cursor.fetchall()]
             cursor.close()
 
-            lock_columns = ['rapport_locked', 'anger_locked', 'trust_locked', 'formality_locked']
+            lock_columns = ['rapport_locked', 'anger_locked', 'trust_locked', 'formality_locked',
+                            'fear_locked', 'respect_locked', 'affection_locked', 'familiarity_locked', 'intimidation_locked']
             all_exist = all(col in columns for col in lock_columns)
 
             self._log_test(
@@ -374,7 +375,56 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "Metric Lock Columns Exist", False, f"Error: {e}")
 
-        # Test 6: Clean up test user
+        # Test 6a: New expanded metrics columns exist (2025-10-16)
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("PRAGMA table_info(relationship_metrics)")
+            columns = [row[1] for row in cursor.fetchall()]
+            cursor.close()
+
+            new_metrics = ['fear', 'respect', 'affection', 'familiarity', 'intimidation']
+            all_exist = all(col in columns for col in new_metrics)
+
+            self._log_test(
+                category,
+                "Expanded Metric Columns Exist",
+                all_exist,
+                "All expanded metric columns present" if all_exist else f"Missing columns: {[c for c in new_metrics if c not in columns]}"
+            )
+        except Exception as e:
+            self._log_test(category, "Expanded Metric Columns Exist", False, f"Error: {e}")
+
+        # Test 6b: New metrics can be set and retrieved
+        try:
+            self.db_manager.update_relationship_metrics(
+                test_user_id,
+                respect_locks=False,
+                fear=7,
+                respect=8,
+                affection=6,
+                familiarity=9,
+                intimidation=5
+            )
+
+            metrics = self.db_manager.get_relationship_metrics(test_user_id)
+            updated = (
+                metrics.get("fear") == 7 and
+                metrics.get("respect") == 8 and
+                metrics.get("affection") == 6 and
+                metrics.get("familiarity") == 9 and
+                metrics.get("intimidation") == 5
+            )
+
+            self._log_test(
+                category,
+                "Update Expanded Metrics",
+                updated,
+                f"Expanded metrics updated correctly: fear={metrics.get('fear')}, respect={metrics.get('respect')}, affection={metrics.get('affection')}, familiarity={metrics.get('familiarity')}, intimidation={metrics.get('intimidation')}" if updated else f"Metrics mismatch: {metrics}"
+            )
+        except Exception as e:
+            self._log_test(category, "Update Expanded Metrics", False, f"Error: {e}")
+
+        # Test 7: Clean up test user
         try:
             cursor = self.db_manager.conn.cursor()
             cursor.execute("DELETE FROM relationship_metrics WHERE user_id = ?", (test_user_id,))
@@ -1412,7 +1462,7 @@ class BotTestSuite:
 
             if has_img_gen_config:
                 img_config = config["image_generation"]
-                has_required_keys = all(key in img_config for key in ["enabled", "max_per_user_per_day", "model"])
+                has_required_keys = all(key in img_config for key in ["enabled", "max_per_user_per_period", "reset_period_hours", "model"])
             else:
                 has_required_keys = False
 
@@ -1420,7 +1470,7 @@ class BotTestSuite:
                 category,
                 "Image Generation Config",
                 has_required_keys,
-                f"Config found: enabled={img_config.get('enabled')}, limit={img_config.get('max_per_user_per_day')}, model={img_config.get('model')}" if has_required_keys else "Image generation config incomplete"
+                f"Config found: enabled={img_config.get('enabled')}, limit={img_config.get('max_per_user_per_period')} per {img_config.get('reset_period_hours')}h, model={img_config.get('model')}" if has_required_keys else "Image generation config incomplete"
             )
         except Exception as e:
             self._log_test(category, "Image Generation Config", False, f"Error: {e}")

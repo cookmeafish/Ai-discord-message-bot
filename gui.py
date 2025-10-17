@@ -145,28 +145,8 @@ class BotGUI(ctk.CTk):
         self.status_source_dropdown.pack(padx=10, pady=(0, 10))
         ToolTip(self.status_source_dropdown, "Choose which server's personality/lore to use for status generation.\n'Most Active Server' automatically picks the busiest one.")
 
-        # Proactive Engagement Settings
-        ctk.CTkLabel(self.left_frame, text="Proactive Engagement", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
-
-        proactive_config = self.config.get('proactive_engagement', {})
-        self.proactive_enabled_var = ctk.BooleanVar(value=proactive_config.get('enabled', False))
-        proactive_checkbox = ctk.CTkCheckBox(
-            self.left_frame,
-            text="Enable Proactive Engagement",
-            variable=self.proactive_enabled_var
-        )
-        proactive_checkbox.pack(padx=10, anchor="w", pady=(5, 0))
-        ToolTip(proactive_checkbox, "Bot randomly joins interesting conversations without being mentioned.\nUses AI to judge conversation relevance.")
-
-        ctk.CTkLabel(self.left_frame, text="Check Interval (minutes):").pack(padx=10, anchor="w", pady=(5, 0))
-        self.proactive_interval_entry = ctk.CTkEntry(self.left_frame, width=320)
-        self.proactive_interval_entry.pack(padx=10, pady=(0, 5))
-        self.proactive_interval_entry.insert(0, str(proactive_config.get('check_interval_minutes', 30)))
-
-        ctk.CTkLabel(self.left_frame, text="Engagement Threshold (0.0-1.0, higher = more selective):").pack(padx=10, anchor="w", pady=(5, 0))
-        self.proactive_threshold_entry = ctk.CTkEntry(self.left_frame, width=320)
-        self.proactive_threshold_entry.pack(padx=10, pady=(0, 20))
-        self.proactive_threshold_entry.insert(0, str(proactive_config.get('engagement_threshold', 0.7)))
+        # Proactive Engagement Settings removed - now configured per-channel only
+        # Use Server Manager > Active Channels to configure proactive engagement per channel
 
         ctk.CTkLabel(self.left_frame, text="Default Personality", font=("Roboto", 16, "bold")).pack(pady=(10, 5))
 
@@ -209,9 +189,6 @@ class BotGUI(ctk.CTk):
 
         self.save_button = ctk.CTkButton(self.bottom_frame, text="Save Config", command=self.save_all_configs)
         self.save_button.pack(side="left", padx=20, pady=10)
-
-        self.consolidate_button = ctk.CTkButton(self.bottom_frame, text="Test Memory Consolidation", command=self.test_memory_consolidation, fg_color="#17a2b8", hover_color="#138496")
-        self.consolidate_button.pack(side="left", padx=(0, 20), pady=10)
 
         self.start_button = ctk.CTkButton(self.bottom_frame, text="Start Bot", command=self.start_bot, fg_color="#28a745", hover_color="#218838")
         self.start_button.pack(side="right", padx=20, pady=10)
@@ -561,7 +538,9 @@ class BotGUI(ctk.CTk):
         roleplay_formatting_checkbox.pack(padx=20, anchor="w", pady=(5, 0))
         ToolTip(roleplay_formatting_checkbox, "Format physical actions in italics (e.g., *walks over*).\nOnly works when Immersive Character Mode is enabled.\nMakes roleplay more immersive and natural.")
 
-        # Proactive Engagement Toggle
+        # Proactive Engagement Settings
+        ctk.CTkLabel(edit_window, text="Proactive Engagement Settings:", font=("Roboto", 12, "bold")).pack(padx=20, anchor="w", pady=(10, 5))
+
         current_allow_proactive = channel_config.get('allow_proactive_engagement', True)
         allow_proactive_var = ctk.BooleanVar(value=current_allow_proactive)
         allow_proactive_checkbox = ctk.CTkCheckBox(
@@ -569,8 +548,20 @@ class BotGUI(ctk.CTk):
             text="Allow Proactive Engagement",
             variable=allow_proactive_var
         )
-        allow_proactive_checkbox.pack(padx=20, anchor="w", pady=(5, 10))
+        allow_proactive_checkbox.pack(padx=20, anchor="w", pady=(5, 0))
         ToolTip(allow_proactive_checkbox, "Allow bot to randomly join conversations in this channel.\nDisable for serious/formal channels like rules or announcements.")
+
+        ctk.CTkLabel(edit_window, text="Check Interval (minutes):").pack(padx=20, anchor="w", pady=(5, 0))
+        proactive_interval_entry = ctk.CTkEntry(edit_window, width=200)
+        proactive_interval_entry.pack(padx=20, pady=(0, 5), anchor="w")
+        current_interval = channel_config.get('proactive_check_interval', 30)
+        proactive_interval_entry.insert(0, str(current_interval))
+
+        ctk.CTkLabel(edit_window, text="Engagement Threshold (0.0-1.0, higher = more selective):").pack(padx=20, anchor="w", pady=(5, 0))
+        proactive_threshold_entry = ctk.CTkEntry(edit_window, width=200)
+        proactive_threshold_entry.pack(padx=20, pady=(0, 10), anchor="w")
+        current_threshold = channel_config.get('proactive_threshold', 0.7)
+        proactive_threshold_entry.insert(0, str(current_threshold))
 
         # Buttons frame
         button_frame = ctk.CTkFrame(edit_window, fg_color="transparent")
@@ -599,6 +590,21 @@ class BotGUI(ctk.CTk):
             current_config['channel_settings'][channel_id]['use_server_info'] = server_info_var.get()
             current_config['channel_settings'][channel_id]['enable_roleplay_formatting'] = roleplay_formatting_var.get()
             current_config['channel_settings'][channel_id]['allow_proactive_engagement'] = allow_proactive_var.get()
+
+            # Save proactive engagement settings
+            try:
+                new_interval = int(proactive_interval_entry.get())
+                current_config['channel_settings'][channel_id]['proactive_check_interval'] = new_interval
+            except ValueError:
+                current_config['channel_settings'][channel_id]['proactive_check_interval'] = 30
+
+            try:
+                new_threshold = float(proactive_threshold_entry.get())
+                # Clamp between 0.0 and 1.0
+                new_threshold = max(0.0, min(1.0, new_threshold))
+                current_config['channel_settings'][channel_id]['proactive_threshold'] = new_threshold
+            except ValueError:
+                current_config['channel_settings'][channel_id]['proactive_threshold'] = 0.7
 
             self.config_manager.update_config(current_config)
             print(f"Updated channel {channel_id} settings")
@@ -738,29 +744,9 @@ class BotGUI(ctk.CTk):
         new_config['status_updates']['update_time'] = self.status_time_entry.get().strip()
         new_config['status_updates']['source_server_name'] = self.status_source_server_var.get()
 
-        # Save proactive engagement settings
-        if 'proactive_engagement' not in new_config:
-            new_config['proactive_engagement'] = {}
-
-        new_config['proactive_engagement']['enabled'] = self.proactive_enabled_var.get()
-        try:
-            new_config['proactive_engagement']['check_interval_minutes'] = int(self.proactive_interval_entry.get())
-        except ValueError:
-            new_config['proactive_engagement']['check_interval_minutes'] = 30
-
-        try:
-            threshold = float(self.proactive_threshold_entry.get())
-            # Clamp between 0.0 and 1.0
-            threshold = max(0.0, min(1.0, threshold))
-            new_config['proactive_engagement']['engagement_threshold'] = threshold
-        except ValueError:
-            new_config['proactive_engagement']['engagement_threshold'] = 0.7
-
-        # Preserve other proactive_engagement settings
-        if 'cooldown_minutes' not in new_config['proactive_engagement']:
-            new_config['proactive_engagement']['cooldown_minutes'] = 30
-        if 'min_messages_to_analyze' not in new_config['proactive_engagement']:
-            new_config['proactive_engagement']['min_messages_to_analyze'] = 5
+        # Note: Proactive engagement is now configured per-channel only
+        # Global proactive_engagement settings removed from GUI
+        # Use Server Manager > Active Channels to configure per channel
 
         # Note: Channel activation is now handled through Server Manager UI or /activate command in Discord
         # Legacy manual channel addition code removed
@@ -867,9 +853,14 @@ class BotGUI(ctk.CTk):
             # Filter channels by guild_id
             server_channels = []
             for channel_id, channel_config in channel_settings.items():
-                channel_guild_id = channel_config.get('guild_id', 'unknown')
-                # Match channels that belong to this guild, or show unknown channels for old-format servers
-                if channel_guild_id == guild_id or (guild_id == "unknown" and channel_guild_id == 'unknown'):
+                channel_guild_id = channel_config.get('guild_id', None)
+
+                # Match channels that belong to this guild
+                if channel_guild_id == guild_id:
+                    server_channels.append((channel_id, channel_config))
+                # For backward compatibility: if no guild_id is stored, show in all servers
+                # (user can delete from wrong servers or re-activate to set proper guild_id)
+                elif channel_guild_id is None:
                     server_channels.append((channel_id, channel_config))
 
             if not server_channels:
@@ -880,15 +871,40 @@ class BotGUI(ctk.CTk):
                     channel_row.pack(fill="x", pady=2)
 
                     # Display channel name if available, otherwise show channel ID
-                    channel_name = channel_config.get('channel_name', f'Channel {channel_id}')
-                    purpose = channel_config.get('purpose', 'Default purpose')[:40]
-                    ctk.CTkLabel(channel_row, text=f"#{channel_name}: {purpose}...", width=400, anchor="w").pack(side="left", anchor="w", padx=5)
+                    channel_name = channel_config.get('channel_name', '')
+                    # If channel_name is empty, generic, or just "Channel", show ID instead
+                    if not channel_name or channel_name == 'Unknown' or channel_name.startswith('Channel '):
+                        display_name = channel_id  # Just show the ID without "Channel ID:" prefix
+                    else:
+                        display_name = channel_name
 
+                    purpose = channel_config.get('purpose', 'Default purpose')[:50]
+                    # Format: either "#channel-name: purpose" or "ID [long-id]: purpose"
+                    if channel_name and not channel_name.startswith('Channel '):
+                        label_text = f"#{display_name}: {purpose}..."
+                    else:
+                        label_text = f"ID {display_name}: {purpose}..."
+
+                    ctk.CTkLabel(channel_row, text=label_text, width=350, anchor="w").pack(side="left", anchor="w", padx=5)
+
+                    # Delete button
+                    delete_ch_btn = ctk.CTkButton(
+                        channel_row,
+                        text="Delete",
+                        command=lambda cid=channel_id: [self.remove_channel(cid), refresh_channels()],
+                        width=70,
+                        height=28,
+                        fg_color="#dc3545",
+                        hover_color="#c82333"
+                    )
+                    delete_ch_btn.pack(side="right", padx=2)
+
+                    # Edit button
                     edit_ch_btn = ctk.CTkButton(
                         channel_row,
                         text="Edit",
                         command=lambda cid=channel_id, cfg=channel_config: [self.edit_channel(cid, cfg), refresh_channels()],
-                        width=80,
+                        width=70,
                         height=28,
                         fg_color="#17a2b8",
                         hover_color="#138496"
@@ -896,6 +912,26 @@ class BotGUI(ctk.CTk):
                     edit_ch_btn.pack(side="right", padx=2)
 
         refresh_channels()
+
+        # Track config file changes and auto-refresh
+        last_modified = [os.path.getmtime(CONFIG_FILE) if os.path.exists(CONFIG_FILE) else 0]
+
+        def check_for_updates():
+            """Check if config file changed and refresh if needed."""
+            try:
+                if os.path.exists(CONFIG_FILE):
+                    current_modified = os.path.getmtime(CONFIG_FILE)
+                    if current_modified > last_modified[0]:
+                        last_modified[0] = current_modified
+                        refresh_channels()
+            except:
+                pass
+            # Check again in 500ms
+            if channels_window.winfo_exists():
+                channels_window.after(500, check_for_updates)
+
+        # Start the update checker
+        channels_window.after(500, check_for_updates)
 
         # Close button
         close_btn = ctk.CTkButton(
@@ -1473,7 +1509,7 @@ class BotGUI(ctk.CTk):
         # Create edit window
         edit_window = ctk.CTkToplevel(self)
         edit_window.title(f"Edit User - {username}")
-        edit_window.geometry("500x550")
+        edit_window.geometry("500x800")
         edit_window.resizable(False, False)
 
         # Bring window to front
@@ -1544,6 +1580,42 @@ class BotGUI(ctk.CTk):
             -5, 5
         )
 
+        # New metrics (2025-10-16)
+        fear_entry, fear_lock_var = create_metric_row(
+            metrics_frame, "Fear",
+            user_data.get('fear', 0),
+            user_data.get('fear_locked', False),
+            0, 10
+        )
+
+        respect_entry, respect_lock_var = create_metric_row(
+            metrics_frame, "Respect",
+            user_data.get('respect', 0),
+            user_data.get('respect_locked', False),
+            0, 10
+        )
+
+        affection_entry, affection_lock_var = create_metric_row(
+            metrics_frame, "Affection",
+            user_data.get('affection', 0),
+            user_data.get('affection_locked', False),
+            0, 10
+        )
+
+        familiarity_entry, familiarity_lock_var = create_metric_row(
+            metrics_frame, "Familiarity",
+            user_data.get('familiarity', 0),
+            user_data.get('familiarity_locked', False),
+            0, 10
+        )
+
+        intimidation_entry, intimidation_lock_var = create_metric_row(
+            metrics_frame, "Intimidation",
+            user_data.get('intimidation', 0),
+            user_data.get('intimidation_locked', False),
+            0, 10
+        )
+
         # Info text
         ctk.CTkLabel(
             edit_window,
@@ -1563,6 +1635,11 @@ class BotGUI(ctk.CTk):
                 new_anger = int(anger_entry.get())
                 new_trust = int(trust_entry.get())
                 new_formality = int(formality_entry.get())
+                new_fear = int(fear_entry.get())
+                new_respect = int(respect_entry.get())
+                new_affection = int(affection_entry.get())
+                new_familiarity = int(familiarity_entry.get())
+                new_intimidation = int(intimidation_entry.get())
 
                 # Validate ranges
                 if not (0 <= new_rapport <= 10):
@@ -1577,6 +1654,21 @@ class BotGUI(ctk.CTk):
                 if not (-5 <= new_formality <= 5):
                     self.log_to_console("Error: Formality must be between -5 and 5")
                     return
+                if not (0 <= new_fear <= 10):
+                    self.log_to_console("Error: Fear must be between 0 and 10")
+                    return
+                if not (0 <= new_respect <= 10):
+                    self.log_to_console("Error: Respect must be between 0 and 10")
+                    return
+                if not (0 <= new_affection <= 10):
+                    self.log_to_console("Error: Affection must be between 0 and 10")
+                    return
+                if not (0 <= new_familiarity <= 10):
+                    self.log_to_console("Error: Familiarity must be between 0 and 10")
+                    return
+                if not (0 <= new_intimidation <= 10):
+                    self.log_to_console("Error: Intimidation must be between 0 and 10")
+                    return
 
                 # Update database
                 db_manager = DBManager(db_path=db_filename)
@@ -1587,10 +1679,20 @@ class BotGUI(ctk.CTk):
                     anger=new_anger,
                     trust=new_trust,
                     formality=new_formality,
+                    fear=new_fear,
+                    respect=new_respect,
+                    affection=new_affection,
+                    familiarity=new_familiarity,
+                    intimidation=new_intimidation,
                     rapport_locked=1 if rapport_lock_var.get() else 0,
                     anger_locked=1 if anger_lock_var.get() else 0,
                     trust_locked=1 if trust_lock_var.get() else 0,
-                    formality_locked=1 if formality_lock_var.get() else 0
+                    formality_locked=1 if formality_lock_var.get() else 0,
+                    fear_locked=1 if fear_lock_var.get() else 0,
+                    respect_locked=1 if respect_lock_var.get() else 0,
+                    affection_locked=1 if affection_lock_var.get() else 0,
+                    familiarity_locked=1 if familiarity_lock_var.get() else 0,
+                    intimidation_locked=1 if intimidation_lock_var.get() else 0
                 )
                 db_manager.close()
 
@@ -1628,27 +1730,6 @@ class BotGUI(ctk.CTk):
         )
         cancel_btn.pack(side="left", padx=10)
 
-    def test_memory_consolidation(self):
-        """
-        Shows instructions for triggering memory consolidation via Discord.
-        Note: With per-server databases, consolidation must be triggered from Discord
-        since the GUI doesn't have context about which server to consolidate.
-        """
-        self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", "\n=== Memory Consolidation Instructions ===\n")
-        self.log_textbox.insert("end", "Memory consolidation is now per-server.\n\n")
-        self.log_textbox.insert("end", "To manually trigger consolidation for a specific server:\n")
-        self.log_textbox.insert("end", "1. Go to the Discord server you want to consolidate\n")
-        self.log_textbox.insert("end", "2. Run the slash command: /consolidate_memory\n")
-        self.log_textbox.insert("end", "3. The bot will consolidate that server's memories\n\n")
-        self.log_textbox.insert("end", "Note: Consolidation also triggers automatically when\n")
-        self.log_textbox.insert("end", "a server reaches 500 messages in short-term memory.\n")
-        self.log_textbox.insert("end", "==========================================\n\n")
-        self.log_textbox.configure(state="disabled")
-
-        print("\n=== Memory Consolidation Info ===")
-        print("Use /consolidate_memory in Discord to trigger per-server consolidation")
-        print("=================================")
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("dark")

@@ -523,25 +523,34 @@ class DBManager:
     def get_relationship_metrics(self, user_id):
         """
         Retrieves relationship metrics for a user, including lock status.
-        Auto-creates a record with default values (0,0,0,0) if none exists.
+        Auto-creates a record with default values if none exists.
 
         Args:
             user_id: Discord user ID
 
         Returns:
-            Dictionary with anger, rapport, trust, formality values and their lock status
+            Dictionary with all relationship metric values and their lock status
         """
-        # Check if lock columns exist first
+        # Check which columns exist
         cursor = self.conn.cursor()
         cursor.execute("PRAGMA table_info(relationship_metrics)")
         columns = [row[1] for row in cursor.fetchall()]
         has_locks = 'rapport_locked' in columns
+        has_new_metrics = 'fear' in columns
+
+        # Build query based on available columns
+        base_metrics = ["anger", "rapport", "trust", "formality"]
+        new_metrics = ["fear", "respect", "affection", "familiarity", "intimidation"]
+
+        select_cols = base_metrics.copy()
+        if has_new_metrics:
+            select_cols.extend(new_metrics)
 
         if has_locks:
-            query = "SELECT anger, rapport, trust, formality, rapport_locked, anger_locked, trust_locked, formality_locked FROM relationship_metrics WHERE user_id = ?"
-        else:
-            query = "SELECT anger, rapport, trust, formality FROM relationship_metrics WHERE user_id = ?"
+            lock_cols = [f"{m}_locked" for m in select_cols]
+            select_cols.extend(lock_cols)
 
+        query = f"SELECT {', '.join(select_cols)} FROM relationship_metrics WHERE user_id = ?"
         insert_query = "INSERT INTO relationship_metrics (user_id, anger, rapport, trust, formality) VALUES (?, 0, 0, 0, 0)"
 
         try:
@@ -556,13 +565,35 @@ class DBManager:
                     "trust": row[2],
                     "formality": row[3]
                 }
-                if has_locks:
+
+                # Add new metrics if they exist
+                if has_new_metrics:
                     result.update({
-                        "rapport_locked": bool(row[4]),
-                        "anger_locked": bool(row[5]),
-                        "trust_locked": bool(row[6]),
-                        "formality_locked": bool(row[7])
+                        "fear": row[4],
+                        "respect": row[5],
+                        "affection": row[6],
+                        "familiarity": row[7],
+                        "intimidation": row[8]
                     })
+
+                # Add lock status if locks exist
+                if has_locks:
+                    lock_offset = 9 if has_new_metrics else 4
+                    result.update({
+                        "rapport_locked": bool(row[lock_offset]),
+                        "anger_locked": bool(row[lock_offset + 1]),
+                        "trust_locked": bool(row[lock_offset + 2]),
+                        "formality_locked": bool(row[lock_offset + 3])
+                    })
+                    if has_new_metrics:
+                        result.update({
+                            "fear_locked": bool(row[lock_offset + 4]),
+                            "respect_locked": bool(row[lock_offset + 5]),
+                            "affection_locked": bool(row[lock_offset + 6]),
+                            "familiarity_locked": bool(row[lock_offset + 7]),
+                            "intimidation_locked": bool(row[lock_offset + 8])
+                        })
+
                 return result
             else:
                 # Ensure user exists in users table first (for foreign key constraint)
@@ -574,13 +605,21 @@ class DBManager:
                 cursor.execute(insert_query, (user_id,))
                 self.conn.commit()
                 cursor.close()
-                print(f"DATABASE: Auto-created relationship metrics for user {user_id} with defaults (0,0,0,0)")
+                print(f"DATABASE: Auto-created relationship metrics for user {user_id} with defaults")
                 result = {
                     "anger": 0,
                     "rapport": 0,
                     "trust": 0,
                     "formality": 0
                 }
+                if has_new_metrics:
+                    result.update({
+                        "fear": 0,
+                        "respect": 0,
+                        "affection": 0,
+                        "familiarity": 0,
+                        "intimidation": 0
+                    })
                 if has_locks:
                     result.update({
                         "rapport_locked": False,
@@ -588,10 +627,26 @@ class DBManager:
                         "trust_locked": False,
                         "formality_locked": False
                     })
+                    if has_new_metrics:
+                        result.update({
+                            "fear_locked": False,
+                            "respect_locked": False,
+                            "affection_locked": False,
+                            "familiarity_locked": False,
+                            "intimidation_locked": False
+                        })
                 return result
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get relationship metrics for user {user_id}: {e}")
             result = {"anger": 0, "rapport": 0, "trust": 0, "formality": 0}
+            if has_new_metrics:
+                result.update({
+                    "fear": 0,
+                    "respect": 0,
+                    "affection": 0,
+                    "familiarity": 0,
+                    "intimidation": 0
+                })
             if has_locks:
                 result.update({
                     "rapport_locked": False,
@@ -599,6 +654,14 @@ class DBManager:
                     "trust_locked": False,
                     "formality_locked": False
                 })
+                if has_new_metrics:
+                    result.update({
+                        "fear_locked": False,
+                        "respect_locked": False,
+                        "affection_locked": False,
+                        "familiarity_locked": False,
+                        "intimidation_locked": False
+                    })
             return result
 
     def update_relationship_metrics(self, user_id, respect_locks=True, **kwargs):
@@ -608,7 +671,8 @@ class DBManager:
         Args:
             user_id: Discord user ID
             respect_locks: If True, won't update locked metrics (default: True)
-            **kwargs: anger, rapport, trust, formality, rapport_locked, anger_locked, trust_locked, formality_locked (any combination)
+            **kwargs: Any combination of metrics (anger, rapport, trust, formality, fear, respect, affection, familiarity, intimidation)
+                     and their lock flags (*_locked)
         """
         # First, ensure a record exists
         check_query = "SELECT user_id FROM relationship_metrics WHERE user_id = ?"
@@ -627,15 +691,24 @@ class DBManager:
                 cursor.execute("PRAGMA table_info(relationship_metrics)")
                 columns = [row[1] for row in cursor.fetchall()]
                 has_locks = 'rapport_locked' in columns
+                has_new_metrics = 'fear' in columns
 
                 if has_locks:
-                    cursor.execute("SELECT rapport_locked, anger_locked, trust_locked, formality_locked FROM relationship_metrics WHERE user_id = ?", (user_id,))
+                    # Build lock query dynamically based on available columns
+                    lock_cols = ["rapport_locked", "anger_locked", "trust_locked", "formality_locked"]
+                    if has_new_metrics:
+                        lock_cols.extend(["fear_locked", "respect_locked", "affection_locked", "familiarity_locked", "intimidation_locked"])
+
+                    cursor.execute(f"SELECT {', '.join(lock_cols)} FROM relationship_metrics WHERE user_id = ?", (user_id,))
                     row = cursor.fetchone()
                     if row:
-                        if row[0]: locked_metrics.add('rapport')
-                        if row[1]: locked_metrics.add('anger')
-                        if row[2]: locked_metrics.add('trust')
-                        if row[3]: locked_metrics.add('formality')
+                        metric_names = ["rapport", "anger", "trust", "formality"]
+                        if has_new_metrics:
+                            metric_names.extend(["fear", "respect", "affection", "familiarity", "intimidation"])
+
+                        for i, metric_name in enumerate(metric_names):
+                            if row[i]:
+                                locked_metrics.add(metric_name)
 
             # Now update the metrics (with whitelist validation and lock checking)
             updates = []
@@ -674,24 +747,25 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
 
-            # Check if lock columns exist
+            # Check which columns exist
             cursor.execute("PRAGMA table_info(relationship_metrics)")
             columns = [row[1] for row in cursor.fetchall()]
             has_locks = 'rapport_locked' in columns
+            has_new_metrics = 'fear' in columns
+
+            # Build query based on available columns
+            base_metrics = ["anger", "rapport", "trust", "formality"]
+            new_metrics = ["fear", "respect", "affection", "familiarity", "intimidation"]
+
+            select_cols = ["user_id"] + base_metrics.copy()
+            if has_new_metrics:
+                select_cols.extend(new_metrics)
 
             if has_locks:
-                query = """
-                SELECT user_id, anger, rapport, trust, formality,
-                       rapport_locked, anger_locked, trust_locked, formality_locked
-                FROM relationship_metrics
-                ORDER BY user_id
-                """
-            else:
-                query = """
-                SELECT user_id, anger, rapport, trust, formality
-                FROM relationship_metrics
-                ORDER BY user_id
-                """
+                lock_cols = [f"{m}_locked" for m in (base_metrics + (new_metrics if has_new_metrics else []))]
+                select_cols.extend(lock_cols)
+
+            query = f"SELECT {', '.join(select_cols)} FROM relationship_metrics ORDER BY user_id"
 
             cursor.execute(query)
             rows = cursor.fetchall()
@@ -706,13 +780,35 @@ class DBManager:
                     "trust": row[3],
                     "formality": row[4]
                 }
-                if has_locks:
+
+                # Add new metrics if they exist
+                if has_new_metrics:
                     user_data.update({
-                        "rapport_locked": bool(row[5]),
-                        "anger_locked": bool(row[6]),
-                        "trust_locked": bool(row[7]),
-                        "formality_locked": bool(row[8])
+                        "fear": row[5],
+                        "respect": row[6],
+                        "affection": row[7],
+                        "familiarity": row[8],
+                        "intimidation": row[9]
                     })
+
+                # Add lock status if locks exist
+                if has_locks:
+                    lock_offset = 10 if has_new_metrics else 5
+                    user_data.update({
+                        "rapport_locked": bool(row[lock_offset]),
+                        "anger_locked": bool(row[lock_offset + 1]),
+                        "trust_locked": bool(row[lock_offset + 2]),
+                        "formality_locked": bool(row[lock_offset + 3])
+                    })
+                    if has_new_metrics:
+                        user_data.update({
+                            "fear_locked": bool(row[lock_offset + 4]),
+                            "respect_locked": bool(row[lock_offset + 5]),
+                            "affection_locked": bool(row[lock_offset + 6]),
+                            "familiarity_locked": bool(row[lock_offset + 7]),
+                            "intimidation_locked": bool(row[lock_offset + 8])
+                        })
+
                 users.append(user_data)
 
             return users

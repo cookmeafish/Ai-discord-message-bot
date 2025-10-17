@@ -241,15 +241,17 @@ The GUI provides a server-first interface for managing bot settings:
 - **Auto-refresh**: GUI refreshes server list when config.json changes
 - **User-Friendly**: Server folders use human-readable names, making it easy to identify which folder belongs to which server
 
-### GUI User Manager (2025-10-15)
+### GUI User Manager (2025-10-15, Updated 2025-10-16)
 The GUI provides a User Management interface for viewing and editing user relationship metrics:
-- **Accessed via**: Purple "User Manager" button in main GUI window
+- **Accessed via**: Purple "User Manager" button in Server Settings dialog
 - **Server Selector**: Dropdown to choose which server's users to manage
 - **User List Display**: Shows all users with relationship metrics in the selected server's database
   - Columns: User ID, Rapport, Anger, Trust, Formality
   - Only shows users that exist in the database (no placeholder/empty users)
 - **Edit Dialog**: Per-user editor opened by clicking "Edit" button
-  - **Editable Fields**: All 4 metrics (Rapport 0-10, Anger 0-10, Trust 0-10, Formality -5 to +5)
+  - **Editable Fields**: All 9 metrics:
+    - Core: Rapport (0-10), Anger (0-10), Trust (0-10), Formality (-5 to +5)
+    - Expanded: Fear (0-10), Respect (0-10), Affection (0-10), Familiarity (0-10), Intimidation (0-10)
   - **Individual Metric Locks**: Each metric has its own lock toggle checkbox
     - Locked metrics won't be automatically updated by sentiment analysis
     - Tooltips explain lock functionality on hover
@@ -273,14 +275,23 @@ Accessed via `db_manager.get_bot_identity(category)` and `db_manager.add_bot_ide
 **Per-Server**: Each server can have a completely different bot personality
 
 ### relationship_metrics
-Per-user relationship tracking:
+Per-user relationship tracking with 9 metrics total (2025-10-16):
+
+**Core Metrics (Original)**:
 - `rapport` (0-10) - Friendliness/warmth
 - `trust` (0-10) - Openness/vulnerability
 - `anger` (0-10) - Defensiveness/sarcasm
 - `formality` (-5 to +5) - Speech style (casual to formal)
-- `rapport_locked`, `anger_locked`, `trust_locked`, `formality_locked` (0/1) - Lock flags to prevent automatic updates (2025-10-15)
+
+**Expanded Metrics (Phase 3, 2025-10-16)**:
+- `fear` (0-10) - How scared the bot is of the user
+- `respect` (0-10) - How much the bot admires/respects the user
+- `affection` (0-10) - Romantic or deep emotional attachment
+- `familiarity` (0-10) - Comfort level and closeness
+- `intimidation` (0-10) - How intimidating the user is to the bot
 
 **Metric Locking (2025-10-15)**:
+- Each metric has its own lock flag (e.g., `rapport_locked`, `fear_locked`, etc.)
 - Individual lock toggles for each metric prevent automatic sentiment-based updates
 - Locked metrics can still be manually edited via GUI User Manager or `/user_set_metrics`
 - `db_manager.update_relationship_metrics(user_id, respect_locks=True, ...)` honors locks during sentiment analysis
@@ -347,6 +358,16 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
   - Can view current settings by calling without parameters
   - Also configurable via GUI (per-channel overrides only, NOT in global settings)
   - **GUI Tooltips**: Hover over checkboxes in channel editor to see explanations of each option
+
+### Server Settings Management (2025-10-16)
+- `/server_add_nickname` - Add an alternative nickname for the bot in this server
+  - Bot will respond when mentioned by this nickname (case-insensitive matching)
+  - Example: `/server_add_nickname nickname:Dr. Fish`
+- `/server_remove_nickname` - Remove an alternative nickname from this server
+- `/server_list_nicknames` - List all alternative nicknames configured for this server
+- `/server_set_status_memory` - Toggle whether daily status updates are added to this server's short-term memory
+  - Parameters: `enabled` (bool)
+  - When enabled, bot can reference its status in conversations
 
 ### Global State
 - `/mood_set` - Set server-specific mood integers
@@ -419,7 +440,7 @@ For formal channels (rules, moderation, support, etc.), the bot can load text fi
 **Purpose**: Provide authoritative server documentation that the bot references when answering questions
 **Use Cases**: Server rules, moderation policies, FAQs, channel instructions
 
-**Implementation (`modules/ai_handler.py`):**
+**Current Implementation (`modules/ai_handler.py`):**
 - `_load_server_info(channel_config, guild_id, server_name)` checks if `use_server_info` is enabled
 - Loads ALL `.txt` files from `Server_Info/{ServerName}/` directory (per-server isolation)
 - Returns formatted string with file contents
@@ -432,21 +453,56 @@ For formal channels (rules, moderation, support, etc.), the bot can load text fi
 - Prevents cross-contamination of server rules and policies
 - Server name is sanitized for filesystem safety
 
-**Configuration:**
+**Current Configuration:**
 - Enable per-channel via GUI: Edit Channel → Check "Use Server Information"
 - Enable via Discord command: `/channel_set_personality use_server_info:true`
 - Default: OFF (must be explicitly enabled)
 - Files are excluded from git by default to protect sensitive information
 
-**File Format:**
+**Current File Format:**
 - Create `.txt` files in `Server_Info/{ServerName}/` directory
 - UTF-8 encoding
 - Name files descriptively (e.g., `server_rules.txt`, `moderation_policy.txt`)
 - All `.txt` files in the server's folder are loaded automatically when enabled
 
+**PLANNED (Phase 4): Hierarchical Folder System - Fandom & Lore Management**
+
+*See `PLANNED_FEATURES.md` for full proposal details*
+
+**Problem**: Current system loads ALL `.txt` files from server folder. For fandom servers with extensive lore (character bios, youtuber lore, rules, guides), this becomes unmanageable and loads unnecessary context into AI prompts.
+
+**Proposed Solution**: Organize Server_Info into subfolders with per-channel folder selection:
+
+```
+Server_Info/{ServerName}/
+├── rules/               # Server rules, channel guidelines
+├── character_lore/      # Character bios for fandom servers
+├── youtuber_lore/       # Creator/youtuber information
+├── world_building/      # Locations, timeline for roleplay servers
+└── guides/              # Getting started guides, FAQs
+```
+
+**Proposed Configuration**:
+- Replace `use_server_info: true/false` with `server_info_folders: ["rules", "character_lore"]`
+- Channels select which folders to load (multi-select checkboxes in GUI)
+- Discord command: `/channel_set_server_info folders:"rules,character_lore"`
+- Only selected folders' `.txt` files are loaded into AI context
+
+**Proposed Use Cases**:
+- **Rules Channel**: Load only `rules/` folder
+- **Roleplay Channel**: Load `character_lore/` + `world_building/`
+- **General Chat**: Load `rules/` only
+- **Fandom Discussion**: Load all folders for comprehensive lore access
+
+**Benefits**:
+- **Selective Context**: Only load relevant lore per channel (reduced token usage)
+- **Better Organization**: Clear separation of rules, lore, guides
+- **Fandom-Friendly**: Perfect for roleplay servers, fandom communities, content creator communities
+- **Scalability**: Servers can have hundreds of lore files organized cleanly
+
 **Best Practices:**
 - Use with "Allow Technical Language" enabled for formal tone
-- Ideal for rules channels, moderation channels, support channels
+- Ideal for rules channels, moderation channels, support channels, roleplay channels
 - Bot will reference these files authoritatively when answering questions
 - Does NOT replace personality - personality still affects tone and style
 
@@ -496,6 +552,12 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
 - ✅ **GUI User Manager**: Visual interface for viewing and editing user relationship metrics with lock controls (2025-10-15)
 
 ### Phase 3 (COMPLETED ✅)
+- ✅ **Expanded Relationship Metrics**: Five new metrics for deeper bot-user relationships (2025-10-16)
+  - Fear (0-10), Respect (0-10), Affection (0-10), Familiarity (0-10), Intimidation (0-10)
+  - Total of 9 metrics per user for nuanced interaction dynamics
+  - Lock toggles for all metrics to prevent unwanted automatic updates
+  - GUI and Discord command support for viewing and editing all metrics
+  - Database migration automatically adds new columns with sensible defaults
 - ✅ **Proactive Engagement Subsystem**: Bot randomly joins conversations based on AI-judged relevance (2025-10-16)
   - Self-reply prevention to avoid infinite loops
   - Multi-level control: Global → per-server → per-channel toggles
@@ -506,6 +568,10 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
   - AI generation based on bot's personality/lore from selected server
   - Per-server toggle for adding status to short-term memory
   - GUI controls for enable/disable, time scheduling, and server selection
+- ✅ **GUI-Discord Command Parity**: Server settings manageable via both GUI and Discord (2025-10-16)
+  - Alternative nicknames: `/server_add_nickname`, `/server_remove_nickname`, `/server_list_nicknames`
+  - Status memory toggle: `/server_set_status_memory`
+  - Note: Emote sources remain GUI-only due to complexity of multi-select interface
 
 See `PLANNED_FEATURES.md` for detailed roadmap.
 

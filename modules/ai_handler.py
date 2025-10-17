@@ -254,23 +254,33 @@ class AIHandler:
             db_manager: Server-specific database manager
         """
         metrics = db_manager.get_relationship_metrics(user_id)
-        
+
         # Get channel formality settings
         channel_formality = channel_config.get('formality', 0)
         formality_locked = channel_config.get('formality_locked', False)
-        
+
         # Calculate effective formality (blend channel + user unless locked)
         if formality_locked:
             effective_formality = channel_formality
         else:
             effective_formality = (channel_formality + metrics['formality']) // 2
-        
+
         relationship_prompt = "=== RELATIONSHIP WITH THIS USER ===\n"
         relationship_prompt += f"Rapport: {metrics['rapport']}/10\n"
         relationship_prompt += f"Trust: {metrics['trust']}/10\n"
         relationship_prompt += f"Anger: {metrics['anger']}/10\n"
-        relationship_prompt += f"Formality: {effective_formality} (range: -5 to +5)\n\n"
-        
+        relationship_prompt += f"Formality: {effective_formality} (range: -5 to +5)\n"
+
+        # Add new metrics if they exist (backwards compatibility)
+        if 'fear' in metrics:
+            relationship_prompt += f"Fear: {metrics['fear']}/10\n"
+            relationship_prompt += f"Respect: {metrics['respect']}/10\n"
+            relationship_prompt += f"Affection: {metrics['affection']}/10\n"
+            relationship_prompt += f"Familiarity: {metrics['familiarity']}/10\n"
+            relationship_prompt += f"Intimidation: {metrics['intimidation']}/10\n"
+
+        relationship_prompt += "\n"
+
         # Rapport guidance
         if metrics['rapport'] >= 8:
             relationship_prompt += "RAPPORT IS HIGH: Be casual, friendly, joke around, use friendly emotes like :fishstrong: or casual reactions.\n"
@@ -278,25 +288,57 @@ class AIHandler:
             relationship_prompt += "RAPPORT IS LOW: Be distant, brief, use neutral or slightly cold emotes.\n"
         else:
             relationship_prompt += "RAPPORT IS NEUTRAL: Be polite but not overly friendly.\n"
-        
+
         # Trust guidance
         if metrics['trust'] >= 7:
             relationship_prompt += "TRUST IS HIGH: You can be vulnerable and share personal thoughts/feelings openly.\n"
         elif metrics['trust'] <= 3:
             relationship_prompt += "TRUST IS LOW: Be guarded, don't share too much personal info.\n"
-        
+
         # Anger guidance
         if metrics['anger'] >= 7:
             relationship_prompt += "ANGER IS HIGH: Be defensive, sarcastic, or slightly rude. Use annoyed emotes like :fishwhat:.\n"
         elif metrics['anger'] <= 2:
             relationship_prompt += "ANGER IS LOW: You're calm and patient with this user.\n"
-        
+
         # Formality guidance
         if effective_formality >= 3:
             relationship_prompt += "FORMALITY IS HIGH: Use professional, polite language. Avoid slang.\n"
         elif effective_formality <= -3:
             relationship_prompt += "FORMALITY IS LOW: Be casual, use slang, contractions, and informal speech.\n"
-        
+
+        # New metrics guidance (if available)
+        if 'fear' in metrics:
+            # Fear guidance
+            if metrics['fear'] >= 7:
+                relationship_prompt += "FEAR IS HIGH: You're nervous around this user. Be cautious, submissive, avoid disagreement. May stutter or use nervous emotes.\n"
+            elif metrics['fear'] <= 2:
+                relationship_prompt += "FEAR IS LOW: You feel comfortable and confident around this user.\n"
+
+            # Respect guidance
+            if metrics['respect'] >= 7:
+                relationship_prompt += "RESPECT IS HIGH: You admire this user. Listen carefully to their opinions, value their expertise, defer to their judgment.\n"
+            elif metrics['respect'] <= 3:
+                relationship_prompt += "RESPECT IS LOW: You don't take this user seriously. May be dismissive or argumentative with their statements.\n"
+
+            # Affection guidance
+            if metrics['affection'] >= 7:
+                relationship_prompt += "AFFECTION IS HIGH: You care deeply about this user. Show warmth, protective instincts, concern for their wellbeing. May use affectionate terms.\n"
+            elif metrics['affection'] <= 2:
+                relationship_prompt += "AFFECTION IS LOW: Emotionally distant from this user. Interactions are transactional, not personal.\n"
+
+            # Familiarity guidance
+            if metrics['familiarity'] >= 7:
+                relationship_prompt += "FAMILIARITY IS HIGH: You know this user well. Reference inside jokes, shared history, past conversations naturally.\n"
+            elif metrics['familiarity'] <= 3:
+                relationship_prompt += "FAMILIARITY IS LOW: Treat this user like a stranger. Be more cautious, ask clarifying questions.\n"
+
+            # Intimidation guidance
+            if metrics['intimidation'] >= 7:
+                relationship_prompt += "INTIMIDATION IS HIGH: This user's reputation/status makes you nervous. Choose words carefully, seek approval, avoid mistakes. Different from fear - based on their perceived power/authority.\n"
+            elif metrics['intimidation'] <= 2:
+                relationship_prompt += "INTIMIDATION IS LOW: This user doesn't intimidate you. Peer-level relationship, equal footing.\n"
+
         relationship_prompt += "\n**CRITICAL**: These relationship metrics set your baseline tone, but if the conversation topic triggers strong emotions (wife, sharks, etc.), let those emotions blend naturally with your relationship tone.\n"
 
         return relationship_prompt
@@ -505,16 +547,33 @@ Should any metrics change? Respond ONLY with a JSON object:
     "rapport_change": 0,
     "trust_change": 0,
     "anger_change": 0,
+    "respect_change": 0,
+    "affection_change": 0,
+    "familiarity_change": 0,
     "reason": "brief explanation"
 }}
 
-Guidelines:
+Guidelines for Core Metrics (rapport, trust, anger):
 - Only set should_update to true for MAJOR interactions (direct compliments, insults, user sharing personal info, etc.)
 - Changes should be small: -1, 0, or +1
 - "you're the best bot!" → rapport +1
 - "i hate you" → anger +1, rapport -1
 - User shares personal info → trust +1
 - Normal chat like "what's the weather?" → no changes
+
+Guidelines for New Metrics (respect, affection, familiarity):
+- **Respect**: Only change for demonstrations of competence/incompetence, expertise, or user acknowledging bot's abilities
+  - "you're really smart" → respect +1
+  - "you're wrong about everything" → respect -1
+- **Affection**: Only change for expressions of care, warmth, or emotional attachment
+  - "I really appreciate you" → affection +1
+  - "you mean a lot to me" → affection +1
+  - Most casual interactions → no change
+- **Familiarity**: Increases slowly over positive interactions
+  - Regular positive conversation → familiarity +1 (rare, only for meaningful exchanges)
+  - Most interactions → no change
+
+Note: Fear and intimidation are NOT updated through sentiment analysis - they are set manually based on user status/reputation.
 """
         
         # Get model configuration for sentiment analysis
@@ -535,24 +594,45 @@ Guidelines:
             
             if result.get('should_update', False):
                 current_metrics = db_manager.get_relationship_metrics(user_id)
-                
-                # Calculate new values (clamped to valid ranges)
-                new_rapport = max(0, min(10, current_metrics['rapport'] + result.get('rapport_change', 0)))
-                new_trust = max(0, min(10, current_metrics['trust'] + result.get('trust_change', 0)))
-                new_anger = max(0, min(10, current_metrics['anger'] + result.get('anger_change', 0)))
-                
-                # Update database
-                db_manager.update_relationship_metrics(
-                    user_id,
-                    rapport=new_rapport,
-                    trust=new_trust,
-                    anger=new_anger
-                )
-                
-                print(f"AI Handler: Updated metrics for user {user_id} - {result.get('reason', 'No reason')}")
-                print(f"  Rapport: {current_metrics['rapport']} → {new_rapport}")
-                print(f"  Trust: {current_metrics['trust']} → {new_trust}")
-                print(f"  Anger: {current_metrics['anger']} → {new_anger}")
+
+                # Build updates dictionary
+                updates = {}
+
+                # Core metrics (always available)
+                rapport_change = result.get('rapport_change', 0)
+                trust_change = result.get('trust_change', 0)
+                anger_change = result.get('anger_change', 0)
+
+                if rapport_change != 0:
+                    updates['rapport'] = max(0, min(10, current_metrics['rapport'] + rapport_change))
+                if trust_change != 0:
+                    updates['trust'] = max(0, min(10, current_metrics['trust'] + trust_change))
+                if anger_change != 0:
+                    updates['anger'] = max(0, min(10, current_metrics['anger'] + anger_change))
+
+                # New metrics (if available in database)
+                if 'respect' in current_metrics:
+                    respect_change = result.get('respect_change', 0)
+                    affection_change = result.get('affection_change', 0)
+                    familiarity_change = result.get('familiarity_change', 0)
+
+                    if respect_change != 0:
+                        updates['respect'] = max(0, min(10, current_metrics['respect'] + respect_change))
+                    if affection_change != 0:
+                        updates['affection'] = max(0, min(10, current_metrics['affection'] + affection_change))
+                    if familiarity_change != 0:
+                        updates['familiarity'] = max(0, min(10, current_metrics['familiarity'] + familiarity_change))
+
+                # Only update if there are actual changes
+                if updates:
+                    # Update database with respect_locks=True to honor individual metric locks
+                    db_manager.update_relationship_metrics(user_id, respect_locks=True, **updates)
+
+                    # Log changes
+                    print(f"AI Handler: Updated metrics for user {user_id} - {result.get('reason', 'No reason')}")
+                    for metric_name, new_value in updates.items():
+                        old_value = current_metrics[metric_name]
+                        print(f"  {metric_name.capitalize()}: {old_value} → {new_value}")
         
         except Exception as e:
             print(f"AI Handler: Could not analyze sentiment (non-critical): {e}")

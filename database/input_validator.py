@@ -117,7 +117,7 @@ class InputValidator:
         Returns:
             bool: True if key is valid, False otherwise
         """
-        ALLOWED_METRICS = {'anger', 'rapport', 'trust', 'formality'}
+        ALLOWED_METRICS = {'anger', 'rapport', 'trust', 'formality', 'fear', 'respect', 'affection', 'familiarity', 'intimidation'}
         return key in ALLOWED_METRICS
 
     @staticmethod

@@ -57,10 +57,20 @@ CREATE TABLE IF NOT EXISTS relationship_metrics (
     rapport INTEGER NOT NULL DEFAULT 0,
     trust INTEGER NOT NULL DEFAULT 0,
     formality INTEGER NOT NULL DEFAULT 0,
+    fear INTEGER NOT NULL DEFAULT 0,
+    respect INTEGER NOT NULL DEFAULT 0,
+    affection INTEGER NOT NULL DEFAULT 0,
+    familiarity INTEGER NOT NULL DEFAULT 0,
+    intimidation INTEGER NOT NULL DEFAULT 0,
     rapport_locked INTEGER NOT NULL DEFAULT 0,
     anger_locked INTEGER NOT NULL DEFAULT 0,
     trust_locked INTEGER NOT NULL DEFAULT 0,
     formality_locked INTEGER NOT NULL DEFAULT 0,
+    fear_locked INTEGER NOT NULL DEFAULT 0,
+    respect_locked INTEGER NOT NULL DEFAULT 0,
+    affection_locked INTEGER NOT NULL DEFAULT 0,
+    familiarity_locked INTEGER NOT NULL DEFAULT 0,
+    intimidation_locked INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
 """
