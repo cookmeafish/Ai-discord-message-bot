@@ -1639,6 +1639,29 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "Server Name Autocomplete", False, f"Error: {e}")
 
+        # Test 6: CustomActivity uses correct constructor (not 'name' parameter)
+        try:
+            import inspect
+            from modules.status_updater import StatusUpdater
+
+            # Read the source code to check for correct CustomActivity usage
+            source = inspect.getsource(StatusUpdater.generate_and_update_status)
+
+            # Check that it uses CustomActivity(new_status) not CustomActivity(name=new_status)
+            has_old_bug = "CustomActivity(name=" in source
+            has_correct_usage = "CustomActivity(new_status)" in source or "CustomActivity(" in source and "name=" not in source
+
+            is_fixed = not has_old_bug and "CustomActivity" in source
+
+            self._log_test(
+                category,
+                "CustomActivity Constructor Fix",
+                is_fixed,
+                "CustomActivity uses correct constructor (no 'name' parameter)" if is_fixed else "CustomActivity may be using incorrect constructor with 'name=' parameter"
+            )
+        except Exception as e:
+            self._log_test(category, "CustomActivity Constructor Fix", False, f"Error: {e}")
+
     # ==================== USER ID RESOLUTION TESTS ====================
 
     async def test_user_id_resolution(self):

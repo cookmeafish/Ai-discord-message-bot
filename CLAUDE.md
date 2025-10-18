@@ -403,6 +403,17 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 - `/user_view_memory` - View stored facts (for THIS server)
   - Accepts user mention (`@username`) or user ID (`123456789`)
 - `/user_add_memory` - Add fact about user (for THIS server)
+
+### Image Generation Management (2025-10-18)
+- `/image_reset_limit user:@username` - Reset image generation limit for ONE specific user
+  - Accepts user mention (`@username`) or user ID (`123456789`)
+  - Allows that user to generate images again immediately
+  - Example: `/image_reset_limit user:@Mistel Fish`
+- `/image_reset_all_limits` - Reset image generation limits for ALL users in this server
+  - Clears rate limiting for everyone
+  - Shows count of how many users were affected
+  - Use when starting a new event or resetting limits for everyone
+  - Example: After reaching daily limit, admin can reset everyone's limits
   - Accepts user mention (`@username`) or user ID (`123456789`)
 
 **User ID Support**: All user-related commands now accept either Discord mentions or raw user IDs. This is useful when users aren't in the server member list or when copying IDs from the GUI User Manager.
@@ -433,13 +444,21 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 87 tests across 21 categories (updated 2025-10-18)
+  - Runs 88 tests across 21 categories (updated 2025-10-18)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5)
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Status Updates (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5)
   - **Usage**: Recommended to run after major updates to ensure system stability
+
+**Status Update Tests** (2025-10-18):
+- StatusUpdater module import verification
+- Config validation (enabled, update_time, source_server_name)
+- Status history in .gitignore check
+- Duplicate prevention methods verification
+- Server name autocomplete existence
+- **CustomActivity constructor fix** - Verifies correct usage without 'name' parameter bug
 
 ### VPS Headless Deployment Commands (2025-10-17)
 
