@@ -1101,7 +1101,8 @@ Respond with a VERY brief, natural comment about your drawing (1 sentence max).
 - Match your relationship tone with **{current_user_name}** (see relationship metrics above)
 - React like a kid showing off their drawing
 - Examples: "here you go!", "ta-da!", "I tried my best", "hope you like it", "drew this for you"
-- **NEVER mention your own name or make puns about it**
+- **NEVER mention your own name, any part of your name, or make puns about it**
+- **Do NOT describe the drawing using words from your name (e.g., if your name contains "fish", don't say "fishy" or use "fish" as an adjective)**
 - **NEVER address the user by someone else's name**
 """
                 if not personality_mode['allow_technical_language']:
