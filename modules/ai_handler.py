@@ -1031,13 +1031,19 @@ LORE: Worked as a marine biologist before becoming self-aware
                 if message.guild:
                     mentioned_users = []
                     prompt_lower = clean_prompt.lower()
+                    print(f"AI Handler: Looking for users mentioned in prompt: '{prompt_lower}'")
 
                     # Check all guild members to see if they're mentioned
                     for member in message.guild.members:
                         # Check display name and username
-                        if (member.display_name.lower() in prompt_lower or
-                            member.name.lower() in prompt_lower):
+                        display_match = member.display_name.lower() in prompt_lower
+                        username_match = member.name.lower() in prompt_lower
+
+                        if display_match or username_match:
                             mentioned_users.append(member)
+                            print(f"AI Handler: Found mentioned user - {member.display_name} (ID: {member.id}, username: {member.name})")
+
+                    print(f"AI Handler: Total mentioned users found: {len(mentioned_users)}")
 
                     # If users are mentioned, pull their facts from the database
                     if mentioned_users:
@@ -1045,6 +1051,8 @@ LORE: Worked as a marine biologist before becoming self-aware
                         for member in mentioned_users:
                             # Get facts about this user from long-term memory
                             user_facts = db_manager.get_user_facts(member.id, limit=10)
+                            print(f"AI Handler: Retrieved {len(user_facts) if user_facts else 0} facts for {member.display_name}")
+
                             if user_facts:
                                 facts_text = ", ".join([fact['fact'] for fact in user_facts])
                                 context_parts.append(f"{member.display_name}: {facts_text}")
@@ -1052,6 +1060,8 @@ LORE: Worked as a marine biologist before becoming self-aware
                         if context_parts:
                             image_context = ". ".join(context_parts)
                             print(f"AI Handler: Adding context to image generation: {image_context}")
+                        else:
+                            print(f"AI Handler: No context parts built (no facts found for mentioned users)")
 
                 # Generate the image with context
                 print(f"AI Handler: Generating image for prompt: {clean_prompt}")
