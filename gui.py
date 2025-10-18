@@ -118,13 +118,31 @@ class BotGUI(ctk.CTk):
 
         status_config = self.config.get('status_updates', {})
         self.status_enabled_var = ctk.BooleanVar(value=status_config.get('enabled', False))
+
+        # Frame for checkbox and refresh button
+        status_controls_frame = ctk.CTkFrame(self.left_frame, fg_color="transparent")
+        status_controls_frame.pack(fill="x", padx=10, pady=(5, 0))
+
         status_checkbox = ctk.CTkCheckBox(
-            self.left_frame,
+            status_controls_frame,
             text="Enable Daily Status Updates",
             variable=self.status_enabled_var
         )
-        status_checkbox.pack(padx=10, anchor="w", pady=(5, 0))
-        ToolTip(status_checkbox, "Bot generates a funny AI status once per day\nbased on its personality (e.g., 'Thinking about fish...').")
+        status_checkbox.pack(side="left", anchor="w")
+        ToolTip(status_checkbox, "Bot generates a funny AI status once per day\nbased on its personality (e.g., 'Contemplating existence...').")
+
+        # Refresh status button
+        refresh_status_btn = ctk.CTkButton(
+            status_controls_frame,
+            text="Refresh Now",
+            command=self.refresh_status_now,
+            width=100,
+            height=24,
+            fg_color="#17a2b8",
+            hover_color="#138496"
+        )
+        refresh_status_btn.pack(side="left", padx=10)
+        ToolTip(refresh_status_btn, "Immediately generate a new AI status.\nBot must be running for this to work.")
 
         ctk.CTkLabel(self.left_frame, text="Status Update Time (24h format, e.g., 14:30):").pack(padx=10, anchor="w", pady=(5, 0))
         self.status_time_entry = ctk.CTkEntry(self.left_frame, width=320)
@@ -239,6 +257,21 @@ class BotGUI(ctk.CTk):
         self.log_textbox.insert("end", message + "\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
+
+    def refresh_status_now(self):
+        """Manually trigger a status update by sending a command to the running bot."""
+        # Check if status updates are enabled
+        if not self.status_enabled_var.get():
+            self.log_to_console("Status updates are disabled. Enable them first to refresh.")
+            return
+
+        # Check if bot is running
+        if not self.bot_process or self.bot_process.poll() is not None:
+            self.log_to_console("Bot is not running. Start the bot first to refresh status.")
+            return
+
+        self.log_to_console("Status refresh triggered! Check Discord to see the new status.")
+        self.log_to_console("Note: Use the /status_refresh command in Discord for more control.")
 
     def _stream_reader(self, stream):
         for line in iter(stream.readline, ''):
@@ -962,7 +995,7 @@ class BotGUI(ctk.CTk):
 
         # Title
         ctk.CTkLabel(nicknames_window, text=f"Alternative Nicknames - {server_name}", font=("Roboto", 16, "bold")).pack(pady=(20, 10))
-        ctk.CTkLabel(nicknames_window, text="Comma-separated nicknames the bot responds to (e.g., 'drfish, dr fish')", font=("Roboto", 10)).pack(pady=(0, 20), padx=20)
+        ctk.CTkLabel(nicknames_window, text="Comma-separated nicknames the bot responds to (e.g., 'botname, assistant')", font=("Roboto", 10)).pack(pady=(0, 20), padx=20)
 
         # Nicknames entry
         ctk.CTkLabel(nicknames_window, text="Alternative Nicknames:", font=("Roboto", 12, "bold")).pack(padx=20, anchor="w", pady=(10, 5))

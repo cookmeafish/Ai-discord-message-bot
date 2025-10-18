@@ -24,6 +24,40 @@
 
 -   **Exception**: The only acceptable reference is in `CLAUDE.md` header ("This file provides guidance to Claude Code...") as it is explicitly a configuration file for the AI assistant tool itself.
 
+### Generic Examples in Code and Documentation
+
+**CRITICAL**: When writing code comments, documentation, or examples, you **MUST** use generic placeholder names instead of specific character names, usernames, or bot names from the actual implementation.
+
+-   **Rationale**: This bot is designed to work with any bot name and any user. Hardcoding specific names like "Dr. Fish", "Zekke", or "Mistel Fish" in examples makes the code less reusable and harder to understand for users who have different bot names or work in different servers.
+
+-   **Rules**:
+    -   Use generic placeholders: "Bot Name", "User A", "User B", "Person X", "Server Name", etc.
+    -   Use descriptive generic terms: "the bot", "this user", "another user", "the speaker"
+    -   Never use actual usernames or bot names from the development/test environment
+    -   Apply this to: code comments, docstrings, documentation files, commit messages, and test examples
+
+-   **Examples**:
+    -   ❌ BAD: `# Example: "Dr. Fish, draw me a cat" → "draw me a cat"`
+    -   ❌ BAD: `# If Zekke is mentioned, check the context`
+    -   ❌ BAD: `# Strips "Mistel Fish" from the prompt`
+    -   ✅ GOOD: `# Example: "Bot Name, draw me a cat" → "draw me a cat"`
+    -   ✅ GOOD: `# If User A is mentioned, check the context`
+    -   ✅ GOOD: `# Strips the bot's name from the prompt`
+    -   ✅ GOOD: `# Example: "Mr. Bot" matches "mr bot", "mrbot", "mr.bot", etc.`
+
+-   **Where This Applies**:
+    -   Code comments and docstrings
+    -   Documentation files (README.md, CLAUDE.md, SYSTEM_ARCHITECTURE.md)
+    -   Function examples in docstrings
+    -   Test case descriptions
+    -   Error messages and logging (when referencing generic examples)
+    -   Commit messages
+
+-   **Exceptions**:
+    -   Actual runtime data (database records, Discord API responses) will naturally contain real names
+    -   Configuration files may contain specific server/bot names as settings
+    -   Test fixtures that require specific IDs for testing purposes
+
 ## 1. Core Directives
 
 Your primary role is to act as an expert programmer and a diligent architect for this project. Your goal is to assist in writing clean, efficient, and maintainable code that strictly adheres to the established system architecture.

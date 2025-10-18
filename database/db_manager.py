@@ -63,6 +63,7 @@ class DBManager:
     def log_message(self, message, directed_at_bot=False):
         """
         Logs a message to the short_term_message_log table.
+        Also logs the user's nickname for GUI display purposes.
 
         Args:
             message: Discord message object
@@ -94,6 +95,10 @@ class DBManager:
                 timestamp,
                 directed_flag
             ))
+
+            # Also log the nickname for GUI display
+            self._log_nickname(message.author.id, message.author.display_name, timestamp)
+
             self.conn.commit()
             cursor.close()
             return True
@@ -103,6 +108,26 @@ class DBManager:
         except Exception as e:
             print(f"DATABASE ERROR: Failed to log message {message.id}: {e}")
             return False
+
+    def _log_nickname(self, user_id, nickname, timestamp):
+        """
+        Internal helper to log user nicknames for GUI display.
+
+        Args:
+            user_id: Discord user ID
+            nickname: User's display name
+            timestamp: ISO format timestamp
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "INSERT INTO nicknames (user_id, nickname, timestamp) VALUES (?, ?, ?)",
+                (user_id, nickname, timestamp)
+            )
+            # Don't commit here - let the caller commit
+        except Exception as e:
+            # Silently fail - nickname logging is not critical
+            pass
 
     def get_short_term_memory(self, channel_id=None):
         """

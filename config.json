@@ -48,16 +48,16 @@
         "enabled": true,
         "max_per_user_per_period": 5,
         "reset_period_hours": 2,
-        "style_prefix": "Childlike crayon drawing, kindergarten art style, simple 2D sketch",
+        "style_prefix": "Kindergarten art style, simple childlike drawing, colorful and playful, 2D sketch",
         "model": "black-forest-labs/FLUX.1-schnell",
         "width": 512,
         "height": 512,
         "steps": 4
     },
     "status_updates": {
-        "enabled": false,
+        "enabled": true,
         "update_time": "12:00",
-        "source_server_name": "Most Active Server"
+        "source_server_name": "Mistel Fiech's Server"
     },
     "server_status_settings": {},
     "proactive_engagement": {

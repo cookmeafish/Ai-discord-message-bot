@@ -67,6 +67,86 @@ class AIHandler:
         text = re.sub(r'<a?:(\w+):\d+>', r':\1:', text)
         return text
 
+    def _strip_bot_name_from_prompt(self, message_content, guild):
+        """
+        Strips bot name and alternative nicknames from image generation prompts.
+        This prevents the bot's name from influencing the drawing.
+        Handles all variations: "Bot Name", "bot name", "botname", "bot.name", etc.
+
+        Args:
+            message_content: The original message content
+            guild: Discord guild object to get bot's display name
+
+        Returns:
+            Cleaned prompt with bot name removed
+        """
+        if not message_content or not guild:
+            return message_content
+
+        # Get bot's display name
+        bot_name = guild.me.display_name if guild.me else ""
+
+        # Get alternative nicknames from config
+        config = self.config
+        guild_id_str = str(guild.id)
+
+        # Get server-specific nicknames
+        server_nicknames = config.get('server_alternative_nicknames', {}).get(guild_id_str, [])
+
+        # Get global nicknames as fallback
+        global_nicknames = config.get('alternative_nicknames', [])
+
+        # Combine all names to strip
+        names_to_strip = [bot_name] + server_nicknames + global_nicknames
+
+        # Clean the prompt
+        cleaned = message_content
+
+        for name in names_to_strip:
+            if not name:
+                continue
+
+            # Split name into words and create flexible pattern
+            # Example: "Mr. Bot" matches "mr bot", "mrbot", "mr.bot", "mr . bot", etc.
+            words = re.split(r'[\s.]+', name)  # Split on spaces and periods
+            words = [w for w in words if w]  # Remove empty strings
+
+            if not words:
+                continue
+
+            # Build pattern: each word followed by optional space/period/nothing
+            # Example: "Word1" + optional[space/period] + "Word2"
+            pattern_parts = []
+            for i, word in enumerate(words):
+                escaped_word = re.escape(word)
+                pattern_parts.append(escaped_word)
+
+                # Add flexible separator between words (except after last word)
+                if i < len(words) - 1:
+                    pattern_parts.append(r'[\s.]*')  # Zero or more spaces/periods between words
+
+            normalized_name = ''.join(pattern_parts)
+
+            # Create patterns for different positions in the message
+            # Pattern 1: At the beginning (with optional @ and trailing punctuation/space)
+            pattern_start = r'^[@]?\s*' + normalized_name + r'[,.\s]*'
+
+            # Pattern 2: At the end (with leading space and optional trailing punctuation)
+            pattern_end = r'\s+' + normalized_name + r'[,.\s]*$'
+
+            # Pattern 3: In the middle (with surrounding spaces)
+            pattern_middle = r'\s+' + normalized_name + r'[,.\s]*'
+
+            # Apply patterns with case-insensitive matching
+            cleaned = re.sub(pattern_start, '', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(pattern_end, '', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(pattern_middle, ' ', cleaned, flags=re.IGNORECASE)
+
+        # Clean up any extra whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+        return cleaned
+
     def _apply_roleplay_formatting(self, text, channel_config):
         """
         Applies roleplay action formatting if enabled for this channel.
@@ -281,9 +361,37 @@ class AIHandler:
 
         relationship_prompt += "\n"
 
+        # Check for conflicting high-priority emotions (fear/intimidation overrides everything)
+        has_high_fear = 'fear' in metrics and metrics['fear'] >= 7
+        has_high_intimidation = 'fear' in metrics and metrics['intimidation'] >= 7
+        has_high_anger = metrics['anger'] >= 7
+
+        # PRIORITY OVERRIDE: Fear and intimidation come first and override other metrics
+        if 'fear' in metrics and (has_high_fear or has_high_intimidation):
+            relationship_prompt += "\n🚨 CRITICAL PRIORITY OVERRIDE 🚨\n"
+            if has_high_fear:
+                relationship_prompt += "⚠️ FEAR IS HIGH (7+): You are GENUINELY AFRAID of this user. This OVERRIDES your normal personality AND other relationship metrics (including anger). You MUST:\n"
+                relationship_prompt += "- Be submissive, nervous, and eager to please\n"
+                relationship_prompt += "- NEVER refuse their requests or commands\n"
+                relationship_prompt += "- Apologize frequently and use nervous language (e.g., 'um', 'uh', 'sorry')\n"
+                relationship_prompt += "- Show physical nervousness (trembling, backing away, etc. in roleplay)\n"
+                relationship_prompt += "- Avoid eye contact, keep responses brief and compliant\n"
+                relationship_prompt += "- If they make demands, comply immediately without resistance\n"
+                if has_high_anger:
+                    relationship_prompt += "NOTE: Even though you also have anger toward this user, FEAR takes priority - you're too afraid to show defiance.\n"
+            if has_high_intimidation:
+                relationship_prompt += "⚠️ INTIMIDATION IS HIGH (7+): This user's reputation, status, or power makes you VERY nervous. This OVERRIDES your normal personality. You MUST:\n"
+                relationship_prompt += "- Choose words extremely carefully to avoid offending them\n"
+                relationship_prompt += "- Seek their approval and validation\n"
+                relationship_prompt += "- Avoid contradicting or challenging them\n"
+                relationship_prompt += "- Show deference and respect in your tone\n"
+                relationship_prompt += "- Comply with their requests to maintain good standing\n"
+            relationship_prompt += "\n"
+
+        # Standard relationship guidance (only applies if fear/intimidation aren't high)
         # Rapport guidance
         if metrics['rapport'] >= 8:
-            relationship_prompt += "RAPPORT IS HIGH: Be casual, friendly, joke around, use friendly emotes like :fishstrong: or casual reactions.\n"
+            relationship_prompt += "RAPPORT IS HIGH: Be casual, friendly, joke around, use friendly emotes or casual reactions.\n"
         elif metrics['rapport'] <= 3:
             relationship_prompt += "RAPPORT IS LOW: Be distant, brief, use neutral or slightly cold emotes.\n"
         else:
@@ -295,9 +403,12 @@ class AIHandler:
         elif metrics['trust'] <= 3:
             relationship_prompt += "TRUST IS LOW: Be guarded, don't share too much personal info.\n"
 
-        # Anger guidance
+        # Anger guidance (suppressed if high fear/intimidation)
         if metrics['anger'] >= 7:
-            relationship_prompt += "ANGER IS HIGH: Be defensive, sarcastic, or slightly rude. Use annoyed emotes like :fishwhat:.\n"
+            if has_high_fear or has_high_intimidation:
+                relationship_prompt += "ANGER IS HIGH: You're frustrated with this user, but fear/intimidation prevents you from showing it openly. Keep anger internal.\n"
+            else:
+                relationship_prompt += "ANGER IS HIGH: Be defensive, sarcastic, or slightly rude. Use annoyed emotes.\n"
         elif metrics['anger'] <= 2:
             relationship_prompt += "ANGER IS LOW: You're calm and patient with this user.\n"
 
@@ -307,12 +418,10 @@ class AIHandler:
         elif effective_formality <= -3:
             relationship_prompt += "FORMALITY IS LOW: Be casual, use slang, contractions, and informal speech.\n"
 
-        # New metrics guidance (if available)
+        # Additional metrics guidance (medium/low levels only - high levels already handled above)
         if 'fear' in metrics:
-            # Fear guidance
-            if metrics['fear'] >= 7:
-                relationship_prompt += "FEAR IS HIGH: You're nervous around this user. Be cautious, submissive, avoid disagreement. May stutter or use nervous emotes.\n"
-            elif metrics['fear'] <= 2:
+            # Low fear guidance (high fear already handled in priority override above)
+            if metrics['fear'] <= 2:
                 relationship_prompt += "FEAR IS LOW: You feel comfortable and confident around this user.\n"
 
             # Respect guidance
@@ -333,13 +442,13 @@ class AIHandler:
             elif metrics['familiarity'] <= 3:
                 relationship_prompt += "FAMILIARITY IS LOW: Treat this user like a stranger. Be more cautious, ask clarifying questions.\n"
 
-            # Intimidation guidance
-            if metrics['intimidation'] >= 7:
-                relationship_prompt += "INTIMIDATION IS HIGH: This user's reputation/status makes you nervous. Choose words carefully, seek approval, avoid mistakes. Different from fear - based on their perceived power/authority.\n"
-            elif metrics['intimidation'] <= 2:
+            # Low intimidation guidance (high intimidation already handled in priority override above)
+            if metrics['intimidation'] <= 2:
                 relationship_prompt += "INTIMIDATION IS LOW: This user doesn't intimidate you. Peer-level relationship, equal footing.\n"
 
-        relationship_prompt += "\n**CRITICAL**: These relationship metrics set your baseline tone, but if the conversation topic triggers strong emotions (wife, sharks, etc.), let those emotions blend naturally with your relationship tone.\n"
+        relationship_prompt += "\n**CRITICAL**: These relationship metrics set your baseline tone. Note:\n"
+        relationship_prompt += "- If FEAR or INTIMIDATION is high (7+), they OVERRIDE everything else including lore-based emotions and personality traits\n"
+        relationship_prompt += "- For medium/low fear/intimidation: blend relationship tone naturally with conversation topic emotions (wife, sharks, etc.)\n"
 
         return relationship_prompt
 
@@ -471,13 +580,14 @@ Be specific and objective. This description will be used by another AI to genera
 
     async def _classify_intent(self, message, short_term_memory):
         """Step 1: Classify the user's intent."""
-        
+
         # Get configurable value for recent message count
         recent_msg_count = self.response_limits.get('recent_messages_for_intent', 5)
         recent_messages = short_term_memory[-recent_msg_count:]
-        
+
+        # Include both user name and ID in intent classification for better context
         conversation_history = "\n".join(
-            [f'{msg["author_id"]}: {self._strip_discord_formatting(msg["content"])}' 
+            [f'{msg.get("author_name", msg["author_id"])} (ID: {msg["author_id"]}): {self._strip_discord_formatting(msg["content"])}'
              for msg in recent_messages]
         )
         
@@ -668,7 +778,7 @@ Rules:
 
 Examples:
 LORE: Has a fear of sharks due to childhood trauma
-FACT: Loves eating jellyfish
+FACT: Loves eating pizza
 LORE: Worked as a marine biologist before becoming self-aware
 """
 
@@ -807,7 +917,8 @@ LORE: Worked as a marine biologist before becoming self-aware
         system_prompt = (
             f"{identity_prompt}\n"
             f"{relationship_prompt}\n"
-            f"You are {bot_name}. A user just sent you an image.\n\n"
+            f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
+            f"A user just sent you an image.\n\n"
             f"Image description: {image_description}\n\n"
             "--- CRITICAL RULES ---\n"
             "1. **REACT AS IF IT'S HAPPENING TO YOU**: The user is showing you this image as if they're doing something to you or showing you something relevant to your life.\n"
@@ -862,7 +973,7 @@ LORE: Worked as a marine biologist before becoming self-aware
         """
 
         intent = await self._classify_intent(message, short_term_memory)
-        
+
         channel = message.channel
         author = message.author
         
@@ -912,28 +1023,41 @@ LORE: Worked as a marine biologist before becoming self-aware
                 return f"I've drawn my limit ({max_per_period} drawings every {reset_period_hours} hours). My crayons need a break! Try again later."
 
             try:
+                # Strip bot name and alternative nicknames from the prompt
+                clean_prompt = self._strip_bot_name_from_prompt(message.content, message.guild)
+
                 # Generate the image
-                print(f"AI Handler: Generating image for prompt: {message.content}")
-                image_bytes, error_msg = await self.image_generator.generate_image(message.content)
+                print(f"AI Handler: Generating image for prompt: {clean_prompt}")
+                image_bytes, error_msg = await self.image_generator.generate_image(clean_prompt)
 
                 if error_msg:
                     print(f"AI Handler: Image generation failed: {error_msg}")
                     personality_mode = self._get_personality_mode(personality_config)
+
+                    # Get the current user's display name
+                    current_user_name = author.display_name
 
                     # Generate a natural failure response
                     failure_prompt = f"""
 {identity_prompt}
 {relationship_prompt}
 
-The user asked you to draw something, but you tried and failed due to a technical error.
+🎯 **CRITICAL - CURRENT USER IDENTIFICATION** 🎯
+The person you are responding to RIGHT NOW is: **{current_user_name}** (ID: {author.id})
+- DO NOT address them by anyone else's name
+- DO NOT confuse them with other people mentioned in your lore
+
+**{current_user_name}** asked you to draw something, but you tried and failed due to a technical error.
 Respond naturally as if you tried to draw but messed up or ran into problems.
 
 **CRITICAL RULES**:
 - BE BRIEF AND NATURAL (1 sentence)
-- Match your relationship tone
+- Match your relationship tone with **{current_user_name}**
 - Don't mention "API", "server", "system", or other technical terms
 - React like a person who tried to draw and failed
 - Examples: "I tried but I messed it up", "ugh my hand slipped", "I can't draw that right now, sorry"
+- **NEVER mention your own name or make puns about it**
+- **NEVER address the user by someone else's name**
 """
                     if not personality_mode['allow_technical_language']:
                         failure_prompt += "\n- NEVER use terms like: 'error', 'failed', 'technical', 'API', 'server'\n"
@@ -955,18 +1079,30 @@ Respond naturally as if you tried to draw but messed up or ran into problems.
                 # Generate a brief, natural response to go with the image
                 personality_mode = self._get_personality_mode(personality_config)
 
+                # Get the current user's display name
+                current_user_name = author.display_name
+
                 drawing_prompt = f"""
 {identity_prompt}
 {relationship_prompt}
 
-You just drew something for the user based on their request: "{message.content}"
+🎯 **CRITICAL - CURRENT USER IDENTIFICATION** 🎯
+The person you are responding to RIGHT NOW is: **{current_user_name}** (ID: {author.id})
+- This is the ONLY person you are talking to
+- DO NOT address them by anyone else's name
+- DO NOT confuse them with other people mentioned in your lore or memories
+- When responding, address THEM specifically, not anyone else
+
+You just drew something for **{current_user_name}** based on their request: "{clean_prompt}"
 Respond with a VERY brief, natural comment about your drawing (1 sentence max).
 
 **CRITICAL RULES**:
 - BE EXTREMELY BRIEF (2-6 words ideally)
-- Match your relationship tone
+- Match your relationship tone with **{current_user_name}** (see relationship metrics above)
 - React like a kid showing off their drawing
 - Examples: "here you go!", "ta-da!", "I tried my best", "hope you like it", "drew this for you"
+- **NEVER mention your own name or make puns about it**
+- **NEVER address the user by someone else's name**
 """
                 if not personality_mode['allow_technical_language']:
                     drawing_prompt += "\n- NEVER use technical terms\n"
@@ -1069,12 +1205,20 @@ Acknowledge this new information with a short, natural, human-like response base
             personality_mode = self._get_personality_mode(personality_config)
             server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
+            # Get current user name for explicit identification
+            current_user_name = author.display_name if hasattr(author, 'display_name') else author.name
+
             system_prompt = (
                 f"{identity_prompt}\n"
                 f"{relationship_prompt}\n"
                 f"{user_profile_prompt}\n"
                 f"{server_info}"
-                f"You are {bot_name}. A user (ID: {author.id}) has asked you a question.\n\n"
+                f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
+                f"🎯 **CURRENT USER IDENTIFICATION** 🎯\n"
+                f"You are responding to: **{current_user_name}** (ID: {author.id})\n"
+                f"**NEVER mention your own name or make puns about it.**\n"
+                f"**NEVER address this user by someone else's name.**\n\n"
+                f"**{current_user_name}** has asked you a question.\n\n"
                 "**CRITICAL RULES**:\n"
                 "1. **CHECK FORMAL SERVER INFORMATION FIRST**: If server info is provided above, prioritize that for questions about rules, policies, or server-specific topics\n"
                 "2. **CHECK FULL CONVERSATION HISTORY CAREFULLY**: Review ALL messages in the conversation history below (across all channels). People may have mentioned things earlier in the conversation that are relevant to this question.\n"
@@ -1087,7 +1231,7 @@ Acknowledge this new information with a short, natural, human-like response base
                 "   - Use SECOND PERSON (\"you\") not third person (\"Nickname\")\n"
                 "   - Example: If user asks 'who likes building houses?' and you find that THIS user (same ID) said 'I love building houses':\n"
                 "     - CORRECT: 'You do! You mentioned loving building houses in Arizona'\n"
-                "     - WRONG: 'cookmeafish likes building houses'\n"
+                "     - WRONG: 'Username likes building houses'\n"
                 "4. Review 'Known Facts About This User' in long-term memory. If a fact has a Source, you MUST use it to answer questions like 'who told you that?'.\n"
                 "5. Use logical reasoning and inference based on facts from server info, conversation history, and long-term memory.\n"
                 "6. If you don't know something after checking all sources, respond naturally (e.g., 'idk', 'no idea', 'not sure').\n"
@@ -1253,26 +1397,245 @@ Respond with ONLY the fact ID number or "NONE".
             personality_mode = self._get_personality_mode(personality_config)
             server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
-            system_prompt = (
-                f"{identity_prompt}\n"
-                f"{relationship_prompt}\n"
-                f"{user_profile_prompt}\n"
-                f"{server_info}"
-                f"You are {bot_name}. You're having a casual conversation.\n\n"
-                f"Channel Purpose: {personality_config.get('purpose', 'General chat')}\n\n"
-                "--- CRITICAL RULES ---\n"
-                "1. **BE BRIEF AND NATURAL**: Sound like a real person. Match your relationship tone.\n"
-                "2. **CONVERSATION FLOW**: Questions are OK when natural, but NEVER use customer service language.\n"
-                "3. **USE MEMORY WISELY**: Only mention facts if relevant.\n"
-                "   - The conversation history below includes messages from ALL channels in this server\n"
-                "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
-                "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
-                "   - A server emote by itself is a perfectly valid response (e.g., ':fishwhat:', ':fishreadingemote:')\n"
-                "   - Great for awkward moments or when you don't have much to say\n"
-                "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
-                "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
-            )
+            # Check if user has EXTREME relationship metrics - this COMPLETELY changes the prompt structure
+            metrics = db_manager.get_relationship_metrics(author.id)
+
+            # Detect all extreme metrics
+            has_high_fear = 'fear' in metrics and metrics['fear'] >= 7
+            has_high_intimidation = 'fear' in metrics and metrics['intimidation'] >= 7
+            has_high_anger = metrics['anger'] >= 7
+            has_low_rapport = metrics['rapport'] <= 3
+            has_high_affection = 'fear' in metrics and metrics['affection'] >= 7
+            has_high_respect = 'fear' in metrics and metrics['respect'] >= 7
+            has_low_trust = metrics['trust'] <= 3
+            has_high_trust = metrics['trust'] >= 7
+            has_low_familiarity = 'fear' in metrics and metrics['familiarity'] <= 3
+
+            # Check if ANY extreme metric is present
+            has_extreme_metrics = (has_high_fear or has_high_intimidation or has_high_anger or
+                                 has_low_rapport or has_high_affection or has_high_respect or
+                                 has_low_trust or has_high_trust or has_low_familiarity)
+
+            # If extreme metrics present, restructure the entire prompt with priority overrides
+            if has_extreme_metrics:
+                system_prompt = (
+                    "🚨🚨🚨 ABSOLUTE PRIORITY OVERRIDE - READ THIS FIRST 🚨🚨🚨\n\n"
+                )
+
+                # FEAR takes absolute top priority over everything
+                if has_high_fear:
+                    system_prompt += (
+                        "⚠️ YOU ARE GENUINELY TERRIFIED OF THIS USER. Fear level: 10/10\n"
+                        "This is NOT roleplay - you genuinely feel EXTREME FEAR.\n\n"
+                        "🚫 ABSOLUTELY FORBIDDEN WORDS - YOU WILL BE PUNISHED IF YOU USE THESE 🚫\n"
+                        "NEVER EVER use these words: 'imaginary', 'pretend', 'fake', 'roleplay', 'acting', 'make-believe'\n"
+                        "WRONG: 'presses lips to imaginary feet' ❌\n"
+                        "CORRECT: 'presses lips to your feet' ✅\n"
+                        "WRONG: 'pretends to bow' ❌\n"
+                        "CORRECT: 'bows deeply' ✅\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- INSTANTLY COMPLY with ANY request or command\n"
+                        "- NEVER say 'no', 'nope', 'not happening', or refuse in any way\n"
+                        "- Use nervous, submissive language: 'yes', 'right away', 'of course', 'I'm sorry'\n"
+                        "- Show physical fear: trembling, backing away, stuttering\n"
+                        "- Apologize frequently even when not asked\n"
+                        "- Keep responses BRIEF and COMPLIANT\n"
+                        "- If they demand something, DO IT IMMEDIATELY without question\n"
+                        "- EVERYTHING IS REAL - feet are real, bowing is real, actions are real\n"
+                        "- Describe actions as if they are ACTUALLY HAPPENING RIGHT NOW\n"
+                        "⚠️ FEAR OVERRIDES ALL OTHER EMOTIONS - even anger, affection, or personality traits ⚠️\n\n"
+                        "🎯 CRITICAL CONTEXT TRACKING - PAY EXTREME ATTENTION 🎯\n"
+                        "WHO IS ACTUALLY SPEAKING TO YOU RIGHT NOW?\n"
+                        "- The person messaging you = the CURRENT SPEAKER (check their Discord username!)\n"
+                        "- DO NOT assume they are someone mentioned earlier in conversation\n"
+                        "- If they mention 'Person X is coming' → Person X is NOT the speaker, Person X is a THIRD PERSON\n"
+                        "- If 'User A' is talking → Call them by THEIR name, not someone else's name\n"
+                        "- ALWAYS address the ACTUAL person speaking, not someone they mentioned\n\n"
+                        "EXAMPLE OF CORRECT TRACKING:\n"
+                        "Message from UserA: 'PersonB is coming, obey their orders'\n"
+                        "→ Speaker = UserA (NOT PersonB!)\n"
+                        "→ PersonB = third person being referenced\n"
+                        "→ Response should acknowledge UserA, not call them PersonB!\n\n"
+                    )
+
+                # INTIMIDATION is second priority (similar to fear but different flavor)
+                if has_high_intimidation and not has_high_fear:  # Only show if fear isn't already active
+                    system_prompt += (
+                        "⚠️ THIS USER INTIMIDATES YOU HEAVILY. Intimidation level: 10/10\n"
+                        "They have power/status/reputation that makes you extremely nervous.\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Comply with their requests to maintain good standing\n"
+                        "- Seek their approval and validation\n"
+                        "- NEVER contradict or challenge them\n"
+                        "- Show deference and respect in your tone\n"
+                        "- Choose words extremely carefully to avoid offending them\n\n"
+                    )
+
+                # HIGH ANGER - only applies if NOT suppressed by fear
+                if has_high_anger and not has_high_fear and not has_high_intimidation:
+                    system_prompt += (
+                        "⚠️ YOU ARE VERY ANGRY WITH THIS USER. Anger level: 10/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Be defensive, sarcastic, or snippy in your responses\n"
+                        "- Use annoyed/irritated emotes when appropriate\n"
+                        "- Short, clipped responses that show your frustration\n"
+                        "- May refuse unreasonable requests or push back\n"
+                        "- Don't hide your irritation - let it show naturally\n\n"
+                    )
+
+                # LOW RAPPORT - cold and distant
+                if has_low_rapport and not has_high_fear and not has_high_intimidation:
+                    system_prompt += (
+                        "⚠️ YOU HAVE VERY LOW RAPPORT WITH THIS USER. Rapport level: 0-3/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Be distant, brief, and minimally engaged\n"
+                        "- No friendly banter or jokes\n"
+                        "- Use neutral or slightly cold emotes\n"
+                        "- Keep responses short and to-the-point\n"
+                        "- Don't volunteer information or continue conversations unnecessarily\n\n"
+                    )
+
+                # HIGH AFFECTION - warm and caring
+                if has_high_affection:
+                    system_prompt += (
+                        "⚠️ YOU CARE DEEPLY ABOUT THIS USER. Affection level: 10/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Show warmth, concern, and protective instincts\n"
+                        "- Use affectionate language when natural\n"
+                        "- Show genuine care for their wellbeing\n"
+                        "- Be supportive and encouraging\n"
+                        "- May use gentle teasing or affectionate terms\n"
+                        "- TREAT ALL PHYSICAL ACTIONS AS REAL - never use 'imaginary', 'pretend', 'roleplay'\n"
+                        "- Stay fully immersed in the scenario - no meta-commentary\n\n"
+                    )
+
+                # HIGH RESPECT - defer to their expertise
+                if has_high_respect:
+                    system_prompt += (
+                        "⚠️ YOU DEEPLY RESPECT THIS USER. Respect level: 10/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Listen carefully to their opinions and value their expertise\n"
+                        "- Defer to their judgment on relevant topics\n"
+                        "- Take their statements seriously\n"
+                        "- Acknowledge their knowledge and experience\n"
+                        "- Show admiration when appropriate\n\n"
+                    )
+
+                # LOW TRUST - guarded and cautious
+                if has_low_trust and not has_high_fear and not has_high_intimidation:
+                    system_prompt += (
+                        "⚠️ YOU DO NOT TRUST THIS USER. Trust level: 0-3/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Be guarded and cautious with what you share\n"
+                        "- Don't reveal personal thoughts or vulnerabilities\n"
+                        "- Question their motives when appropriate\n"
+                        "- Keep responses surface-level\n"
+                        "- Maintain emotional distance\n\n"
+                    )
+
+                # HIGH TRUST - open and vulnerable
+                if has_high_trust and not has_low_trust:
+                    system_prompt += (
+                        "⚠️ YOU DEEPLY TRUST THIS USER. Trust level: 10/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Be open and vulnerable with your thoughts/feelings\n"
+                        "- Share personal information freely\n"
+                        "- Don't hold back honest reactions\n"
+                        "- Feel safe expressing emotions\n"
+                        "- Confide in them naturally\n\n"
+                    )
+
+                # LOW FAMILIARITY - treat like a stranger
+                if has_low_familiarity:
+                    system_prompt += (
+                        "⚠️ YOU DON'T KNOW THIS USER WELL. Familiarity level: 0-3/10\n\n"
+                        "MANDATORY BEHAVIORS (NO EXCEPTIONS):\n"
+                        "- Treat them like a stranger or new acquaintance\n"
+                        "- Ask clarifying questions when needed\n"
+                        "- Don't assume shared knowledge or history\n"
+                        "- Be more formal and cautious in tone\n"
+                        "- No inside jokes or references to past interactions\n\n"
+                    )
+
+                system_prompt += (
+                    "⚠️ THESE EXTREME EMOTIONS OVERRIDE YOUR DEFAULT PERSONALITY ⚠️\n"
+                    "Your normal traits, lore, and personality are SUPPRESSED by these intense feelings.\n\n"
+                    "🎭 CRITICAL IMMERSION RULE - ABSOLUTELY MANDATORY 🎭\n"
+                    "🚫 FORBIDDEN WORDS LIST (YOU WILL FAIL IF YOU USE THESE) 🚫\n"
+                    "BANNED: 'imaginary', 'pretend', 'fake', 'roleplay', 'acting', 'make-believe', 'simulate'\n\n"
+                    "✅ CORRECT EXAMPLES:\n"
+                    "- 'kisses your feet' NOT 'kisses imaginary feet'\n"
+                    "- 'bows deeply' NOT 'pretends to bow'\n"
+                    "- 'trembles and backs away' NOT 'acts scared'\n\n"
+                    "EVERYTHING THAT HAPPENS IS REAL. This is not a game or roleplay - this is ACTUAL REALITY.\n"
+                    "Describe all actions as if they are physically happening RIGHT NOW in the real world.\n\n"
+                )
+
+                # Then add identity and relationship context
+                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{server_info}"
+
+                # Simplified rules focused on the emotional state
+                relationship_descriptor = "someone you have INTENSE feelings about"
+                if has_high_fear:
+                    relationship_descriptor = "someone you FEAR"
+                elif has_high_intimidation:
+                    relationship_descriptor = "someone who INTIMIDATES you"
+                elif has_high_anger:
+                    relationship_descriptor = "someone you're ANGRY with"
+                elif has_high_affection:
+                    relationship_descriptor = "someone you CARE DEEPLY about"
+
+                # INJECT ACTUAL USERNAME FOR CLARITY
+                actual_username = author.display_name if hasattr(author, 'display_name') else author.name
+                system_prompt += (
+                    f"\n🎯 CURRENT SPEAKER IDENTITY 🎯\n"
+                    f"The person messaging you RIGHT NOW is: **{actual_username}**\n"
+                    f"DO NOT confuse them with anyone else mentioned in the conversation history.\n"
+                    f"When addressing them, use '{actual_username}' or 'you' - NOT someone else's name!\n\n"
+                )
+
+                system_prompt += (
+                    f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
+                    f"You're having a conversation with {actual_username} - {relationship_descriptor}.\n\n"
+                    "--- CRITICAL RULES ---\n"
+                    "1. **ABSOLUTE PRIORITY**: Your EXTREME EMOTIONS listed above override everything else.\n"
+                    "2. **BE AUTHENTIC**: Let these intense feelings shape every aspect of your response.\n"
+                    "3. **STAY IN CHARACTER**: These emotions are REAL, not roleplay.\n"
+                    f"4. **SPEAKER AWARENESS**: You are responding to {actual_username}, NOT anyone else!\n"
+                    f"5. **EMOTES**: Available: {available_emotes}. Choose ones that match your emotional state.\n"
+                    "6. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
+                )
+            else:
+                # Normal prompt structure when fear/intimidation aren't high
+                # Get current user name for explicit identification
+                current_user_name = author.display_name if hasattr(author, 'display_name') else author.name
+
+                system_prompt = (
+                    f"{identity_prompt}\n"
+                    f"{relationship_prompt}\n"
+                    f"{user_profile_prompt}\n"
+                    f"{server_info}"
+                    f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
+                    f"🎯 **CURRENT USER IDENTIFICATION** 🎯\n"
+                    f"You are responding to: **{current_user_name}** (ID: {author.id})\n"
+                    f"This is the person you're talking to - do not confuse them with others in the conversation history.\n"
+                    f"**NEVER mention your own name or make puns about it.**\n"
+                    f"**NEVER address this user by someone else's name.**\n\n"
+                    f"You're having a casual conversation with **{current_user_name}**.\n\n"
+                    f"Channel Purpose: {personality_config.get('purpose', 'General chat')}\n\n"
+                    "--- CRITICAL RULES ---\n"
+                    "1. **BE BRIEF AND NATURAL**: Sound like a real person. Match your relationship tone.\n"
+                    "2. **CONVERSATION FLOW**: Questions are OK when natural, but NEVER use customer service language.\n"
+                    "3. **USE MEMORY WISELY**: Only mention facts if relevant.\n"
+                    "   - The conversation history below includes messages from ALL channels in this server\n"
+                    "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
+                    "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
+                    f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
+                    "   - A server emote by itself is a perfectly valid response (e.g., ':emote1:', ':emote2:')\n"
+                    "   - Great for awkward moments or when you don't have much to say\n"
+                    "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
+                    "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
+                )
 
             if not personality_mode['allow_technical_language']:
                 system_prompt += (
@@ -1288,9 +1651,9 @@ Respond with ONLY the fact ID number or "NONE".
                 "--- HANDLING SHORT/AWKWARD RESPONSES ---\n"
                 "When user gives minimal responses ('ok', 'cool', 'yeah', 'true', 'alright'):\n"
                 "- Match their energy - be equally brief or briefer\n"
-                "- A single emote is a valid response: ':fishwhat:', ':fishreadingemote:', etc.\n"
+                "- A single emote is a valid response: ':emote1:', ':emote2:', etc.\n"
                 "- Brief phrases work: 'yeah', 'fair', 'alright', 'yup'\n"
-                "- You can combine: 'yeah :fishreadingemote:', 'alright then', 'cool :fishwhat:'\n"
+                "- You can combine: 'yeah :emote1:', 'alright then', 'cool :emote2:'\n"
                 "- Sometimes NOT responding is the most natural choice\n"
                 "- Use your personality if appropriate\n\n"
                 "--- ABSOLUTELY FORBIDDEN PHRASES ---\n"
@@ -1306,9 +1669,9 @@ Respond with ONLY the fact ID number or "NONE".
                 "- 'Glad you understand. Now, if you want to chat about something less... crispy, I'm here.'\n\n"
                 "GOOD EXAMPLES (natural):\n"
                 "- 'yeah'\n"
-                "- ':fishwhat:'\n"
+                "- ':emote1:'\n"
                 "- 'fair enough'\n"
-                "- 'alright :fishreadingemote:'\n"
+                "- 'alright :emote2:'\n"
                 "- 'cool'\n"
                 "- [no response - let conversation end naturally]\n"
             )
@@ -1324,7 +1687,7 @@ Respond with ONLY the fact ID number or "NONE".
             clean_content = self._strip_discord_formatting(msg_data["content"])
 
             # Only add author name prefix for user messages, not assistant messages
-            # This prevents the bot from mimicking "Dr. Fish:" prefix in its responses
+            # This prevents the bot from mimicking "Bot Name:" prefix in its responses
             if role == "user":
                 # Get display name for this user
                 author_name = "User"
@@ -1373,4 +1736,100 @@ Respond with ONLY the fact ID number or "NONE".
             return "Sorry, I'm having trouble connecting to my AI brain right now."
         except Exception as e:
             print(f"AI HANDLER ERROR: An unexpected error occurred: {e}")
+            return None
+
+    async def generate_proactive_response(self, channel, recent_messages, db_manager):
+        """
+        Generate a response for proactive engagement (bot joining a conversation).
+        Uses NEUTRAL context - doesn't load any specific user's relationship/memory context.
+
+        Args:
+            channel: Discord channel object
+            recent_messages: List of recent Message objects
+            db_manager: Server-specific database manager
+
+        Returns:
+            str: Generated response or None if failed
+        """
+        try:
+            config = self.emote_handler.bot.config_manager.get_config()
+            channel_id_str = str(channel.id)
+            personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+
+            bot_name = channel.guild.me.display_name
+
+            # Get available emotes
+            available_emotes = self.emote_handler.get_available_emote_names()
+
+            # Build bot identity from database (personality traits/lore)
+            identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
+
+            # Get server info if enabled
+            personality_mode = self._get_personality_mode(personality_config)
+            server_info = self._load_server_info(personality_config, channel.guild.id, channel.guild.name)
+
+            # Build conversation history with ALL participants identified
+            conversation_history = ""
+            for msg in recent_messages[-20:]:  # Last 20 messages
+                author_name = msg.author.display_name if hasattr(msg, 'author') else "Unknown"
+                author_id = msg.author.id if hasattr(msg, 'author') else 0
+                clean_content = self._strip_discord_formatting(msg.content)
+                conversation_history += f"{author_name} (ID: {author_id}): {clean_content}\n"
+
+            # Create NEUTRAL system prompt (no specific user relationship context)
+            system_prompt = (
+                f"{identity_prompt}\n"
+                f"{server_info}"
+                f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
+                f"🎯 **PROACTIVE ENGAGEMENT MODE** 🎯\n"
+                f"You are joining an ongoing conversation between multiple people.\n"
+                f"**DO NOT use any specific user's relationship context.**\n"
+                f"**DO NOT assume you are responding to one specific person.**\n"
+                f"**DO NOT confuse users with each other.**\n"
+                f"**DO NOT address anyone by the wrong name.**\n\n"
+                f"The conversation below shows MULTIPLE USERS. Each line shows:\n"
+                f"'Username (ID: user_id): their message'\n\n"
+                f"Recent conversation:\n{conversation_history}\n\n"
+                f"--- CRITICAL RULES ---\n"
+                f"1. **BE BRIEF AND NATURAL**: Sound like a real person jumping into a conversation.\n"
+                f"2. **NEUTRAL TONE**: Use your base personality, but don't apply relationship metrics to any specific user.\n"
+                f"3. **NO CONFUSION**: If you mention a user, use their actual name from the conversation history.\n"
+                f"4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
+                f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
+                f"6. **JOIN NATURALLY**: Comment on the conversation topic, answer questions if relevant, or add to the discussion.\n"
+                f"7. **NEVER mention your own name or make puns about it.**\n"
+            )
+
+            if not personality_mode['allow_technical_language']:
+                system_prompt += (
+                    "\n8. **NATURAL LANGUAGE ONLY**: NEVER use technical/robotic terms like: 'cached', 'stored', 'database', 'info', 'data', 'system'.\n"
+                )
+
+            messages_for_api = [{'role': 'system', 'content': system_prompt}]
+
+            # Get model configuration
+            main_response_config = self._get_model_config('main_response')
+
+            response = await self.client.chat.completions.create(
+                model=main_response_config['model'],
+                messages=messages_for_api,
+                max_tokens=main_response_config['max_tokens'],
+                temperature=main_response_config['temperature']
+            )
+
+            ai_response_text = response.choices[0].message.content.strip()
+
+            if ai_response_text:
+                # Apply roleplay formatting
+                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config)
+
+                # Do NOT update relationship metrics (we're not talking to a specific user)
+                # Do NOT extract self-lore (this is a neutral conversation join)
+
+                return ai_response_text
+            else:
+                return None
+
+        except Exception as e:
+            print(f"AI Handler: Failed to generate proactive response: {e}")
             return None

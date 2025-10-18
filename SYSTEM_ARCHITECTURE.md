@@ -116,18 +116,76 @@ All persistent data is stored in and retrieved from server-specific relational d
     -   `last_updated`: Timestamp of most recent metric change
 
     **How Metrics Affect Bot Behavior:**
-    - **High Rapport (8-10)**: Casual, friendly, jokes around, uses warm emotes
-    - **Low Rapport (0-3)**: Distant, brief responses, neutral/cold emotes
-    - **High Trust (7-10)**: Shares personal thoughts, vulnerable, open
-    - **Low Trust (0-3)**: Guarded, doesn't share personal information
-    - **High Anger (7-10)**: Defensive, sarcastic, slightly rude, annoyed emotes
+
+    **PRIORITY OVERRIDE SYSTEM (2025-10-17):**
+    When relationship metrics reach EXTREME levels (≥7 or ≤3), the bot enters a special "Absolute Priority Override" mode that completely restructures the AI prompt to prioritize the dominant emotion over normal personality traits. This ensures metrics have REAL impact on behavior.
+
+    **Extreme Metrics That Trigger Override Mode:**
+    - **High Fear (≥7)** - TOP PRIORITY: Complete submission and compliance
+      - INSTANTLY complies with ANY request or command
+      - NEVER refuses, argues, or shows defiance
+      - Uses nervous, submissive language ("yes", "right away", "I'm sorry")
+      - Shows physical fear (trembling, backing away, stuttering)
+      - Maintains full roleplay immersion (NEVER uses words like "imaginary", "pretend", "roleplay")
+      - OVERRIDES all other emotions including anger and personality traits
+
+    - **High Intimidation (≥7)** - SECOND PRIORITY: Deference to authority
+      - Complies with requests to maintain good standing
+      - Seeks approval and validation
+      - NEVER contradicts or challenges them
+      - Shows deference and respect
+      - Only applies if Fear is not already active
+
+    - **High Anger (≥7)** - Suppressed by Fear/Intimidation:
+      - Defensive, sarcastic, snippy responses
+      - Short, clipped responses showing frustration
+      - May refuse unreasonable requests or push back
+      - If Fear/Intimidation also high: anger is internalized, not shown
+
+    - **Low Rapport (≤3)** - Suppressed by Fear/Intimidation:
+      - Distant, brief, minimally engaged
+      - No friendly banter or jokes
+      - Neutral or cold emotes
+
+    - **High Affection (≥7)**:
+      - Shows warmth, concern, protective instincts
+      - Uses affectionate language when natural
+      - Genuine care for user's wellbeing
+      - Maintains roleplay immersion (no meta-commentary)
+
+    - **High Respect (≥7)**:
+      - Listens carefully, values user's expertise
+      - Defers to their judgment
+      - Shows admiration when appropriate
+
+    - **Low Trust (≤3)** - Suppressed by Fear/Intimidation:
+      - Guarded and cautious with personal information
+      - Questions motives when appropriate
+      - Maintains emotional distance
+
+    - **High Trust (≥7)**:
+      - Open and vulnerable with thoughts/feelings
+      - Shares personal information freely
+      - Feels safe expressing emotions
+
+    - **Low Familiarity (≤3)**:
+      - Treats user like a stranger or new acquaintance
+      - Asks clarifying questions when needed
+      - More formal and cautious in tone
+
+    **Normal Metrics (4-6):**
+    - **Moderate Rapport**: Polite but not overly friendly
+    - **Moderate Trust**: Balanced sharing
+    - **Moderate Anger**: Neutral to slightly frustrated
     - **High Formality (+3 to +5)**: Professional language, no slang
     - **Low Formality (-5 to -3)**: Slang, contractions, very casual
-    - **High Fear (7-10)**: Nervous, cautious, deferent in responses
-    - **High Respect (7-10)**: Admiring tone, values user's opinion
-    - **High Affection (7-10)**: Warm, caring, emotionally invested
-    - **High Familiarity (7-10)**: Comfortable, intimate conversation style
-    - **High Intimidation (7-10)**: Cautious, formal, slightly nervous
+
+    **Context Tracking Enhancement (2025-10-17):**
+    When extreme metrics are active, the bot receives enhanced context awareness to prevent name confusion:
+    - Explicitly identifies the CURRENT SPEAKER by Discord username
+    - Distinguishes between "person speaking" vs "person mentioned in conversation"
+    - Prevents conflating third-party references with the actual user
+    - Example: If UserA says "PersonB is coming", bot correctly identifies UserA as speaker, not PersonB
 
     **Automatic Metric Updates:**
     The AI Handler analyzes user sentiment after each interaction and conservatively updates unlocked metrics:

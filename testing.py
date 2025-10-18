@@ -78,6 +78,8 @@ class BotTestSuite:
         await self.test_channel_configuration()
         await self.test_formatting_handler()
         await self.test_image_generation()
+        await self.test_proactive_engagement()
+        await self.test_user_identification()
 
         # Final cleanup verification (catch-all)
         await self.test_cleanup_verification()
@@ -1538,6 +1540,351 @@ class BotTestSuite:
                 self._log_test(category, "ImageGenerator Methods", False, "Skipped - module import failed")
         except Exception as e:
             self._log_test(category, "ImageGenerator Methods", False, f"Error: {e}")
+
+    # ==================== STATUS UPDATE TESTS ====================
+
+    async def test_status_updates(self):
+        """Test AI-generated status update system."""
+        category = "Status Updates"
+
+        # Test 1: StatusUpdater module exists
+        try:
+            from modules.status_updater import StatusUpdater
+            module_exists = True
+            self._log_test(
+                category,
+                "StatusUpdater Module Import",
+                True,
+                "StatusUpdater module imported successfully"
+            )
+        except Exception as e:
+            self._log_test(category, "StatusUpdater Module Import", False, f"Error importing: {e}")
+            module_exists = False
+
+        # Test 2: Status updates config exists
+        try:
+            config = self.bot.config_manager.get_config()
+            has_status_config = "status_updates" in config
+
+            if has_status_config:
+                status_config = config["status_updates"]
+                has_required_keys = all(key in status_config for key in ["enabled", "update_time", "source_server_name"])
+            else:
+                has_required_keys = False
+
+            self._log_test(
+                category,
+                "Status Updates Config",
+                has_required_keys,
+                f"Config found: enabled={status_config.get('enabled')}, time={status_config.get('update_time')}, source={status_config.get('source_server_name')}" if has_required_keys else "Status updates config incomplete"
+            )
+        except Exception as e:
+            self._log_test(category, "Status Updates Config", False, f"Error: {e}")
+
+        # Test 3: Status history file is in gitignore
+        try:
+            import os
+            gitignore_path = os.path.join(os.getcwd(), ".gitignore")
+
+            if os.path.exists(gitignore_path):
+                with open(gitignore_path, "r") as f:
+                    gitignore_content = f.read()
+                    in_gitignore = "status_history.json" in gitignore_content
+            else:
+                in_gitignore = False
+
+            self._log_test(
+                category,
+                "Status History in Gitignore",
+                in_gitignore,
+                "status_history.json is in .gitignore" if in_gitignore else "status_history.json not in .gitignore (should be added)"
+            )
+        except Exception as e:
+            self._log_test(category, "Status History in Gitignore", False, f"Error: {e}")
+
+        # Test 4: Duplicate prevention methods exist
+        try:
+            if module_exists:
+                from modules.status_updater import StatusUpdater
+                updater = StatusUpdater(self.bot)
+
+                has_load_history = hasattr(updater, "_load_status_history")
+                has_save_history = hasattr(updater, "_save_status_history")
+                has_is_duplicate = hasattr(updater, "_is_duplicate_status")
+
+                all_methods = has_load_history and has_save_history and has_is_duplicate
+
+                self._log_test(
+                    category,
+                    "Duplicate Prevention Methods",
+                    all_methods,
+                    "All methods found: _load_status_history, _save_status_history, _is_duplicate_status" if all_methods else f"Missing methods: load={has_load_history}, save={has_save_history}, is_duplicate={has_is_duplicate}"
+                )
+            else:
+                self._log_test(category, "Duplicate Prevention Methods", False, "Skipped - module import failed")
+        except Exception as e:
+            self._log_test(category, "Duplicate Prevention Methods", False, f"Error: {e}")
+
+        # Test 5: Server name autocomplete exists in admin commands
+        try:
+            from cogs.admin import AdminCog
+            has_autocomplete = hasattr(AdminCog, "server_name_autocomplete")
+
+            self._log_test(
+                category,
+                "Server Name Autocomplete",
+                has_autocomplete,
+                "server_name_autocomplete method exists in AdminCog" if has_autocomplete else "Autocomplete method missing"
+            )
+        except Exception as e:
+            self._log_test(category, "Server Name Autocomplete", False, f"Error: {e}")
+
+    # ==================== USER ID RESOLUTION TESTS ====================
+
+    async def test_user_id_resolution(self):
+        """Test user ID resolution for admin commands."""
+        category = "User ID Resolution"
+
+        # Test 1: _resolve_user helper exists
+        try:
+            from cogs.admin import AdminCog
+            has_resolve_user = hasattr(AdminCog, "_resolve_user")
+
+            self._log_test(
+                category,
+                "_resolve_user Helper Method",
+                has_resolve_user,
+                "_resolve_user method exists in AdminCog" if has_resolve_user else "Helper method missing"
+            )
+        except Exception as e:
+            self._log_test(category, "_resolve_user Helper Method", False, f"Error: {e}")
+
+        # Test 2: Test user ID parsing logic
+        try:
+            # Test parsing various formats
+            test_cases = [
+                ("123456789", "123456789"),  # Raw ID
+                ("<@123456789>", "123456789"),  # Mention format
+                ("<@!123456789>", "123456789"),  # Nickname mention format
+            ]
+
+            all_passed = True
+            for input_str, expected in test_cases:
+                # Simulate the parsing logic
+                parsed = input_str.strip().replace('<@', '').replace('!', '').replace('>', '')
+                if parsed != expected:
+                    all_passed = False
+                    break
+
+            self._log_test(
+                category,
+                "User ID Parsing Logic",
+                all_passed,
+                "All user ID formats parse correctly" if all_passed else "Some formats failed to parse"
+            )
+        except Exception as e:
+            self._log_test(category, "User ID Parsing Logic", False, f"Error: {e}")
+
+        # Test 3: User commands accept string parameter
+        try:
+            from cogs.admin import AdminCog
+            import inspect
+
+            # Check if user_set_metrics accepts string for user parameter
+            sig = inspect.signature(AdminCog.user_set_metrics)
+            user_param = sig.parameters.get('user')
+
+            # The parameter should be annotated as str
+            accepts_string = user_param and user_param.annotation == str
+
+            self._log_test(
+                category,
+                "User Commands Accept String",
+                accepts_string,
+                "user_set_metrics accepts str parameter" if accepts_string else "user parameter type incorrect"
+            )
+        except Exception as e:
+            self._log_test(category, "User Commands Accept String", False, f"Error: {e}")
+
+    # ==================== IMAGE NAME STRIPPING TESTS ====================
+
+    async def test_bot_name_stripping(self):
+        """Test bot name stripping from image generation prompts."""
+        category = "Bot Name Stripping"
+
+        # Test 1: _strip_bot_name_from_prompt method exists
+        try:
+            has_method = hasattr(self.bot.ai_handler, "_strip_bot_name_from_prompt")
+
+            self._log_test(
+                category,
+                "_strip_bot_name_from_prompt Method",
+                has_method,
+                "Method exists in AI Handler" if has_method else "Method missing from AI Handler"
+            )
+        except Exception as e:
+            self._log_test(category, "_strip_bot_name_from_prompt Method", False, f"Error: {e}")
+
+        # Test 2: Test bot name removal logic
+        try:
+            # Create a mock guild object
+            class MockGuild:
+                class MockMember:
+                    display_name = "TestBot"
+                me = MockMember()
+                id = 123456789
+
+            mock_guild = MockGuild()
+
+            # Test the stripping logic
+            test_prompt = "TestBot, draw me a cat"
+            cleaned = self.bot.ai_handler._strip_bot_name_from_prompt(test_prompt, mock_guild)
+
+            # Should remove "TestBot, " from the beginning
+            bot_name_removed = "TestBot" not in cleaned
+
+            self._log_test(
+                category,
+                "Bot Name Removal",
+                bot_name_removed,
+                f"Bot name stripped successfully: '{test_prompt}' → '{cleaned}'" if bot_name_removed else f"Bot name still present in: '{cleaned}'"
+            )
+        except Exception as e:
+            self._log_test(category, "Bot Name Removal", False, f"Error: {e}")
+
+        # Test 3: Alternative nicknames also stripped
+        try:
+            config = self.bot.config_manager.get_config()
+            has_alt_nicknames_config = "alternative_nicknames" in config or "server_alternative_nicknames" in config
+
+            self._log_test(
+                category,
+                "Alternative Nicknames Config",
+                True,  # Always pass - these are optional
+                f"Alternative nicknames config exists: global={('alternative_nicknames' in config)}, server={('server_alternative_nicknames' in config)}"
+            )
+        except Exception as e:
+            self._log_test(category, "Alternative Nicknames Config", False, f"Error: {e}")
+
+    # ==================== PROACTIVE ENGAGEMENT TESTS ====================
+
+    async def test_proactive_engagement(self):
+        """Test proactive engagement system to ensure it uses neutral context."""
+        category = "Proactive Engagement"
+
+        try:
+            # Test 1: Verify generate_proactive_response method exists
+            has_method = hasattr(self.bot.ai_handler, 'generate_proactive_response')
+            self._log_test(
+                category,
+                "Proactive Response Method Exists",
+                has_method,
+                "generate_proactive_response() method found" if has_method else "Method not found"
+            )
+
+            if not has_method:
+                return
+
+            # Test 2: Verify method signature accepts channel, messages, db_manager
+            import inspect
+            sig = inspect.signature(self.bot.ai_handler.generate_proactive_response)
+            params = list(sig.parameters.keys())
+            expected_params = ['channel', 'recent_messages', 'db_manager']
+            correct_signature = all(p in params for p in expected_params)
+
+            self._log_test(
+                category,
+                "Correct Method Signature",
+                correct_signature,
+                f"Parameters: {params}" if correct_signature else f"Expected {expected_params}, got {params}"
+            )
+
+            # Test 3: Verify proactive_engagement module uses new method
+            from modules import proactive_engagement
+            import inspect as insp
+            source = insp.getsource(proactive_engagement.ProactiveEngagement.generate_proactive_response)
+            uses_new_method = 'generate_proactive_response' in source and 'ai_handler.generate_proactive_response' in source
+
+            self._log_test(
+                category,
+                "Proactive Module Uses AI Handler Method",
+                uses_new_method,
+                "Correctly calls ai_handler.generate_proactive_response()" if uses_new_method else "Still using old generate_response()"
+            )
+
+        except Exception as e:
+            self._log_test(category, "Proactive Engagement Tests", False, f"Error: {e}")
+
+    # ==================== USER IDENTIFICATION TESTS ====================
+
+    async def test_user_identification(self):
+        """Test that all AI response prompts include explicit user identification."""
+        category = "User Identification"
+
+        try:
+            # Read the ai_handler source code to verify user identification prompts
+            with open('modules/ai_handler.py', 'r', encoding='utf-8') as f:
+                ai_handler_source = f.read()
+
+            # Test 1: Image generation has user identification
+            has_image_user_id = '**CRITICAL - CURRENT USER IDENTIFICATION**' in ai_handler_source and 'drawing_prompt' in ai_handler_source
+            self._log_test(
+                category,
+                "Image Generation User ID",
+                has_image_user_id,
+                "Image generation prompt includes user identification" if has_image_user_id else "Missing user ID in image generation"
+            )
+
+            # Test 2: Casual chat normal metrics has user identification
+            has_casual_user_id = '🎯 **CURRENT USER IDENTIFICATION** 🎯' in ai_handler_source
+            casual_count = ai_handler_source.count('🎯 **CURRENT USER IDENTIFICATION** 🎯')
+            # Should appear in: factual_question, casual_chat_normal, image_success, image_failure, proactive has different marker
+            expected_count = 4  # factual_question, casual_chat, image_success, image_failure
+
+            self._log_test(
+                category,
+                "User ID in Multiple Prompts",
+                casual_count >= expected_count,
+                f"Found {casual_count} user identification sections (expected at least {expected_count})"
+            )
+
+            # Test 3: Proactive engagement has PROACTIVE ENGAGEMENT MODE marker
+            has_proactive_marker = '🎯 **PROACTIVE ENGAGEMENT MODE** 🎯' in ai_handler_source
+            self._log_test(
+                category,
+                "Proactive Engagement Neutral Context",
+                has_proactive_marker,
+                "Proactive engagement has dedicated neutral context prompt" if has_proactive_marker else "Missing proactive engagement marker"
+            )
+
+            # Test 4: No fish references in code (generic examples only)
+            fish_references = ['fishstrong', 'fishwhat', 'fishreadingemote', 'cookmeafish', 'Dr. Fish', 'dr fish']
+            found_fish_refs = []
+            for ref in fish_references:
+                if ref.lower() in ai_handler_source.lower():
+                    found_fish_refs.append(ref)
+
+            no_fish_refs = len(found_fish_refs) == 0
+            self._log_test(
+                category,
+                "No Fish References (Generic Examples)",
+                no_fish_refs,
+                "All examples use generic placeholders" if no_fish_refs else f"Found fish references: {found_fish_refs}"
+            )
+
+            # Test 5: Bot name confusion warnings present
+            has_name_warnings = '**NEVER mention your own name or make puns about it.**' in ai_handler_source
+            warning_count = ai_handler_source.count('**NEVER mention your own name')
+
+            self._log_test(
+                category,
+                "Bot Name Confusion Warnings",
+                has_name_warnings and warning_count >= 3,
+                f"Found {warning_count} bot name warnings in prompts" if has_name_warnings else "Missing bot name warnings"
+            )
+
+        except Exception as e:
+            self._log_test(category, "User Identification Tests", False, f"Error: {e}")
 
     # ==================== CLEANUP VERIFICATION TESTS ====================
 

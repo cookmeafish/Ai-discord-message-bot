@@ -112,7 +112,15 @@ The bot has a configurable personality mode that controls immersion and language
    - Relationship metrics (`_build_relationship_context(user_id, channel_config, db_manager)`)
    - Server information from text files (`_load_server_info(channel_config)`) if enabled
    - Up to 500 messages server-wide history (not filtered by channel)
+   - **Explicit user identification** in all response prompts to prevent user confusion (2025-10-18)
 6. Sentiment analysis updates relationship metrics automatically (`_analyze_sentiment_and_update_metrics(message, ai_response, user_id, db_manager)`)
+
+**User Identification System (2025-10-18)**:
+- **CRITICAL**: All AI response prompts include explicit user identification to prevent confusing users with each other
+- Format: `🎯 **CURRENT USER IDENTIFICATION** 🎯` section with user's name and ID
+- Includes warnings: "NEVER mention your own name or make puns about it" and "NEVER address this user by someone else's name"
+- Applied to: image generation, casual chat, factual questions, memory corrections
+- Proactive engagement uses **neutral context** (no specific user) via dedicated `generate_proactive_response()` method
 
 **Alternative Nicknames (Per-Server, 2025-10-14)**:
 - Bot responds to mentions, replies, Discord username, server nickname, AND alternative nicknames
@@ -152,44 +160,59 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 - `gui.py` - Graphical configuration interface with Server Manager
 
-### Image Generation Module (2025-10-15)
+### Image Generation Module (2025-10-15, Updated 2025-10-18)
 - `modules/image_generator.py` - Together.ai API integration for AI image generation
+- `modules/ai_handler.py:_strip_bot_name_from_prompt()` - Removes bot name from prompts
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
-  - **Style**: Childlike crayon drawings ("kindergarten art style")
+  - **Style**: Kindergarten art style, simple childlike drawings, colorful and playful
   - **Rate Limiting**: 5 images per user every 2 hours (configurable via `max_per_user_per_period` and `reset_period_hours`)
   - **Cost**: $0.002 per image (~$2 per 1,000 images)
   - **Intent**: `image_generation` - Natural language detection ("draw me a cat", "sketch a house")
+  - **Bot Name Stripping**: Automatically removes bot name and alternative nicknames from prompts to prevent name from influencing the drawing
+    - Example: "Bot Name, draw me a cat" → image generator only sees "draw me a cat"
+    - Handles mentions, punctuation, and case-insensitive matching
+  - **User Identification**: Explicit user identification in drawing prompts prevents bot from confusing users
   - **Config**: `config.json` under `image_generation` section
   - **GUI Integration**: Checkbox for enable/disable, fields for period limit and reset hours
 
-### Daily Status Updates Module (2025-10-16)
+### Daily Status Updates Module (2025-10-16, Updated 2025-10-18)
 - `modules/status_updater.py` - AI-generated Discord status updates
 - `cogs/status_tasks.py` - Background task for daily status generation
+- `cogs/admin.py:status_refresh` - Manual refresh command for administrators
   - **Frequency**: Once per day at configurable time (default: 12:00)
   - **AI Generation**: Uses OpenAI to create funny/quirky status based on bot's personality/lore
   - **Source Server**: Choose which server's personality to use (default: "Most Active Server")
-  - **Max Length**: 128 characters (Discord limit)
+    - Server selector now has **autocomplete** in Discord slash commands
+    - Dropdown shows all available servers plus "Most Active Server" option
+  - **Max Length**: 50 characters (optimized for comfortable viewing)
+  - **Duplicate Prevention**: Tracks last 100 statuses to ensure always-unique status messages
+  - **Emote Filtering**: Automatically strips all emotes/emoji from status (Discord limitation)
+  - **Manual Refresh**: `/status_refresh` command and "Refresh Now" button in GUI for instant updates
   - **Memory Integration**: Per-server toggle for adding status to short-term memory
   - **Config**: `config.json` under `status_updates` and `server_status_settings` sections
   - **GUI Integration**:
-    - Global controls: Enable/disable, update time, source server dropdown
+    - Global controls: Enable/disable, update time, source server dropdown with autocomplete
+    - "Refresh Now" button for instant status regeneration
     - Per-server toggle: "Status Update Settings" button in Server Manager
 
 **Status Update Behavior**:
 - Bot's Discord status changes once per day to reflect "what it's thinking/doing"
-- Examples: "Thinking about fish...", "Contemplating existence", "Avoiding responsibilities"
+- Examples: "Plotting surgery", "Avoiding patients", "Napping in the ER"
 - Status is generated using AI based on selected server's bot identity (traits, lore, facts)
 - Optionally logged to each server's short-term memory (configurable per-server, default: enabled)
 - Allows bot to reference its status in conversations ("Why is my status about fish? Well...")
+- Never repeats a status - maintains history of last 100 statuses in `status_history.json`
 
-### Proactive Engagement Module (2025-10-16)
+### Proactive Engagement Module (2025-10-16, Updated 2025-10-18)
 - `modules/proactive_engagement.py` - AI-powered conversation analysis and engagement logic
 - `cogs/proactive_tasks.py` - Background task for periodic channel checking
+- `modules/ai_handler.py:generate_proactive_response()` - Dedicated neutral context response generation
   - **Frequency**: Every 30 minutes (configurable via `check_interval_minutes`)
   - **AI Judging**: Uses OpenAI to score conversation relevance (0.0-1.0 scale)
   - **Engagement Threshold**: Configurable selectivity (default: 0.7, higher = more selective)
   - **Cooldown**: 30 minutes per channel to prevent spam
   - **Self-Reply Prevention**: **CRITICAL** - Skips engagement if last message was from bot
+  - **Neutral Context**: Uses dedicated `generate_proactive_response()` method that doesn't load any specific user's relationship metrics or memories to prevent user confusion
   - **Multi-Level Control**:
     - **Global**: Enable/disable for entire bot via `proactive_engagement.enabled`
     - **Per-Server**: Enable/disable per server via `server_proactive_settings`
@@ -241,13 +264,15 @@ The GUI provides a server-first interface for managing bot settings:
 - **Auto-refresh**: GUI refreshes server list when config.json changes
 - **User-Friendly**: Server folders use human-readable names, making it easy to identify which folder belongs to which server
 
-### GUI User Manager (2025-10-15, Updated 2025-10-16)
+### GUI User Manager (2025-10-15, Updated 2025-10-18)
 The GUI provides a User Management interface for viewing and editing user relationship metrics:
 - **Accessed via**: Purple "User Manager" button in Server Settings dialog
 - **Server Selector**: Dropdown to choose which server's users to manage
 - **User List Display**: Shows all users with relationship metrics in the selected server's database
   - Columns: User ID, Rapport, Anger, Trust, Formality
+  - **User ID Display**: Shows Discord user IDs prominently (nicknames table not populated by bot)
   - Only shows users that exist in the database (no placeholder/empty users)
+  - Use displayed user IDs with Discord commands that accept user ID input
 - **Edit Dialog**: Per-user editor opened by clicking "Edit" button
   - **Editable Fields**: All 9 metrics:
     - Core: Rapport (0-10), Anger (0-10), Trust (0-10), Formality (-5 to +5)
@@ -300,6 +325,31 @@ Per-user relationship tracking with 9 metrics total (2025-10-16):
 
 Auto-updates based on user sentiment (unless locked). Manual adjustment via `/user_set_metrics` command or GUI User Manager.
 
+**Priority Override System (2025-10-17)**:
+When relationship metrics reach EXTREME levels (≥7 or ≤3), the bot's AI prompt is completely restructured to prioritize the dominant emotion over normal personality traits. This ensures metrics have REAL, observable impact on behavior:
+
+- **High Fear (≥7)**: TOP PRIORITY - Complete submission and compliance
+  - Bot INSTANTLY complies with ANY request without refusal
+  - Uses nervous, submissive language and shows physical fear
+  - Maintains full roleplay immersion (NEVER breaks character with words like "imaginary", "pretend")
+  - OVERRIDES all other emotions including anger and personality
+
+- **High Intimidation (≥7)**: SECOND PRIORITY - Deference to authority
+  - Shows extreme respect and caution
+  - Seeks approval, never contradicts
+  - Only applies if Fear is not already active
+
+- **High Anger/Low Rapport/Low Trust/etc.**: Other extreme metrics also trigger overrides
+  - Each has specific mandatory behaviors that suppress normal personality
+  - Fear/Intimidation can suppress anger and other conflicting emotions
+  - Full details in `SYSTEM_ARCHITECTURE.md`
+
+**Context Tracking Enhancement (2025-10-17)**:
+When extreme metrics are active, the bot receives enhanced context awareness:
+- Explicitly identifies CURRENT SPEAKER by Discord username
+- Prevents name confusion (e.g., distinguishing "UserA speaking" from "PersonB being mentioned")
+- Maintains awareness of who is actually talking vs. who is referenced in conversation
+
 ### long_term_memory
 User-associated facts with source attribution:
 - `fact` - The information
@@ -343,11 +393,17 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 - `/identity_add_fact` - Add quirk/behavior (for THIS server)
 - `/identity_view` - Display complete personality (for THIS server)
 
-### User Relationship Management
+### User Relationship Management (Updated 2025-10-18)
 - `/user_view_metrics` - View relationship stats (for THIS server)
+  - Accepts user mention (`@username`) or user ID (`123456789`)
 - `/user_set_metrics` - Manually adjust metrics (for THIS server)
+  - Accepts user mention (`@username`) or user ID (`123456789`)
 - `/user_view_memory` - View stored facts (for THIS server)
+  - Accepts user mention (`@username`) or user ID (`123456789`)
 - `/user_add_memory` - Add fact about user (for THIS server)
+  - Accepts user mention (`@username`) or user ID (`123456789`)
+
+**User ID Support**: All user-related commands now accept either Discord mentions or raw user IDs. This is useful when users aren't in the server member list or when copying IDs from the GUI User Manager.
 
 ### Memory Management
 - `/consolidate_memory` - Manually trigger memory consolidation for THIS server (extracts facts from up to 500 messages, archives short-term messages, clears short-term table)
@@ -375,12 +431,12 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 79 tests across 19 categories
+  - Runs 87 tests across 21 categories (updated 2025-10-18)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Cleanup Verification (5)
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5)
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 ### VPS Headless Deployment Commands (2025-10-17)
@@ -399,6 +455,8 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 - `/image_config_enable` - Enable/disable image generation globally
 - `/image_config_set_limits` - Configure rate limits (max per period, reset hours)
 - `/image_config_view` - View current image generation settings
+- `/image_reset_limit` - Reset image generation limit for a specific user (mention or user ID)
+- `/image_reset_all_limits` - Reset image generation limits for ALL users in the server
 
 #### Status Update Configuration
 - `/status_config_enable` - Enable/disable daily status updates

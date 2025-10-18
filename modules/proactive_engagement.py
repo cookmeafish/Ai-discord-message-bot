@@ -168,19 +168,14 @@ Respond with ONLY a number (e.g., 0.8)."""
             str: Generated response text, or None if generation fails
         """
         try:
-            # Use the existing AI handler to generate response
-            # We'll simulate a message object for the AI handler
-
-            # Get the most recent message as context
-            last_message = recent_messages[-1] if recent_messages else None
-
-            if not last_message:
+            if not recent_messages:
                 return None
 
-            # Generate response using AI handler
-            # Note: This reuses the existing generate_response logic
-            response = await self.bot.ai_handler.generate_response(
-                last_message,
+            # Generate response using AI handler's dedicated proactive method
+            # CRITICAL: This uses NEUTRAL context (no specific user's relationship/memory)
+            # to avoid confusing users with each other
+            response = await self.bot.ai_handler.generate_proactive_response(
+                channel,
                 recent_messages,
                 db_manager
             )

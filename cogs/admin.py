@@ -19,6 +19,38 @@ class AdminCog(commands.Cog):
             return None
         return self.bot.get_server_db(interaction.guild.id, interaction.guild.name)
 
+    async def _resolve_user(self, interaction: discord.Interaction, user_input: str):
+        """
+        Helper to resolve a user from either a user ID or mention.
+
+        Args:
+            interaction: Discord interaction object
+            user_input: String containing either a user ID or mention
+
+        Returns:
+            tuple: (discord.Member or None, error_message or None)
+        """
+        if not interaction.guild:
+            return None, "This command can only be used in a server."
+
+        # Remove mention formatting if present (<@123456789> or <@!123456789>)
+        user_id_str = user_input.strip().replace('<@', '').replace('!', '').replace('>', '')
+
+        # Try to convert to integer
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            return None, f"❌ Invalid user ID or mention: `{user_input}`\nPlease provide a valid user ID (e.g., `123456789`) or mention (e.g., `@username`)."
+
+        # Try to fetch the member from the guild
+        try:
+            member = await interaction.guild.fetch_member(user_id)
+            return member, None
+        except discord.NotFound:
+            return None, f"❌ User with ID `{user_id}` not found in this server.\nMake sure the user is a member of this server."
+        except discord.HTTPException as e:
+            return None, f"❌ Error fetching user: {str(e)}"
+
     # ==================== BOT IDENTITY COMMANDS ====================
 
     @app_commands.command(name="identity_add_trait", description="Add a personality trait to the bot")
@@ -110,19 +142,25 @@ class AdminCog(commands.Cog):
     # ==================== USER RELATIONSHIP COMMANDS ====================
 
     @app_commands.command(name="user_view_metrics", description="View relationship metrics for a user")
-    @app_commands.describe(user="The user to check metrics for")
+    @app_commands.describe(user="The user to check metrics for (mention or user ID)")
     @app_commands.default_permissions(administrator=True)
-    async def user_view_metrics(self, interaction: discord.Interaction, user: discord.Member):
+    async def user_view_metrics(self, interaction: discord.Interaction, user: str):
         """View relationship metrics for a specific user."""
         db_manager = self._get_db(interaction)
         if not db_manager:
             await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
             return
 
-        metrics = db_manager.get_relationship_metrics(user.id)
+        # Resolve user from ID or mention
+        member, error = await self._resolve_user(interaction, user)
+        if error:
+            await interaction.response.send_message(error, ephemeral=True)
+            return
+
+        metrics = db_manager.get_relationship_metrics(member.id)
 
         embed = discord.Embed(
-            title=f"📊 Relationship Metrics: {user.display_name}",
+            title=f"📊 Relationship Metrics: {member.display_name}",
             color=discord.Color.green()
         )
 
@@ -167,7 +205,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(name="user_set_metrics", description="Manually set relationship metrics for a user")
     @app_commands.describe(
-        user="The user to modify",
+        user="The user to modify (mention or user ID)",
         rapport="Rapport level (0-10)",
         trust="Trust level (0-10)",
         anger="Anger level (0-10)",
@@ -182,7 +220,7 @@ class AdminCog(commands.Cog):
     async def user_set_metrics(
         self,
         interaction: discord.Interaction,
-        user: discord.Member,
+        user: str,
         rapport: app_commands.Range[int, 0, 10] = None,
         trust: app_commands.Range[int, 0, 10] = None,
         anger: app_commands.Range[int, 0, 10] = None,
@@ -197,6 +235,12 @@ class AdminCog(commands.Cog):
         db_manager = self._get_db(interaction)
         if not db_manager:
             await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        # Resolve user from ID or mention
+        member, error = await self._resolve_user(interaction, user)
+        if error:
+            await interaction.response.send_message(error, ephemeral=True)
             return
 
         updates = {}
@@ -226,38 +270,44 @@ class AdminCog(commands.Cog):
             )
             return
 
-        db_manager.update_relationship_metrics(user.id, respect_locks=False, **updates)
+        db_manager.update_relationship_metrics(member.id, respect_locks=False, **updates)
 
         changes_text = "\n".join([f"• **{k.capitalize()}**: {v}" for k, v in updates.items()])
 
         await interaction.response.send_message(
-            f"✅ Updated metrics for **{user.display_name}**:\n{changes_text}\n\nChanges take effect immediately.",
+            f"✅ Updated metrics for **{member.display_name}**:\n{changes_text}\n\nChanges take effect immediately.",
             ephemeral=True
         )
 
     # ==================== USER MEMORY COMMANDS ====================
 
     @app_commands.command(name="user_view_memory", description="View stored facts about a user")
-    @app_commands.describe(user="The user to view memories for")
+    @app_commands.describe(user="The user to view memories for (mention or user ID)")
     @app_commands.default_permissions(administrator=True)
-    async def user_view_memory(self, interaction: discord.Interaction, user: discord.Member):
+    async def user_view_memory(self, interaction: discord.Interaction, user: str):
         """View all stored long-term memory facts about a user."""
         db_manager = self._get_db(interaction)
         if not db_manager:
             await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
             return
 
-        memories = db_manager.get_long_term_memory(user.id)
+        # Resolve user from ID or mention
+        member, error = await self._resolve_user(interaction, user)
+        if error:
+            await interaction.response.send_message(error, ephemeral=True)
+            return
+
+        memories = db_manager.get_long_term_memory(member.id)
 
         if not memories:
             await interaction.response.send_message(
-                f"ℹ️ No stored memories found for **{user.display_name}**.",
+                f"ℹ️ No stored memories found for **{member.display_name}**.",
                 ephemeral=True
             )
             return
 
         embed = discord.Embed(
-            title=f"🧠 Stored Memories: {user.display_name}",
+            title=f"🧠 Stored Memories: {member.display_name}",
             description=f"Total facts: {len(memories)}",
             color=discord.Color.purple()
         )
@@ -278,30 +328,84 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(name="user_add_memory", description="Manually add a memory fact about a user")
     @app_commands.describe(
-        user="The user this fact is about",
+        user="The user this fact is about (mention or user ID)",
         fact="The fact to remember"
     )
     @app_commands.default_permissions(administrator=True)
-    async def user_add_memory(self, interaction: discord.Interaction, user: discord.Member, fact: str):
+    async def user_add_memory(self, interaction: discord.Interaction, user: str, fact: str):
         """Manually add a long-term memory fact about a user."""
         db_manager = self._get_db(interaction)
         if not db_manager:
             await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
             return
 
+        # Resolve user from ID or mention
+        member, error = await self._resolve_user(interaction, user)
+        if error:
+            await interaction.response.send_message(error, ephemeral=True)
+            return
+
         db_manager.add_long_term_memory(
-            user.id,
+            member.id,
             fact,
             interaction.user.id,
             interaction.user.display_name
         )
 
         await interaction.response.send_message(
-            f"✅ Added memory for **{user.display_name}**: \"{fact}\"",
+            f"✅ Added memory for **{member.display_name}**: \"{fact}\"",
             ephemeral=True
         )
 
     # ==================== GLOBAL STATE COMMANDS ====================
+
+    @app_commands.command(name="refresh_nicknames", description="Refresh cached nicknames for all server members")
+    @app_commands.default_permissions(administrator=True)
+    async def refresh_nicknames(self, interaction: discord.Interaction):
+        """Refresh the nicknames table by fetching current member display names."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        db_manager = self._get_db(interaction)
+        if not db_manager:
+            await interaction.response.send_message("❌ Database error.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            from datetime import datetime
+            timestamp = datetime.now().isoformat()
+            updated_count = 0
+
+            # Get all members in the guild
+            for member in interaction.guild.members:
+                try:
+                    # Log the nickname
+                    cursor = db_manager.conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO nicknames (user_id, nickname, timestamp) VALUES (?, ?, ?)",
+                        (member.id, member.display_name, timestamp)
+                    )
+                    updated_count += 1
+                except Exception as e:
+                    # Skip if error (probably already exists or other issue)
+                    pass
+
+            db_manager.conn.commit()
+
+            await interaction.followup.send(
+                f"✅ Refreshed nicknames for **{updated_count}** members in this server.\n"
+                f"The GUI User Manager will now display their current usernames.",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Error refreshing nicknames: {str(e)}",
+                ephemeral=True
+            )
 
     @app_commands.command(name="mood_set", description="Set the bot's global mood state")
     @app_commands.describe(
@@ -474,7 +578,7 @@ class AdminCog(commands.Cog):
     # ==================== SERVER SETTINGS COMMANDS ====================
 
     @app_commands.command(name="server_add_nickname", description="Add an alternative nickname for the bot in this server")
-    @app_commands.describe(nickname="Nickname the bot should respond to (e.g., 'Dr. Fish')")
+    @app_commands.describe(nickname="Nickname the bot should respond to (e.g., 'BotName', 'Assistant')")
     @app_commands.default_permissions(administrator=True)
     async def server_add_nickname(self, interaction: discord.Interaction, nickname: str):
         """Add an alternative nickname the bot will respond to in this server."""
@@ -735,7 +839,7 @@ class AdminCog(commands.Cog):
         )
 
     @app_commands.command(name="config_add_global_nickname", description="Add a global alternative nickname")
-    @app_commands.describe(nickname="Nickname the bot should respond to globally (e.g., 'drfish')")
+    @app_commands.describe(nickname="Nickname the bot should respond to globally (e.g., 'botname', 'assistant')")
     @app_commands.default_permissions(administrator=True)
     async def config_add_global_nickname(self, interaction: discord.Interaction, nickname: str):
         """Add a global alternative nickname that works on all servers."""
@@ -916,6 +1020,93 @@ class AdminCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="image_reset_limit", description="Reset image generation limit for a user")
+    @app_commands.describe(user="The user to reset limits for (mention or user ID)")
+    @app_commands.default_permissions(administrator=True)
+    async def image_reset_limit(self, interaction: discord.Interaction, user: str):
+        """Reset a user's image generation rate limits."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        db_manager = self._get_db(interaction)
+        if not db_manager:
+            await interaction.response.send_message("❌ Database error.", ephemeral=True)
+            return
+
+        # Resolve user from ID or mention
+        member, error = await self._resolve_user(interaction, user)
+        if error:
+            await interaction.response.send_message(error, ephemeral=True)
+            return
+
+        try:
+            # Delete the user's image stats to reset their limits
+            cursor = db_manager.conn.cursor()
+            cursor.execute("DELETE FROM user_image_stats WHERE user_id = ?", (member.id,))
+            db_manager.conn.commit()
+            cursor.close()
+
+            config = self.bot.config_manager.get_config()
+            img_config = config.get('image_generation', {})
+            max_per_period = img_config.get('max_per_user_per_period', 5)
+            reset_period = img_config.get('reset_period_hours', 2)
+
+            await interaction.response.send_message(
+                f"✅ Reset image generation limits for **{member.display_name}**.\n"
+                f"They can now generate up to **{max_per_period}** images in the next **{reset_period}** hours.",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ Error resetting image limits: {str(e)}",
+                ephemeral=True
+            )
+
+    @app_commands.command(name="image_reset_all_limits", description="Reset image generation limits for ALL users in this server")
+    @app_commands.default_permissions(administrator=True)
+    async def image_reset_all_limits(self, interaction: discord.Interaction):
+        """Reset image generation rate limits for all users in the server."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        db_manager = self._get_db(interaction)
+        if not db_manager:
+            await interaction.response.send_message("❌ Database error.", ephemeral=True)
+            return
+
+        try:
+            # Count how many users will be affected
+            cursor = db_manager.conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM user_image_stats")
+            count_result = cursor.fetchone()
+            users_affected = count_result[0] if count_result else 0
+
+            # Delete all user image stats to reset everyone's limits
+            cursor.execute("DELETE FROM user_image_stats")
+            db_manager.conn.commit()
+            cursor.close()
+
+            config = self.bot.config_manager.get_config()
+            img_config = config.get('image_generation', {})
+            max_per_period = img_config.get('max_per_user_per_period', 5)
+            reset_period = img_config.get('reset_period_hours', 2)
+
+            await interaction.response.send_message(
+                f"✅ Reset image generation limits for **ALL users** in this server.\n"
+                f"**{users_affected}** user(s) affected.\n"
+                f"Everyone can now generate up to **{max_per_period}** images in the next **{reset_period}** hours.",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ Error resetting all image limits: {str(e)}",
+                ephemeral=True
+            )
+
     # ==================== STATUS UPDATE CONFIGURATION COMMANDS ====================
 
     @app_commands.command(name="status_config_enable", description="Enable or disable daily status updates")
@@ -984,8 +1175,22 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
+    async def server_name_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete function for server names."""
+        # Get list of all servers the bot is in
+        server_names = ["Most Active Server"] + [guild.name for guild in self.bot.guilds]
+
+        # Filter based on what user has typed so far
+        if current:
+            filtered = [name for name in server_names if current.lower() in name.lower()]
+            return [app_commands.Choice(name=name, value=name) for name in filtered[:25]]
+        else:
+            # Return first 25 servers if no input yet
+            return [app_commands.Choice(name=name, value=name) for name in server_names[:25]]
+
     @app_commands.command(name="status_config_set_source_server", description="Choose which server's personality generates status")
     @app_commands.describe(server_name="Server name (or 'Most Active Server' for automatic selection)")
+    @app_commands.autocomplete(server_name=server_name_autocomplete)
     @app_commands.default_permissions(administrator=True)
     async def status_config_set_source_server(self, interaction: discord.Interaction, server_name: str):
         """Set which server's personality should be used for status generation."""
@@ -1032,6 +1237,68 @@ class AdminCog(commands.Cog):
         embed.add_field(name="Source Server", value=source_server, inline=True)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="status_refresh", description="Immediately refresh the bot's status with a new AI-generated message")
+    @app_commands.default_permissions(administrator=True)
+    async def status_refresh(self, interaction: discord.Interaction):
+        """Manually trigger an immediate status update."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        # Check if status updates are enabled
+        config = self.bot.config_manager.get_config()
+        status_config = config.get('status_updates', {})
+
+        if not status_config.get('enabled', False):
+            await interaction.response.send_message(
+                "⚠️ Status updates are currently disabled.\n"
+                "Use `/status_config_enable enabled:true` to enable them first.",
+                ephemeral=True
+            )
+            return
+
+        # Defer response since status generation might take a moment
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            # Get the status updater from the bot
+            from modules.status_updater import StatusUpdater
+            from modules.logging_manager import get_logger
+            logger = get_logger()
+
+            logger.info(f"Manual status refresh triggered by {interaction.user.name}")
+            status_updater = StatusUpdater(self.bot)
+
+            # Generate and update status
+            await status_updater.generate_and_update_status()
+
+            # Get the current status to show in response
+            current_status = "Unknown"
+            if self.bot.activity:
+                if hasattr(self.bot.activity, 'name') and self.bot.activity.name:
+                    current_status = self.bot.activity.name
+                elif hasattr(self.bot.activity, 'state') and self.bot.activity.state:
+                    current_status = self.bot.activity.state
+
+            logger.info(f"Status refresh completed. New status: {current_status}")
+
+            await interaction.followup.send(
+                f"✅ Status refreshed successfully!\n\n"
+                f"**New Status:** {current_status}",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            from modules.logging_manager import get_logger
+            logger = get_logger()
+            logger.error(f"Error in status_refresh command: {e}", exc_info=True)
+
+            await interaction.followup.send(
+                f"❌ Error refreshing status: {str(e)}\n\n"
+                f"Please check the bot logs for more details.",
+                ephemeral=True
+            )
 
     # ==================== CHANNEL CONFIGURATION COMMANDS ====================
 

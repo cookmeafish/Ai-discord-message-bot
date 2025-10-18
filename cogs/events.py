@@ -27,7 +27,7 @@ class EventsCog(commands.Cog):
         Converts to lowercase for case-insensitive matching.
 
         Examples:
-            "Dr. Fish" -> "drfish"
+            "Bot Name" -> "botname"
             "Gordon Ramsay" -> "gordonramsay"
             "shark-bot" -> "sharkbot"
         """

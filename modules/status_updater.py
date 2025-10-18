@@ -3,6 +3,7 @@
 import discord
 import openai
 import os
+import json
 from datetime import datetime
 from database.multi_db_manager import MultiDBManager
 from modules.config_manager import ConfigManager
@@ -11,7 +12,11 @@ class StatusUpdater:
     """
     Handles daily AI-generated status updates for the bot.
     Generates funny/quirky status messages based on bot's personality/lore.
+    Prevents duplicate statuses by tracking history.
     """
+
+    STATUS_HISTORY_FILE = "status_history.json"
+    MAX_HISTORY_SIZE = 100  # Keep last 100 statuses to prevent duplicates
 
     def __init__(self, bot):
         self.bot = bot
@@ -21,34 +26,67 @@ class StatusUpdater:
         # Set up OpenAI API key
         openai.api_key = os.getenv('OPENAI_API_KEY')
 
+    def _load_status_history(self):
+        """Load the history of previously generated statuses."""
+        try:
+            if os.path.exists(self.STATUS_HISTORY_FILE):
+                with open(self.STATUS_HISTORY_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return []
+        except Exception as e:
+            print(f"Error loading status history: {e}")
+            return []
+
+    def _save_status_history(self, history):
+        """Save the status history, keeping only the most recent entries."""
+        try:
+            # Limit history size
+            if len(history) > self.MAX_HISTORY_SIZE:
+                history = history[-self.MAX_HISTORY_SIZE:]
+
+            with open(self.STATUS_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                json.dump(history, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error saving status history: {e}")
+
+    def _is_duplicate_status(self, status, history):
+        """Check if a status already exists in history (case-insensitive)."""
+        status_lower = status.lower().strip()
+        return any(s.lower().strip() == status_lower for s in history)
+
     async def generate_and_update_status(self):
         """
         Generates a new AI status and updates the bot's Discord status.
         Optionally logs the status to selected servers' short-term memory.
         """
+        from modules.logging_manager import get_logger
+        logger = get_logger()
+
         try:
             config = self.config_manager.get_config()
             status_config = config.get('status_updates', {})
 
             # Check if status updates are enabled
             if not status_config.get('enabled', False):
-                print("Status updates are disabled in config")
+                logger.warning("Status updates are disabled in config")
                 return
 
             # Get source server for personality data
             source_server_name = status_config.get('source_server_name', 'Most Active Server')
+            logger.info(f"Generating status using personality from: {source_server_name}")
 
             # Get guild_id for the source server
             source_guild_id = await self._get_source_guild_id(source_server_name)
 
             if not source_guild_id:
-                print(f"Could not find source server: {source_server_name}")
+                logger.error(f"Could not find source server: {source_server_name}")
+                logger.info(f"Available servers: {[guild.name for guild in self.bot.guilds]}")
                 return
 
             # Get server database
             guild = self.bot.get_guild(int(source_guild_id))
             if not guild:
-                print(f"Bot is not in guild {source_guild_id}")
+                logger.error(f"Bot is not in guild {source_guild_id}")
                 return
 
             db_manager = self.bot.get_server_db(source_guild_id, guild.name)
@@ -58,24 +96,54 @@ class StatusUpdater:
             lore = db_manager.get_bot_identity('lore')
             facts = db_manager.get_bot_identity('fact')
 
+            logger.info(f"Loaded personality: {len(personality_traits)} traits, {len(lore)} lore, {len(facts)} facts")
+
             # Combine personality data
             personality_context = f"Personality traits: {', '.join(personality_traits)}\n"
             personality_context += f"Lore/backstory: {', '.join(lore)}\n"
             personality_context += f"Facts/quirks: {', '.join(facts)}"
 
-            # Generate status using AI
-            new_status = await self._generate_status_with_ai(personality_context)
+            # Load status history to prevent duplicates
+            status_history = self._load_status_history()
+            logger.info(f"Loaded {len(status_history)} previous statuses from history")
+
+            # Generate unique status with retry logic
+            max_retries = 5
+            new_status = None
+
+            for attempt in range(max_retries):
+                candidate_status = await self._generate_status_with_ai(personality_context)
+
+                if not candidate_status:
+                    logger.error("Failed to generate status - AI returned None")
+                    break
+
+                # Check if this status is a duplicate
+                if self._is_duplicate_status(candidate_status, status_history):
+                    logger.warning(f"Attempt {attempt + 1}: Generated duplicate status '{candidate_status}', retrying...")
+                    continue
+                else:
+                    # Found a unique status!
+                    new_status = candidate_status
+                    logger.info(f"Generated unique status on attempt {attempt + 1}: {new_status}")
+                    break
 
             if new_status:
                 # Update bot's Discord status
                 await self.bot.change_presence(activity=discord.CustomActivity(name=new_status))
-                print(f"✅ Updated bot status to: {new_status}")
+                logger.info(f"✅ Updated bot status to: {new_status}")
+
+                # Add to history to prevent future duplicates
+                status_history.append(new_status)
+                self._save_status_history(status_history)
 
                 # Add to short-term memory for servers that have it enabled
                 await self._add_status_to_memory(new_status, source_guild_id)
+            else:
+                logger.error("Failed to generate unique status after all retries")
 
         except Exception as e:
-            print(f"Error updating status: {e}")
+            logger.error(f"Error updating status: {e}", exc_info=True)
 
     async def _get_source_guild_id(self, source_server_name):
         """
@@ -86,9 +154,9 @@ class StatusUpdater:
             # Find the most active server (most messages in short-term memory)
             return await self._find_most_active_server()
         else:
-            # Find guild_id by server name
+            # Find guild_id by server name (case-insensitive matching)
             for guild in self.bot.guilds:
-                if guild.name == source_server_name:
+                if guild.name.lower() == source_server_name.lower():
                     return str(guild.id)
             return None
 
@@ -117,7 +185,7 @@ class StatusUpdater:
     async def _generate_status_with_ai(self, personality_context):
         """
         Uses OpenAI to generate a funny/quirky status based on bot's personality.
-        Returns the generated status string (max 128 characters for Discord).
+        Returns the generated status string (max 50 characters for comfortable viewing).
         """
         try:
             config = self.config_manager.get_config()
@@ -128,29 +196,34 @@ class StatusUpdater:
 - A funny, quirky thought or activity the bot is "doing" or "thinking about"
 - Based on the bot's personality and lore below
 - Natural and in-character
-- MAX 128 characters (Discord limit)
+- MAX 50 characters (must be short and punchy!)
+- NO emotes, NO emoji, NO custom Discord emotes (like :emotename:)
 - No quotes, just the raw status text
-- Examples: "Thinking about fish...", "Contemplating existence", "Avoiding responsibilities"
+- Examples: "Plotting surgery", "Avoiding patients", "Napping in the ER"
 
 {personality_context}
 
-Generate a single status message that reflects something the bot might be doing or thinking based on its personality."""
+Generate a single SHORT status message (under 50 characters) that reflects something the bot might be doing or thinking based on its personality. Do NOT use any emotes or emoji."""
 
             response = openai.chat.completions.create(
                 model=model,
                 messages=[{"role": "system", "content": system_prompt}],
-                max_tokens=40,
+                max_tokens=20,  # Reduced for shorter output
                 temperature=0.9  # Higher temperature for more creative/varied statuses
             )
 
             status = response.choices[0].message.content.strip()
 
-            # Ensure it fits Discord's 128 character limit
-            if len(status) > 128:
-                status = status[:125] + "..."
-
             # Remove quotes if AI added them
             status = status.strip('"').strip("'")
+
+            # Strip any emotes that slipped through (format: :emotename:)
+            import re
+            status = re.sub(r':[a-zA-Z0-9_]+:', '', status).strip()
+
+            # Ensure it fits the 50 character limit
+            if len(status) > 50:
+                status = status[:47] + "..."
 
             return status
 

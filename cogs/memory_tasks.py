@@ -109,7 +109,7 @@ User's messages:
 Example output (facts about THIS user):
 FACT: Loves building houses in Arizona
 FACT: Finds building houses to be hard work
-FACT: Favorite food is jellyfish stuffed inside a red turkey
+FACT: Favorite food is pizza
 """
 
                 # Call OpenAI API
@@ -233,54 +233,8 @@ Response (number or NO_CONTRADICTION):"""
             "archive_filename": archive_filename
         }
 
-    @app_commands.command(name="consolidate_memory", description="Manually trigger memory consolidation (Admin only)")
-    @app_commands.default_permissions(administrator=True)
-    async def consolidate_memory_command(self, interaction: discord.Interaction):
-        """
-        Admin slash command to manually trigger memory consolidation.
-        Useful for testing or manual runs.
-        """
-        await interaction.response.defer(ephemeral=True)
-
-        # Get server-specific database
-        if not interaction.guild:
-            await interaction.followup.send(
-                "❌ This command can only be used in a server.",
-                ephemeral=True
-            )
-            return
-
-        db_manager = self.bot.get_server_db(interaction.guild.id, interaction.guild.name)
-        if not db_manager:
-            await interaction.followup.send(
-                "❌ Could not access server database.",
-                ephemeral=True
-            )
-            return
-
-        try:
-            results = await self.consolidate_memories(interaction.guild.id, db_manager)
-
-            response = f"**Memory Consolidation Complete**\n"
-            response += f"- Users Processed: {results['users_processed']}\n"
-            response += f"- Memories Added: {results['memories_added']}\n"
-            response += f"- Errors: {results['errors']}\n\n"
-            response += f"**Short-Term Memory Archive**\n"
-            response += f"- Messages Archived: {results['archived_count']}\n"
-            response += f"- Messages Deleted: {results['deleted_count']}\n"
-
-            if results['archive_filename']:
-                response += f"- Archive File: `{results['archive_filename']}`"
-            else:
-                response += f"- No messages to archive"
-
-            await interaction.followup.send(response, ephemeral=True)
-
-        except Exception as e:
-            await interaction.followup.send(
-                f"Error during memory consolidation: {e}",
-                ephemeral=True
-            )
+    # Note: The /consolidate_memory slash command is defined in cogs/admin.py
+    # This avoids duplicate command registration while keeping the consolidation logic here
 
     # Commented out automatic daily task - uncomment when ready
     # @tasks.loop(hours=24)
