@@ -177,9 +177,11 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 
 ### Daily Status Updates Module (2025-10-16, Updated 2025-10-18)
 - `modules/status_updater.py` - AI-generated Discord status updates
-- `cogs/status_tasks.py` - Background task for daily status generation
+- `cogs/status_tasks.py` - Background task for daily status generation and memory consolidation scheduling
 - `cogs/admin.py:status_refresh` - Manual refresh command for administrators
   - **Frequency**: Once per day at configurable time (default: 12:00)
+  - **Automatic Execution**: Task starts automatically when bot launches (line 21 in status_tasks.py)
+  - **Memory Consolidation**: Automatically triggers memory consolidation for ALL servers 5 minutes after status update
   - **AI Generation**: Uses OpenAI to create funny/quirky status based on bot's personality/lore
   - **Source Server**: Choose which server's personality to use (default: "Most Active Server")
     - Server selector now has **autocomplete** in Discord slash commands
