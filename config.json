@@ -48,7 +48,7 @@
         "enabled": true,
         "max_per_user_per_period": 5,
         "reset_period_hours": 2,
-        "style_prefix": "Colored pencil and marker drawing, vibrant colors, artistic shading, rich colors, clean white background, no notebook, no spiral binding, no borders",
+        "style_prefix": "Vibrant colorful illustration, artistic shading, rich colors, smooth blend, clean white background, isolated subject, no art supplies, no sketchbook, no spiral binding, no pencils, no borders, no frames",
         "model": "black-forest-labs/FLUX.1-schnell",
         "width": 512,
         "height": 512,
