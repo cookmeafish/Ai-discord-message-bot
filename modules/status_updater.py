@@ -130,7 +130,8 @@ class StatusUpdater:
 
             if new_status:
                 # Update bot's Discord status
-                await self.bot.change_presence(activity=discord.CustomActivity(name=new_status))
+                # CustomActivity doesn't use 'name' parameter, just pass the status directly
+                await self.bot.change_presence(activity=discord.CustomActivity(new_status))
                 logger.info(f"✅ Updated bot status to: {new_status}")
 
                 # Add to history to prevent future duplicates
