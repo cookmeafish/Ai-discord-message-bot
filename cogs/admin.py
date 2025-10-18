@@ -1276,10 +1276,11 @@ class AdminCog(commands.Cog):
             # Get the current status to show in response
             current_status = "Unknown"
             if self.bot.activity:
-                if hasattr(self.bot.activity, 'name') and self.bot.activity.name:
-                    current_status = self.bot.activity.name
-                elif hasattr(self.bot.activity, 'state') and self.bot.activity.state:
+                # CustomActivity stores text in 'state' attribute, not 'name'
+                if hasattr(self.bot.activity, 'state') and self.bot.activity.state:
                     current_status = self.bot.activity.state
+                elif hasattr(self.bot.activity, 'name') and self.bot.activity.name:
+                    current_status = self.bot.activity.name
 
             logger.info(f"Status refresh completed. New status: {current_status}")
 
