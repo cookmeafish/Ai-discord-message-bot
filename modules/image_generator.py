@@ -32,7 +32,7 @@ class ImageGenerator:
         # Load configuration or use defaults
         self.enabled = True
         self.max_per_day = 5
-        self.style_prefix = "Hand-drawn sketch, pencil drawing style, artistic shading, natural sketch lines, traditional art"
+        self.style_prefix = "Hand-drawn sketch with vibrant colors, colored pencil and marker style, artistic shading, rich colors, natural sketch lines, traditional art"
         self.model = "black-forest-labs/FLUX.1-schnell"
 
         if config_manager:
