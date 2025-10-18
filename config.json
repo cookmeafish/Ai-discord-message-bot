@@ -48,7 +48,7 @@
         "enabled": true,
         "max_per_user_per_period": 5,
         "reset_period_hours": 2,
-        "style_prefix": "Hand-drawn sketch with vibrant colors, colored pencil and marker style, artistic shading, rich colors, natural sketch lines, traditional art",
+        "style_prefix": "Colored pencil and marker drawing, vibrant colors, artistic shading, rich colors, clean white background, no notebook, no spiral binding, no borders",
         "model": "black-forest-labs/FLUX.1-schnell",
         "width": 512,
         "height": 512,
