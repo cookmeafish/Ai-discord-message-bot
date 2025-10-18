@@ -1026,9 +1026,36 @@ LORE: Worked as a marine biologist before becoming self-aware
                 # Strip bot name and alternative nicknames from the prompt
                 clean_prompt = self._strip_bot_name_from_prompt(message.content, message.guild)
 
-                # Generate the image
+                # Check if any users are mentioned in the prompt and get their facts
+                image_context = None
+                if message.guild:
+                    mentioned_users = []
+                    prompt_lower = clean_prompt.lower()
+
+                    # Check all guild members to see if they're mentioned
+                    for member in message.guild.members:
+                        # Check display name and username
+                        if (member.display_name.lower() in prompt_lower or
+                            member.name.lower() in prompt_lower):
+                            mentioned_users.append(member)
+
+                    # If users are mentioned, pull their facts from the database
+                    if mentioned_users:
+                        context_parts = []
+                        for member in mentioned_users:
+                            # Get facts about this user from long-term memory
+                            user_facts = db_manager.get_user_facts(member.id, limit=10)
+                            if user_facts:
+                                facts_text = ", ".join([fact['fact'] for fact in user_facts])
+                                context_parts.append(f"{member.display_name}: {facts_text}")
+
+                        if context_parts:
+                            image_context = ". ".join(context_parts)
+                            print(f"AI Handler: Adding context to image generation: {image_context}")
+
+                # Generate the image with context
                 print(f"AI Handler: Generating image for prompt: {clean_prompt}")
-                image_bytes, error_msg = await self.image_generator.generate_image(clean_prompt)
+                image_bytes, error_msg = await self.image_generator.generate_image(clean_prompt, image_context)
 
                 if error_msg:
                     print(f"AI Handler: Image generation failed: {error_msg}")

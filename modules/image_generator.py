@@ -32,7 +32,7 @@ class ImageGenerator:
         # Load configuration or use defaults
         self.enabled = True
         self.max_per_day = 5
-        self.style_prefix = "Vibrant colorful illustration, artistic shading, rich colors, smooth blend, clean white background, isolated subject, no art supplies, no sketchbook, no spiral binding, no pencils, no borders, no frames"
+        self.style_prefix = "Epic badass illustration, dramatic lighting, bold shadows, powerful composition, intense atmosphere"
         self.model = "black-forest-labs/FLUX.1-schnell"
 
         if config_manager:
@@ -52,15 +52,16 @@ class ImageGenerator:
         """
         return self.client is not None and self.enabled
 
-    def _build_prompt(self, user_prompt: str) -> str:
+    def _build_prompt(self, user_prompt: str, context: str = None) -> str:
         """
-        Build the full prompt with childlike style prefix.
+        Build the full prompt with style prefix and optional context.
 
         Args:
             user_prompt: The user's drawing request
+            context: Optional context about the subject (e.g., facts about a person)
 
         Returns:
-            str: Full prompt with style prefix
+            str: Full prompt with style prefix and context
         """
         # Clean up the user prompt
         user_prompt = user_prompt.strip()
@@ -74,16 +75,20 @@ class ImageGenerator:
                 user_prompt = user_prompt[len(prefix):].strip()
                 break
 
-        # Build full prompt
-        full_prompt = f"{self.style_prefix}, {user_prompt}"
+        # Build full prompt with optional context
+        if context:
+            full_prompt = f"{self.style_prefix}, {user_prompt}. {context}"
+        else:
+            full_prompt = f"{self.style_prefix}, {user_prompt}"
         return full_prompt
 
-    async def generate_image(self, user_prompt: str) -> Tuple[Optional[bytes], Optional[str]]:
+    async def generate_image(self, user_prompt: str, context: str = None) -> Tuple[Optional[bytes], Optional[str]]:
         """
-        Generate an image based on the user's prompt.
+        Generate an image based on the user's prompt with optional context.
 
         Args:
             user_prompt: The user's drawing request
+            context: Optional context about the subject (e.g., facts about a person)
 
         Returns:
             Tuple of (image_bytes, error_message):
@@ -94,8 +99,8 @@ class ImageGenerator:
             return None, "Image generation is currently unavailable. API key not configured."
 
         try:
-            # Build the full prompt
-            full_prompt = self._build_prompt(user_prompt)
+            # Build the full prompt with context
+            full_prompt = self._build_prompt(user_prompt, context)
             print(f"Generating image with prompt: {full_prompt}")
 
             # Generate image using Together.ai
