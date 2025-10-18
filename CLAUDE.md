@@ -164,8 +164,9 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `modules/image_generator.py` - Together.ai API integration for AI image generation
 - `modules/ai_handler.py:_strip_bot_name_from_prompt()` - Removes bot name from prompts
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
-  - **Style**: Epic badass illustration with dramatic lighting, bold shadows, powerful composition
+  - **Style**: User-determined (prompt dictates style - "cute kitten" = cute, "badass dragon" = badass, etc.)
   - **Context-Aware**: Automatically pulls facts about mentioned users from the database for accurate depictions
+  - **Quality**: High quality detailed illustrations with minimal style forcing
   - **Rate Limiting**: 5 images per user every 2 hours (configurable via `max_per_user_per_period` and `reset_period_hours`)
   - **Cost**: $0.002 per image (~$2 per 1,000 images)
   - **Intent**: `image_generation` - Natural language detection ("draw me a cat", "sketch a house")

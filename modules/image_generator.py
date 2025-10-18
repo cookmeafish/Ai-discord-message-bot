@@ -32,7 +32,7 @@ class ImageGenerator:
         # Load configuration or use defaults
         self.enabled = True
         self.max_per_day = 5
-        self.style_prefix = "Epic badass illustration, dramatic lighting, bold shadows, powerful composition, intense atmosphere"
+        self.style_prefix = "High quality detailed illustration"
         self.model = "black-forest-labs/FLUX.1-schnell"
 
         if config_manager:
