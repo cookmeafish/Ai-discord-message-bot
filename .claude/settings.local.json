@@ -9,7 +9,8 @@
       "Bash(sqlite3:*)",
       "Bash(git add -A)",
       "Bash(git commit -m \"Fix bot name puns in image responses and update art style\n\nChanges:\n- modules/ai_handler.py: Add stronger warnings against using name parts as adjectives\n- Prevent bot from saying things like \"\"fierce fish-lion\"\" when name contains \"\"fish\"\"\n- config.json: Change style from childlike to modern digital illustration\n- modules/image_generator.py: Update default style prefix\n- CLAUDE.md: Document new art style\n\nArt Style Changed:\n- Before: Kindergarten art style, childlike drawings\n- After: Digital illustration, clean lines, vibrant colors, modern art style\n\nPrevents:\n- Bot using parts of its name as adjectives (\"\"fishy\"\", \"\"fierce fish-lion\"\")\n- Childlike/cartoon aesthetic when user wants normal drawings\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(git commit -m \"Change art style to hand-drawn sketch instead of vector art\n\nChanges:\n- config.json: Update style_prefix to hand-drawn sketch style\n- modules/image_generator.py: Update default style to traditional art\n- CLAUDE.md: Document hand-drawn sketch style\n\nArt Style Changed:\n- Before: Digital illustration, clean lines, vibrant colors (vector look)\n- After: Hand-drawn sketch, pencil drawing style, artistic shading, traditional art\n\nResult:\n- Drawings will look like real pencil/pen sketches\n- Natural sketch lines instead of perfect vector paths\n- Artistic shading for depth and texture\n- Traditional art aesthetic instead of digital graphics\")"
     ],
     "deny": [],
     "ask": []
