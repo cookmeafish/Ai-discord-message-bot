@@ -137,13 +137,20 @@ The bot has a configurable personality mode that controls immersion and language
 - **Benefits**: Prevents over-talking in low-energy chats, matches natural conversation flow
 
 **Roleplay Formatting Conditional Activation (2025-10-19)**:
-- **Purpose**: Bot only uses roleplay formatting (*actions in italics*) when user is ALSO roleplaying
-- **Detection**: Checks last 3 user messages for asterisks (roleplay markers)
-- **Behavior**:
-  - If user uses asterisks → Bot uses roleplay formatting
-  - If user doesn't use asterisks → Bot uses plain text (no italics)
-- **Implementation**: `_apply_roleplay_formatting()` accepts recent user messages and checks for roleplay markers
-- **Benefits**: Prevents unwanted roleplay responses when user is having normal conversation
+- **Purpose**: Smart detection of roleplay context to use formatting appropriately
+- **Uses formatting when**:
+  - User explicitly uses asterisks (checks last 7 messages for roleplay markers)
+  - User engages in immersive scenarios (e.g., "make me tea", "pet you") - normal message length
+  - Default: ON when immersive_character mode is enabled
+- **Disables formatting when**:
+  - User is having very casual chat with short messages (avg ≤3 words: "hi", "lol", "yeah")
+  - AND user hasn't used asterisks in last 7 messages
+- **Examples**:
+  - "Dr fish hi" (2 words, no asterisks) → No roleplay ✓
+  - "make me a cup of tea" (5 words, immersive request) → Use roleplay ✓
+  - "*pets you*" (explicit roleplay) → Use roleplay ✓
+- **Implementation**: `_apply_roleplay_formatting()` uses dual detection (asterisks OR message length)
+- **Benefits**: Prevents unwanted roleplay in casual chat while preserving immersive interactions
 
 **Alternative Nicknames (Per-Server, 2025-10-14)**:
 - Bot responds to mentions, replies, Discord username, server nickname, AND alternative nicknames

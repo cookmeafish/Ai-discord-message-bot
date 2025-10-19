@@ -149,7 +149,14 @@ class AIHandler:
 
     def _apply_roleplay_formatting(self, text, channel_config, recent_user_messages=None):
         """
-        Applies roleplay action formatting if enabled for this channel AND user is roleplaying.
+        Applies roleplay action formatting intelligently based on context.
+
+        Uses formatting when:
+        - User is explicitly roleplaying (using asterisks)
+        - User is engaging in immersive scenarios (normal conversation length)
+
+        Disables formatting when:
+        - User is having casual, very short chats ("hi", "lol", "yeah")
 
         Args:
             text: The AI response text
@@ -167,18 +174,33 @@ class AIHandler:
         if not personality_mode['immersive_character']:
             enable_formatting = False
 
-        # CRITICAL: Only enable if user is ALSO using roleplay formatting
+        # Smart roleplay detection
         if enable_formatting and recent_user_messages:
-            user_is_roleplaying = False
-            # Check last 3 user messages for asterisks (roleplay markers)
-            for msg_content in recent_user_messages[-3:]:
+            # Method 1: Check if user is explicitly using roleplay (asterisks in last 7 messages)
+            user_using_asterisks = False
+            for msg_content in recent_user_messages[-7:]:  # Expanded window
                 if msg_content and '*' in msg_content:
-                    user_is_roleplaying = True
+                    user_using_asterisks = True
                     break
 
-            # If user isn't roleplaying, don't use roleplay formatting
-            if not user_is_roleplaying:
-                enable_formatting = False
+            # Method 2: Check if user is having very casual, non-roleplay chat
+            # (very short messages = casual chat, not roleplay)
+            recent_3_msgs = recent_user_messages[-3:]
+            if recent_3_msgs:
+                total_words = 0
+                for msg in recent_3_msgs:
+                    if msg:
+                        # Remove mentions
+                        clean_msg = re.sub(r'<@!?\d+>', '', msg).strip()
+                        total_words += len(clean_msg.split())
+
+                avg_words = total_words / len(recent_3_msgs) if recent_3_msgs else 0
+
+                # If very short messages (1-3 words avg) and no asterisks, disable roleplay
+                # Examples: "hi", "lol", "yeah", "ok" = casual chat, not roleplay
+                if avg_words <= 3 and not user_using_asterisks:
+                    enable_formatting = False
+            # Otherwise, default to using roleplay (immersive mode assumes roleplay context)
 
         return self.formatter.format_actions(text, enable_formatting)
 
