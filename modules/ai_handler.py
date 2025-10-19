@@ -1042,10 +1042,25 @@ LORE: Worked as a marine biologist before becoming self-aware
                         member_display_lower = member.display_name.lower()
                         member_name_lower = member.name.lower()
 
+                        # Check username and display name
                         display_match = any(word in member_display_lower for word in prompt_words)
                         username_match = any(word in member_name_lower for word in prompt_words)
 
-                        if display_match or username_match:
+                        # Also check alternative names from database (facts like "also goes by X")
+                        alternative_name_match = False
+                        user_facts = db_manager.get_long_term_memory(str(member.id))
+                        if user_facts:
+                            for fact in user_facts:
+                                fact_text = fact['fact'].lower()
+                                # Look for alternative name patterns
+                                if any(phrase in fact_text for phrase in ['also goes by', 'known as', 'called', 'nicknamed']):
+                                    # Check if any prompt word appears in this fact
+                                    if any(word in fact_text for word in prompt_words):
+                                        alternative_name_match = True
+                                        print(f"AI Handler: Alternative name match found in fact: {fact['fact']}")
+                                        break
+
+                        if display_match or username_match or alternative_name_match:
                             mentioned_users.append(member)
                             print(f"AI Handler: Found mentioned user - {member.display_name} (ID: {member.id}, username: {member.name})")
 
