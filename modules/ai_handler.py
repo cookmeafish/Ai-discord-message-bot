@@ -1349,21 +1349,22 @@ Respond with ONLY the extracted visual description, nothing else.
                                 print(f"AI Handler: Relationship metrics for {member.display_name} - Fear: {fear_level}, Intimidation: {intimidation_level}, Respect: {respect_level}")
 
                             # Build emotional appearance modifiers based on metrics
+                            # Use CONCRETE visual descriptors, not abstract concepts
                             appearance_modifiers = []
                             if fear_level >= 7:
-                                appearance_modifiers.append("terrifying and intimidating presence")
+                                appearance_modifiers.append("fierce intense eyes, intimidating scowl, dark menacing expression")
                             elif fear_level >= 4:
-                                appearance_modifiers.append("intimidating aura")
+                                appearance_modifiers.append("stern intense gaze, serious threatening look")
 
                             if intimidation_level >= 7:
-                                appearance_modifiers.append("menacing and commanding")
+                                appearance_modifiers.append("powerful muscular build, commanding posture, dominant stance")
                             elif intimidation_level >= 4:
-                                appearance_modifiers.append("authoritative presence")
+                                appearance_modifiers.append("strong athletic build, confident stance")
 
                             if respect_level >= 7:
-                                appearance_modifiers.append("dignified and powerful")
+                                appearance_modifiers.append("noble dignified bearing, regal powerful appearance")
                             elif respect_level >= 4:
-                                appearance_modifiers.append("confident and capable")
+                                appearance_modifiers.append("confident capable demeanor")
 
                             if user_facts:
                                 # Filter facts to only include visual/descriptive information
