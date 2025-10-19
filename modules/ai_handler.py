@@ -1419,13 +1419,15 @@ Respond with ONLY the extracted visual description, nothing else.
                                     'has hair', ' hair ', 'has eyes', ' eyes ', 'has eye', ' eye ', 'has a face', 'has skin',
                                     'wears ', 'wearing ',
                                     'has a slender', 'has a muscular', 'has a', 'has an',
-                                    'hair is', 'eyes are', 'skin is',
+                                    'hair is', 'eyes are', 'skin is', 'skin on',
                                     'dressed in', 'outfit', 'clothing',
                                     'has fringe', 'has bangs', 'has a build',
                                     'complexion', 'has lips', 'has a mouth', 'has a nose',
                                     'has fingernails', 'painted', 'has makeup',
                                     'depicted in', 'drawn in', 'art style',
-                                    'shading', 'highlights', 'giving a', 'making them'
+                                    'shading', 'highlights', 'giving a', 'making them',
+                                    'shoulders', 'contrasts in light', 'bright areas', 'impression is', 'overall impression',
+                                    'hybrid', 'creature', 'physique', 'body ', 'muscular', 'muscles', 'pose', 'stands in'
                                 ]
 
                                 for fact_tuple in user_facts:  # Check ALL facts, not just first 20
