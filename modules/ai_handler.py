@@ -900,9 +900,12 @@ LORE: Worked as a marine biologist before becoming self-aware
         channel = message.channel
         author = message.author
 
-        config = self.emote_handler.bot.config_manager.get_config()
+        # Get channel configuration from database
         channel_id_str = str(channel.id)
-        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+        personality_config = db_manager.get_channel_setting(channel_id_str)
+        if not personality_config:
+            # Fallback to empty dict if channel not configured
+            personality_config = {}
 
         bot_name = channel.guild.me.display_name
 
@@ -1138,10 +1141,13 @@ Examples:
 
         channel = message.channel
         author = message.author
-        
-        config = self.emote_handler.bot.config_manager.get_config()
+
+        # Get channel configuration from database
         channel_id_str = str(channel.id)
-        personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+        personality_config = db_manager.get_channel_setting(channel_id_str)
+        if not personality_config:
+            # Fallback to empty dict if channel not configured
+            personality_config = {}
 
         bot_name = channel.guild.me.display_name
         
@@ -2239,9 +2245,12 @@ Respond with ONLY the fact ID number or "NONE".
             str: Generated response or None if failed
         """
         try:
-            config = self.emote_handler.bot.config_manager.get_config()
+            # Get channel configuration from database
             channel_id_str = str(channel.id)
-            personality_config = config.get('channel_settings', {}).get(channel_id_str, config.get('default_personality', {}))
+            personality_config = db_manager.get_channel_setting(channel_id_str)
+            if not personality_config:
+                # Fallback to empty dict if channel not configured
+                personality_config = {}
 
             bot_name = channel.guild.me.display_name
 

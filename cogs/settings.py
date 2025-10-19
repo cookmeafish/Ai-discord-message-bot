@@ -29,18 +29,30 @@ class SettingsCog(commands.Cog):
         guild = interaction.guild
 
         # Create or get server-specific database
-        if guild:
-            db_manager = self.bot.get_server_db(guild.id, guild.name)
+        if not guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
 
-            # Auto-populate bot identity if this is a new database
-            from main import _populate_bot_identity_if_empty
-            from modules.logging_manager import get_logger
-            logger = get_logger()
-            _populate_bot_identity_if_empty(db_manager, logger)
+        db_manager = self.bot.get_server_db(guild.id, guild.name)
 
-        final_settings = self.bot.config_manager.add_or_update_channel_setting(
-            channel_id, purpose, random_reply_chance, channel_name=target_channel.name
+        # Auto-populate bot identity if this is a new database
+        from main import _populate_bot_identity_if_empty
+        from modules.logging_manager import get_logger
+        logger = get_logger()
+        _populate_bot_identity_if_empty(db_manager, logger)
+
+        # Add channel to database
+        final_settings = db_manager.add_channel_setting(
+            channel_id=channel_id,
+            guild_id=str(guild.id),
+            channel_name=target_channel.name,
+            purpose=purpose,
+            random_reply_chance=random_reply_chance
         )
+
+        if not final_settings:
+            await interaction.response.send_message("❌ Failed to activate channel.", ephemeral=True)
+            return
 
         reply_chance_percent = final_settings.get('random_reply_chance', 0.0) * 100
 
@@ -76,11 +88,19 @@ class SettingsCog(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     async def deactivate_channel(self, interaction: discord.Interaction, channel: discord.TextChannel = None):
         """Slash command to deactivate the bot."""
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
         # Use specified channel or default to current channel
         target_channel = channel if channel else interaction.channel
         channel_id = str(target_channel.id)
 
-        if self.bot.config_manager.remove_channel_setting(channel_id):
+        # Get server-specific database
+        db_manager = self.bot.get_server_db(guild.id, guild.name)
+
+        if db_manager.remove_channel_setting(channel_id):
             await interaction.response.send_message(
                 f"🔴 Bot has been **deactivated** in {target_channel.mention}.",
                 ephemeral=True

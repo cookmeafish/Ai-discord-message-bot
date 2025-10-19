@@ -112,13 +112,9 @@ class EventsCog(commands.Cog):
 
         self.logger.debug(f"Received message from {message.author.name}: {message.content[:50]}...")
 
-        # Get configuration
-        config = self.bot.config_manager.get_config()
-        active_channels_str = config.get('channel_settings', {}).keys()
-        active_channels_int = [int(ch_id) for ch_id in active_channels_str]
-
-        # Check if this is an active channel
-        is_active_channel = message.channel.id in active_channels_int
+        # Check if channel is active in this server's database
+        channel_setting = db_manager.get_channel_setting(str(message.channel.id))
+        is_active_channel = channel_setting is not None
 
         # Always process commands, even in inactive channels
         if message.content.startswith('!'):
