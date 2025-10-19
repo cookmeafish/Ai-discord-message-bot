@@ -111,5 +111,56 @@ class SettingsCog(commands.Cog):
                 ephemeral=True
             )
 
+    @app_commands.command(name="channel_list_active", description="Lists all active channels in this server.")
+    @app_commands.default_permissions(manage_guild=True)
+    async def list_active_channels(self, interaction: discord.Interaction):
+        """Slash command to list all active channels in the server."""
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
+        # Get server-specific database
+        db_manager = self.bot.get_server_db(guild.id, guild.name)
+
+        # Get all channel settings for this server
+        all_channels = db_manager.get_all_channel_settings(guild_id=str(guild.id))
+
+        if not all_channels:
+            await interaction.response.send_message(
+                "ℹ️ No active channels in this server.\nUse `/activate` to activate a channel.",
+                ephemeral=True
+            )
+            return
+
+        # Build embed with channel list
+        embed = discord.Embed(
+            title=f"📋 Active Channels in {guild.name}",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Total", value=f"{len(all_channels)} channels", inline=False)
+
+        for channel_id, settings in all_channels.items():
+            channel_name = settings.get('channel_name', 'Unknown')
+            purpose = settings.get('purpose', 'None')
+            reply_chance = settings.get('random_reply_chance', 0.0) * 100
+
+            # Try to get actual channel mention
+            channel = guild.get_channel(int(channel_id))
+            channel_display = channel.mention if channel else f"#{channel_name}"
+
+            field_value = f"**ID:** {channel_id}\n"
+            if purpose:
+                field_value += f"**Purpose:** {purpose}\n"
+            field_value += f"**Random Reply Chance:** {reply_chance:.0f}%"
+
+            embed.add_field(
+                name=channel_display,
+                value=field_value,
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 async def setup(bot):
     await bot.add_cog(SettingsCog(bot))
