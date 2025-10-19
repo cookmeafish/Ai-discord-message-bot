@@ -2221,7 +2221,7 @@ Respond with ONLY the fact ID number or "NONE".
                 )
 
                 # Check if roleplay formatting should be disabled
-                enable_roleplay_extreme = channel_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
+                enable_roleplay_extreme = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
                 if enable_roleplay_extreme and energy_analysis.get('user_messages'):
                     user_has_asterisks = any('*' in msg for msg in energy_analysis.get('user_messages', [])[-7:] if msg)
                     if not user_has_asterisks:
@@ -2268,7 +2268,7 @@ Respond with ONLY the fact ID number or "NONE".
                 )
 
             # Check if roleplay formatting should be disabled
-            enable_roleplay = channel_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
+            enable_roleplay = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
             if enable_roleplay and energy_analysis.get('user_messages'):
                 # Check if user is using asterisks
                 user_has_asterisks = any('*' in msg for msg in energy_analysis.get('user_messages', [])[-7:] if msg)
