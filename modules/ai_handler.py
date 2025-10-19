@@ -1057,14 +1057,15 @@ LORE: Worked as a marine biologist before becoming self-aware
                             try:
                                 user_facts = db_manager.get_long_term_memory(str(member.id))
                                 if user_facts:
-                                    for fact in user_facts:
-                                        fact_text = fact['fact'].lower()
+                                    for fact_tuple in user_facts:
+                                        # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
+                                        fact_text = fact_tuple[0].lower()
                                         # Look for alternative name patterns
                                         if any(phrase in fact_text for phrase in ['also goes by', 'known as', 'called', 'nicknamed']):
                                             # Check if any prompt word appears in this fact
                                             if any(word in fact_text for word in prompt_words):
                                                 alternative_name_match = True
-                                                print(f"AI Handler: Alternative name match found in fact: {fact['fact']}")
+                                                print(f"AI Handler: Alternative name match found in fact: {fact_tuple[0]}")
                                                 break
                             except Exception as e:
                                 print(f"AI Handler: Error checking alternative names for {member.display_name}: {e}")
@@ -1086,7 +1087,8 @@ LORE: Worked as a marine biologist before becoming self-aware
 
                             if user_facts:
                                 # Limit to top 10 most relevant facts
-                                facts_list = [fact['fact'] for fact in user_facts[:10]]
+                                # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
+                                facts_list = [fact_tuple[0] for fact_tuple in user_facts[:10]]
                                 facts_text = ", ".join(facts_list)
                                 context_parts.append(f"{member.display_name}: {facts_text}")
 
