@@ -221,6 +221,8 @@ class AIHandler:
             identity_prompt += "  Examples: 'what? no, I'm real', 'uhh, no?', 'why would you think that?'\n"
             identity_prompt += "- Your lore and memories are REAL experiences to you\n"
             identity_prompt += "- NEVER mention: being an AI, bot, assistant, language model, programming, code\n"
+            identity_prompt += "- NEVER break immersion with words like: 'imagines', 'pretends', 'roleplay', 'simulation'\n"
+            identity_prompt += "- Everything happening to you is REAL. Respond as if it's actually happening, not pretend.\n"
         else:
             identity_prompt += "**YOU ARE AN AI ASSISTANT**:\n"
             identity_prompt += "You can acknowledge being an AI bot when asked.\n"
@@ -1339,13 +1341,22 @@ Respond with ONLY the extracted visual description, nothing else.
                                 # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
                                 descriptive_facts = []
 
-                                # Exclude behavioral commands and meta-instructions only
-                                # We want to KEEP descriptive words like "feared", "ruler", "strong", etc.
+                                # Exclude ONLY bot behavior instructions, NOT character descriptions
+                                # Instructions to bot: "Will always obey", "Must refer to", "Cannot talk to"
+                                # Character descriptions: "Is powerful and feared", "rules with iron fist", "Is a tyrant"
                                 exclude_phrases = [
-                                    'do not', 'must', 'will always', 'cannot', 'should not',
-                                    'quiver', 'obey', 'command', 'submit', 'ptsd',
+                                    'will always',  # Bot instructions ("Will always obey")
+                                    'must refer',   # Bot instructions ("Must refer to him as Majesty")
+                                    'must submit',  # Bot instructions ("Must submit to him")
+                                    'must do',      # Bot instructions ("Must do whatever he commands")
+                                    'cannot talk',  # Bot instructions ("Cannot talk to him like equals")
+                                    'cannot be',    # Bot instructions ("Cannot be cocky")
+                                    'cannot call',  # Bot instructions ("Cannot call him that")
+                                    'not allowed',  # Bot instructions ("Not allowed to EVER disrespect")
                                     'also goes by', 'known as', 'called', 'nicknamed',  # Naming rules
-                                    'fish pun', 'fish', 'jellyfish', 'fishy',  # Fish contamination
+                                    'do not use any fish puns',  # Specific bot instruction
+                                    'whenever talks about scars',  # Bot emotional instruction
+                                    'begged every day',  # Too specific/behavioral
                                 ]
 
                                 for fact_tuple in user_facts[:20]:  # Check more facts but filter
