@@ -40,9 +40,27 @@ class MultiDBManager:
         Returns the folder path for a specific server.
         Structure: database/{server_name}/
         Folder uses human-readable server name for easy identification.
+
+        Case-insensitive matching: If folder exists with different case,
+        returns existing folder path instead of creating new one.
         """
         sanitized_name = self._sanitize_server_name(server_name)
-        return os.path.join(self.db_folder, sanitized_name)
+        target_path = os.path.join(self.db_folder, sanitized_name)
+
+        # Check if folder already exists (case-insensitive on Linux/Mac)
+        if os.path.exists(self.db_folder):
+            for existing_folder in os.listdir(self.db_folder):
+                existing_path = os.path.join(self.db_folder, existing_folder)
+                # Only check directories
+                if os.path.isdir(existing_path):
+                    # Case-insensitive comparison
+                    if existing_folder.lower() == sanitized_name.lower():
+                        # Found existing folder with different case
+                        if existing_folder != sanitized_name:
+                            print(f"DATABASE: Found existing folder '{existing_folder}' (case-insensitive match for '{sanitized_name}')")
+                        return existing_path
+
+        return target_path
 
     def _get_db_path(self, guild_id, server_name):
         """

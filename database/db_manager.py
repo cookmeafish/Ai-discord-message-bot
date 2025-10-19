@@ -577,7 +577,7 @@ class DBManager:
             select_cols.extend(lock_cols)
 
         query = f"SELECT {', '.join(select_cols)} FROM relationship_metrics WHERE user_id = ?"
-        insert_query = "INSERT INTO relationship_metrics (user_id, anger, rapport, trust, formality) VALUES (?, 0, 0, 0, 0)"
+        insert_query = "INSERT INTO relationship_metrics (user_id, anger, rapport, trust, formality, fear, respect, affection, familiarity, intimidation) VALUES (?, 0, 5, 5, 0, 0, 5, 3, 5, 0)"
 
         try:
             cursor.execute(query, (user_id,))
@@ -634,16 +634,16 @@ class DBManager:
                 print(f"DATABASE: Auto-created relationship metrics for user {user_id} with defaults")
                 result = {
                     "anger": 0,
-                    "rapport": 0,
-                    "trust": 0,
+                    "rapport": 5,
+                    "trust": 5,
                     "formality": 0
                 }
                 if has_new_metrics:
                     result.update({
                         "fear": 0,
-                        "respect": 0,
-                        "affection": 0,
-                        "familiarity": 0,
+                        "respect": 5,
+                        "affection": 3,
+                        "familiarity": 5,
                         "intimidation": 0
                     })
                 if has_locks:
