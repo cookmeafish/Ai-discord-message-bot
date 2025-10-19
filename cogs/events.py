@@ -44,17 +44,24 @@ class EventsCog(commands.Cog):
         """
         # Normalize the message content
         normalized_message = self._normalize_text(message.content)
+        self.logger.debug(f"Checking bot name in message. Normalized: '{normalized_message}'")
 
         # Get bot's Discord username
         bot_username = self.bot.user.name
-        if self._normalize_text(bot_username) in normalized_message:
+        normalized_bot_username = self._normalize_text(bot_username)
+        self.logger.debug(f"Bot username: '{bot_username}' -> normalized: '{normalized_bot_username}'")
+        if normalized_bot_username in normalized_message:
+            self.logger.debug(f"Match found: bot username in message")
             return True
 
         # Get bot's server nickname (if it has one)
         if message.guild:
             bot_member = message.guild.get_member(self.bot.user.id)
             if bot_member and bot_member.nick:
-                if self._normalize_text(bot_member.nick) in normalized_message:
+                normalized_nick = self._normalize_text(bot_member.nick)
+                self.logger.debug(f"Bot server nickname: '{bot_member.nick}' -> normalized: '{normalized_nick}'")
+                if normalized_nick in normalized_message:
+                    self.logger.debug(f"Match found: server nickname in message")
                     return True
 
         # Get alternative nicknames from config (server-specific first, then global)
