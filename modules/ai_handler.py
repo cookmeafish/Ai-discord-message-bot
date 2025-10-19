@@ -1090,7 +1090,7 @@ Examples:
                         for member in message.guild.members:
                             if member.bot:
                                 continue
-                            # Use word boundary matching to prevent "sama" matching "Csama"
+                            # Use word boundary matching to prevent partial name matches (e.g., "bob" shouldn't match "bobby")
                             import re
                             member_display_lower = member.display_name.lower()
                             member_name_lower = member.name.lower()
@@ -1221,7 +1221,7 @@ Examples:
                         member_name_lower = member.name.lower()
 
                         # Check username and display name first (fast check)
-                        # Use word boundary matching to prevent "sama" matching "Csama"
+                        # Use word boundary matching to prevent partial name matches (e.g., "bob" shouldn't match "bobby")
                         import re
                         display_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_display_lower) for word in prompt_words)
                         username_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_name_lower) for word in prompt_words)
@@ -1248,7 +1248,7 @@ Examples:
                                                 # Filter out command words (draw, sketch, etc.) to get actual name words
                                                 command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
                                                 name_words = [w for w in prompt_words if w not in command_words]
-                                                # Require ALL name words to match (prevents "sama" matching "Csama" when prompt is "anya sama")
+                                                # Require ALL name words to match (prevents partial matches - all words must be present)
                                                 if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
                                                     alternative_name_match = True
                                                     print(f"AI Handler: Alternative name match found in fact: {fact_tuple[0]}")
@@ -1297,7 +1297,7 @@ Examples:
                                                 # Filter out command words (draw, sketch, etc.) to get actual name words
                                                 command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
                                                 name_words = [w for w in prompt_words if w not in command_words]
-                                                # Require ALL name words to match (prevents "sama" matching "Csama" when prompt is "anya sama")
+                                                # Require ALL name words to match (prevents partial matches - all words must be present)
                                                 if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
                                                     print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
                                                     # Create a pseudo-member object with just the ID
@@ -1529,7 +1529,7 @@ Respond with ONLY the extracted visual description, nothing else.
 {identity_prompt}
 {relationship_prompt}
 
-🎯 **CRITICAL - CURRENT USER IDENTIFICATION** 🎯
+🎯 **CURRENT USER IDENTIFICATION** 🎯
 The person you are responding to RIGHT NOW is: **{current_user_name}** (ID: {author.id})
 - DO NOT address them by anyone else's name
 - DO NOT confuse them with other people mentioned in your lore
@@ -1573,7 +1573,7 @@ Respond naturally as if you tried to draw but messed up or ran into problems.
 {identity_prompt}
 {relationship_prompt}
 
-🎯 **CRITICAL - CURRENT USER IDENTIFICATION** 🎯
+🎯 **CURRENT USER IDENTIFICATION** 🎯
 The person you are responding to RIGHT NOW is: **{current_user_name}** (ID: {author.id})
 - This is the ONLY person you are talking to
 - DO NOT address them by anyone else's name

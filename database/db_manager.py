@@ -39,6 +39,7 @@ class DBManager:
             # Enable auto-vacuum for automatic database compaction
             self.conn.execute("PRAGMA auto_vacuum = FULL")
             self._initialize_database()
+            self._ensure_archive_directory()
             print("Database optimization enabled: auto_vacuum = FULL")
         except Exception as e:
             print(f"CRITICAL DATABASE ERROR: Failed to connect to database: {e}")
@@ -57,6 +58,36 @@ class DBManager:
             raise
         finally:
             cursor.close()
+
+    def _ensure_archive_directory(self):
+        """
+        Ensures the archive directory exists for this database.
+        Creates the directory structure based on the database path format.
+        Called during initialization to prepare for future memory consolidation.
+        """
+        import re
+
+        db_dir = os.path.dirname(self.db_path)
+        db_filename = os.path.basename(self.db_path)
+
+        # Determine archive directory based on database structure
+        match = re.match(r'^(\d+)_data\.db$', db_filename)
+        if match:
+            # New format: {guild_id}_data.db in a server folder
+            archive_dir = os.path.join(db_dir, "archive")
+        elif db_filename == "data.db":
+            # Legacy folder structure: data.db
+            archive_dir = os.path.join(db_dir, "archive")
+        else:
+            # Very old flat structure: database/{guild_id}_{name}_data.db
+            archive_dir = os.path.join(DB_FOLDER, "archive")
+
+        # Create archive directory if it doesn't exist
+        try:
+            os.makedirs(archive_dir, exist_ok=True)
+            print(f"Archive directory ensured: {archive_dir}")
+        except Exception as e:
+            print(f"WARNING: Failed to create archive directory {archive_dir}: {e}")
 
     # --- Message Logging Methods ---
 
@@ -77,6 +108,9 @@ class DBManager:
         if not is_valid:
             print(f"DATABASE: Rejected message {message.id}: {error}")
             return False
+
+        # Ensure user exists before logging nickname (prevents foreign key constraint failure)
+        self._ensure_user_exists(message.author.id)
 
         query = """
         INSERT OR REPLACE INTO short_term_message_log (message_id, user_id, nickname, channel_id, content, timestamp, directed_at_bot)
