@@ -147,13 +147,14 @@ class AIHandler:
 
         return cleaned
 
-    def _apply_roleplay_formatting(self, text, channel_config):
+    def _apply_roleplay_formatting(self, text, channel_config, recent_user_messages=None):
         """
-        Applies roleplay action formatting if enabled for this channel.
+        Applies roleplay action formatting if enabled for this channel AND user is roleplaying.
 
         Args:
             text: The AI response text
             channel_config: Channel configuration dictionary
+            recent_user_messages: Optional list of recent user message content strings
 
         Returns:
             Formatted text with actions in italics
@@ -165,6 +166,19 @@ class AIHandler:
         personality_mode = self._get_personality_mode(channel_config)
         if not personality_mode['immersive_character']:
             enable_formatting = False
+
+        # CRITICAL: Only enable if user is ALSO using roleplay formatting
+        if enable_formatting and recent_user_messages:
+            user_is_roleplaying = False
+            # Check last 3 user messages for asterisks (roleplay markers)
+            for msg_content in recent_user_messages[-3:]:
+                if msg_content and '*' in msg_content:
+                    user_is_roleplaying = True
+                    break
+
+            # If user isn't roleplaying, don't use roleplay formatting
+            if not user_is_roleplaying:
+                enable_formatting = False
 
         return self.formatter.format_actions(text, enable_formatting)
 
@@ -469,13 +483,15 @@ class AIHandler:
         if not messages:
             return {
                 'max_tokens': 80,  # Default
-                'energy_guidance': ""
+                'energy_guidance': "",
+                'user_messages': []
             }
 
         # Analyze last 5 user messages (not bot messages)
         # Support both dict format and Discord Message objects
+        # Look at last 30 messages to ensure we get recent user messages (not old ones)
         user_messages = []
-        for msg in messages[-10:]:
+        for msg in messages[-30:]:
             # Check if it's a dict (from short_term_memory) or Discord Message object
             if isinstance(msg, dict):
                 if msg.get('author_id') != str(bot_id) and msg.get('role') == 'user':
@@ -485,12 +501,13 @@ class AIHandler:
                 if hasattr(msg, 'author') and msg.author.id != bot_id:
                     user_messages.append(msg.content)
 
-        user_messages = user_messages[-5:]  # Last 5
+        user_messages = user_messages[-5:]  # Last 5 user messages
 
         if not user_messages:
             return {
                 'max_tokens': 80,
-                'energy_guidance': ""
+                'energy_guidance': "",
+                'user_messages': []
             }
 
         # Calculate average message length (in words)
@@ -515,7 +532,8 @@ class AIHandler:
                     "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', 'true'\n"
                     "- Single emote responses are PERFECT here\n"
                     "- DO NOT write full sentences\n\n"
-                )
+                ),
+                'user_messages': user_messages  # Return for roleplay detection
             }
         elif avg_words <= 8:
             # Short messages (4-8 words: "that's pretty cool", "i guess that works")
@@ -527,7 +545,8 @@ class AIHandler:
                     "- Respond with 1 SHORT sentence or brief phrase\n"
                     "- Keep it under 10 words\n"
                     "- Examples: 'yeah that makes sense', 'lol fair enough', 'sounds good to me'\n\n"
-                )
+                ),
+                'user_messages': user_messages
             }
         elif avg_words <= 20:
             # Medium messages (9-20 words: normal casual conversation)
@@ -538,13 +557,15 @@ class AIHandler:
                     "Recent messages are MODERATE length. Keep responses natural:\n"
                     "- 1-2 sentences is ideal\n"
                     "- Match their conversational tone\n\n"
-                )
+                ),
+                'user_messages': user_messages
             }
         else:
             # Long messages (20+ words: detailed conversation)
             return {
                 'max_tokens': 80,  # Default max
-                'energy_guidance': ""  # No special guidance needed
+                'energy_guidance': "",  # No special guidance needed
+                'user_messages': user_messages
             }
 
     async def _check_image_safety(self, image_url):
@@ -1047,8 +1068,8 @@ LORE: Worked as a marine biologist before becoming self-aware
             ai_response_text = response.choices[0].message.content.strip()
 
             if ai_response_text:
-                # Apply roleplay formatting
-                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config)
+                # Apply roleplay formatting (without energy analysis since this is an image response)
+                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config, None)
 
                 # Analyze sentiment and update metrics
                 await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
@@ -1776,11 +1797,11 @@ Acknowledge this new information with a short, natural, human-like response base
                     max_tokens=memory_response_config['max_tokens'],
                     temperature=memory_response_config['temperature']
                 )
-                
+
                 ai_response = response.choices[0].message.content.strip()
 
                 # Apply roleplay formatting
-                ai_response = self._apply_roleplay_formatting(ai_response, personality_config)
+                ai_response = self._apply_roleplay_formatting(ai_response, personality_config, energy_analysis.get('user_messages'))
 
                 # Update relationship metrics
                 await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
@@ -1969,7 +1990,7 @@ Respond with ONLY the fact ID number or "NONE".
                 ai_response = response.choices[0].message.content.strip()
 
                 # Apply roleplay formatting
-                ai_response = self._apply_roleplay_formatting(ai_response, personality_config)
+                ai_response = self._apply_roleplay_formatting(ai_response, personality_config, energy_analysis.get('user_messages'))
 
                 # Update relationship metrics
                 await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
@@ -2313,7 +2334,7 @@ Respond with ONLY the fact ID number or "NONE".
 
             if ai_response_text:
                 # Apply roleplay formatting
-                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config)
+                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config, energy_analysis.get('user_messages'))
 
                 # Analyze sentiment and update metrics (conservative approach)
                 await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
@@ -2426,7 +2447,7 @@ Respond with ONLY the fact ID number or "NONE".
 
             if ai_response_text:
                 # Apply roleplay formatting
-                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config)
+                ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config, energy_analysis.get('user_messages'))
 
                 # Do NOT update relationship metrics (we're not talking to a specific user)
                 # Do NOT extract self-lore (this is a neutral conversation join)
