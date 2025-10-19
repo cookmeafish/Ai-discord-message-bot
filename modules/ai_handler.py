@@ -1081,7 +1081,43 @@ LORE: Worked as a marine biologist before becoming self-aware
                             mentioned_users.append(member)
                             print(f"AI Handler: Found mentioned user - {member.display_name} (ID: {member.id}, username: {member.name})")
 
-                    print(f"AI Handler: Total mentioned users found: {len(mentioned_users)}")
+                    print(f"AI Handler: Total mentioned users found in guild: {len(mentioned_users)}")
+
+                    # If no users found in guild, search database for alternative names
+                    if not mentioned_users:
+                        print(f"AI Handler: No guild members matched, searching database for alternative names...")
+                        try:
+                            # Get all users who have long-term memory in this server
+                            import sqlite3
+                            db_path = db_manager.db_path
+                            conn = sqlite3.connect(db_path)
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
+                            all_user_ids = [row[0] for row in cursor.fetchall()]
+                            conn.close()
+
+                            # Check each user's facts for alternative names matching prompt words
+                            for user_id in all_user_ids:
+                                user_facts = db_manager.get_long_term_memory(user_id)
+                                if user_facts:
+                                    for fact_tuple in user_facts:
+                                        fact_text = fact_tuple[0].lower()
+                                        # Check for alternative name patterns
+                                        if any(phrase in fact_text for phrase in ['also goes by', 'known as', 'called', 'nicknamed']):
+                                            # Check if any prompt word appears in this alternative name fact
+                                            if any(word in fact_text for word in prompt_words):
+                                                print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
+                                                # Create a pseudo-member object with just the ID
+                                                class PseudoMember:
+                                                    def __init__(self, user_id):
+                                                        self.id = user_id
+                                                        self.display_name = f"User_{user_id}"
+                                                mentioned_users.append(PseudoMember(user_id))
+                                                break
+                        except Exception as e:
+                            print(f"AI Handler: Error searching database for alternative names: {e}")
+
+                    print(f"AI Handler: Total mentioned users (including database search): {len(mentioned_users)}")
 
                     # If users are mentioned, pull their facts from the database
                     if mentioned_users:
