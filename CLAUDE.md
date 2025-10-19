@@ -170,6 +170,11 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
     - Example: "Also goes by Zekkekun" fact allows matching on "zekkekun" even if not their display name
     - Filters stop words (me, you, a, the, etc.) to prevent false matches
     - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
+    - **Gender Detection (2025-10-18)**: Automatically detects gender from pronouns in database facts
+      - Scans ALL facts for gendered pronouns (she/her/hers vs he/him/his)
+      - Adds "a woman" or "a man" as FIRST descriptor in image context
+      - Ensures image AI correctly renders gender even when facts don't explicitly state it
+      - Example: Facts with "Loves her" and "she is sweet" → detected as "woman" → draws female character
   - **Quality**: High quality detailed illustrations, visual only (no text/labels in images)
   - **Prompt Cleaning**: Automatically removes command words like "draw me", "sketch", "create" before generation
   - **Rate Limiting**: 5 images per user every 2 hours (configurable via `max_per_user_per_period` and `reset_period_hours`)
