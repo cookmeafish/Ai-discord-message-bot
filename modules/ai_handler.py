@@ -1303,9 +1303,9 @@ Drawing prompt: "{clean_prompt}"
 Recent messages: {' | '.join(conversation_context[-5:])}
 
 Extract the visual description as a concise statement. Examples:
-- "Angel Yamazaki is a cute rabbit that sells carrots" → "a cute rabbit that sells carrots"
-- "John is tall and wears glasses" → "tall and wears glasses"
-- "The dragon is blue with red eyes" → "blue with red eyes"
+- "Sarah is a tall woman with red hair" → "a tall woman with red hair"
+- "The robot has blue lights and metal arms" → "blue lights and metal arms"
+- "Kevin is muscular and wears a black jacket" → "muscular and wears a black jacket"
 
 Respond with ONLY the extracted visual description, nothing else.
 """
