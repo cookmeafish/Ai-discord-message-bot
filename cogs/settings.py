@@ -8,8 +8,9 @@ class SettingsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="activate", description="Activates the bot in this channel.")
+    @app_commands.command(name="activate", description="Activates the bot in a channel.")
     @app_commands.describe(
+        channel="Optional: Specify a channel to activate (defaults to current channel).",
         purpose="Optional: A specific purpose for the bot in this channel.",
         random_reply_chance="Optional: Set a random reply chance from 0.0 (0%) to 1.0 (100%)."
     )
@@ -17,11 +18,14 @@ class SettingsCog(commands.Cog):
     async def activate_channel(
         self,
         interaction: discord.Interaction,
+        channel: discord.TextChannel = None,
         purpose: str = None,
         random_reply_chance: app_commands.Range[float, 0.0, 1.0] = None
     ):
         """Slash command to activate the bot and create server database if needed."""
-        channel_id = str(interaction.channel_id)
+        # Use specified channel or default to current channel
+        target_channel = channel if channel else interaction.channel
+        channel_id = str(target_channel.id)
         guild = interaction.guild
 
         # Create or get server-specific database
@@ -35,13 +39,13 @@ class SettingsCog(commands.Cog):
             _populate_bot_identity_if_empty(db_manager, logger)
 
         final_settings = self.bot.config_manager.add_or_update_channel_setting(
-            channel_id, purpose, random_reply_chance, channel_name=interaction.channel.name
+            channel_id, purpose, random_reply_chance, channel_name=target_channel.name
         )
 
         reply_chance_percent = final_settings.get('random_reply_chance', 0.0) * 100
 
         await interaction.response.send_message(
-            f"✅ Bot has been **activated** in this channel.\n"
+            f"✅ Bot has been **activated** in {target_channel.mention}.\n"
             f"**Purpose:** {final_settings.get('purpose', 'Default')}\n"
             f"**Random Reply Chance:** {reply_chance_percent:.0f}%",
             ephemeral=True
@@ -65,20 +69,25 @@ class SettingsCog(commands.Cog):
                 ephemeral=True
             )
 
-    @app_commands.command(name="deactivate", description="Deactivates the bot in this channel.")
+    @app_commands.command(name="deactivate", description="Deactivates the bot in a channel.")
+    @app_commands.describe(
+        channel="Optional: Specify a channel to deactivate (defaults to current channel)."
+    )
     @app_commands.default_permissions(manage_guild=True)
-    async def deactivate_channel(self, interaction: discord.Interaction):
+    async def deactivate_channel(self, interaction: discord.Interaction, channel: discord.TextChannel = None):
         """Slash command to deactivate the bot."""
-        channel_id = str(interaction.channel_id)
-        
+        # Use specified channel or default to current channel
+        target_channel = channel if channel else interaction.channel
+        channel_id = str(target_channel.id)
+
         if self.bot.config_manager.remove_channel_setting(channel_id):
             await interaction.response.send_message(
-                "🔴 Bot has been **deactivated** in this channel.",
+                f"🔴 Bot has been **deactivated** in {target_channel.mention}.",
                 ephemeral=True
             )
         else:
             await interaction.response.send_message(
-                "ℹ️ The bot is not currently active in this channel.",
+                f"ℹ️ The bot is not currently active in {target_channel.mention}.",
                 ephemeral=True
             )
 
