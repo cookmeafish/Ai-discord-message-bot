@@ -1884,19 +1884,34 @@ class BotTestSuite:
                 "Proactive engagement has dedicated neutral context prompt" if has_proactive_marker else "Missing proactive engagement marker"
             )
 
-            # Test 4: No fish references in code (generic examples only)
-            fish_references = ['fishstrong', 'fishwhat', 'fishreadingemote', 'cookmeafish', 'Dr. Fish', 'dr fish']
-            found_fish_refs = []
-            for ref in fish_references:
+            # Test 4: No bot-specific references in code (generic examples only)
+            bot_references = ['fishstrong', 'fishwhat', 'fishreadingemote', 'cookmeafish', 'Dr. Fish', 'dr fish', 'mistel fiech']
+            found_bot_refs = []
+            for ref in bot_references:
                 if ref.lower() in ai_handler_source.lower():
-                    found_fish_refs.append(ref)
+                    found_bot_refs.append(ref)
 
-            no_fish_refs = len(found_fish_refs) == 0
+            no_bot_refs = len(found_bot_refs) == 0
             self._log_test(
                 category,
-                "No Fish References (Generic Examples)",
-                no_fish_refs,
-                "All examples use generic placeholders" if no_fish_refs else f"Found fish references: {found_fish_refs}"
+                "No Bot References (Generic Examples)",
+                no_bot_refs,
+                "All examples use generic placeholders" if no_bot_refs else f"Found bot references: {found_bot_refs}"
+            )
+
+            # Test 4.5: No actual user nickname references in code (generic examples only)
+            user_references = ['angel yamazaki', 'anya sama', 'zekke', 'csama', 'racoon', 'paimon', 'mionkey', 'nakiimirai']
+            found_user_refs = []
+            for ref in user_references:
+                if ref.lower() in ai_handler_source.lower():
+                    found_user_refs.append(ref)
+
+            no_user_refs = len(found_user_refs) == 0
+            self._log_test(
+                category,
+                "No User Nicknames (Generic Examples)",
+                no_user_refs,
+                "All examples use generic placeholders" if no_user_refs else f"Found user nickname references: {found_user_refs}"
             )
 
             # Test 5: Bot name confusion warnings present
