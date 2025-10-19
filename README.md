@@ -130,17 +130,11 @@ Example structure: `database/Mistel Fiech's Server/1260857723193528360_data.db`
      },
      "ai_models": {
        "primary_model": "gpt-4.1-mini"
-     },
-     "channel_settings": {
-       "123456789": {
-         "purpose": "General chat channel",
-         "random_reply_chance": 0.05,
-         "immersive_character": true,
-         "allow_technical_language": false
-       }
      }
    }
    ```
+
+   **Note:** Channel settings are stored in the **database** (not `config.json`). Each server has a `channel_settings` table with per-channel configuration. Use the GUI or `/channel_*` commands to manage channel settings.
 
 3. **Run**: `python main.py`
 

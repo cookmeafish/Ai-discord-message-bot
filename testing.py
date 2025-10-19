@@ -1269,19 +1269,28 @@ class BotTestSuite:
         """Test channel-specific configuration system."""
         category = "Channel Configuration"
 
-        # Test 1: Config manager has channel settings
+        # Test 1: Channel settings table exists in database
         try:
-            config = self.bot.config_manager.get_config()
-            has_channel_settings = "channel_settings" in config
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='channel_settings'")
+            table_exists = cursor.fetchone() is not None
+
+            # Count active channels in database
+            if table_exists:
+                cursor.execute("SELECT COUNT(*) FROM channel_settings")
+                channel_count = cursor.fetchone()[0]
+            else:
+                channel_count = 0
+            cursor.close()
 
             self._log_test(
                 category,
-                "Channel Settings in Config",
-                has_channel_settings,
-                f"Channel settings section exists with {len(config.get('channel_settings', {}))} channels configured" if has_channel_settings else "Channel settings section missing"
+                "Channel Settings in Database",
+                table_exists,
+                f"Channel settings table exists with {channel_count} channels configured" if table_exists else "Channel settings table missing"
             )
         except Exception as e:
-            self._log_test(category, "Channel Settings in Config", False, f"Error: {e}")
+            self._log_test(category, "Channel Settings in Database", False, f"Error: {e}")
 
         # Test 2: Personality mode configuration exists
         try:

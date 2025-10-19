@@ -79,7 +79,7 @@ The bot has a configurable personality mode that controls immersion and language
 
 **Configuration hierarchy:**
 1. Global defaults in `config.json` under `personality_mode`
-2. Per-channel overrides in `channel_settings`
+2. Per-channel overrides in `channel_settings` database table (per-server)
 3. Real-time updates via `/channel_set_personality` or GUI
 
 **AI Handler Integration:**
@@ -156,7 +156,8 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `Server_Info/{ServerName}/` - Text files with server rules, policies, and formal documentation (per-server isolation)
 
 ### Configuration
-- `config.json` - All configurable bot parameters (model names, limits, channel settings, per-server settings, image generation)
+- `config.json` - Global bot parameters (model names, limits, per-server settings, image generation)
+- **Channel settings** - Stored in database `channel_settings` table (per-server), not in config.json
 - `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 - `gui.py` - Graphical configuration interface with Server Manager
 
@@ -230,7 +231,7 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Multi-Level Control**:
     - **Global**: Enable/disable for entire bot via `proactive_engagement.enabled`
     - **Per-Server**: Enable/disable per server via `server_proactive_settings`
-    - **Per-Channel**: Enable/disable per channel via `channel_settings[channel_id].allow_proactive_engagement`
+    - **Per-Channel**: Enable/disable per channel via `channel_settings` database table field `allow_proactive_engagement`
   - **Config**: `config.json` under `proactive_engagement` section
   - **GUI Integration**:
     - Global controls: Enable/disable checkbox, check interval field, engagement threshold slider
@@ -393,6 +394,26 @@ Up to 500 messages rolling buffer **server-wide across all channels** (per serve
 **Server-Wide Context**: Messages are NOT filtered by channel. This allows the bot to maintain conversation context across all channels within a server, enabling it to reference information mentioned in any channel.
 
 **Nickname Storage**: As of 2025-10-18, the `nickname` column stores the user's display name for easier identification in message logs and conversation history. Existing messages may have NULL nickname, but all new messages will populate this field.
+
+### channel_settings
+Per-channel configuration stored in database (per-server):
+- `channel_id` - Discord channel ID (primary key)
+- `channel_name` - Channel display name
+- `guild_id` - Discord server ID
+- `purpose` - Channel purpose/instructions
+- `random_reply_chance` - Probability of random replies (0.0-1.0)
+- `immersive_character` - Enable immersive character mode (0 or 1)
+- `allow_technical_language` - Allow technical AI terms (0 or 1)
+- `use_server_info` - Load formal server documentation (0 or 1)
+- `enable_roleplay_formatting` - Format actions in italics (0 or 1)
+- `allow_proactive_engagement` - Allow bot to join conversations proactively (0 or 1)
+- `formality` - Channel-specific formality level
+- `formality_locked` - Lock formality from automatic updates
+- `activated_at` - Timestamp when channel was activated
+
+**Storage**: Channel settings are stored in the **database table** (not config.json). Each server's database has its own `channel_settings` table with settings for that server's channels only.
+
+**Access**: Retrieved via `db_manager.get_channel_setting(channel_id)` and modified via `/channel_*` commands or GUI.
 
 **Memory Consolidation Process (Per-Server):**
 - AI (GPT-4o) analyzes up to 500 messages and extracts facts about users
