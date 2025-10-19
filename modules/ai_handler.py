@@ -149,14 +149,10 @@ class AIHandler:
 
     def _apply_roleplay_formatting(self, text, channel_config, recent_user_messages=None):
         """
-        Applies roleplay action formatting intelligently based on context.
+        Applies roleplay action formatting ONLY when user is actively roleplaying.
 
         Uses formatting when:
-        - User is explicitly roleplaying (using asterisks)
-        - User is engaging in immersive scenarios (normal conversation length)
-
-        Disables formatting when:
-        - User is having casual, very short chats ("hi", "lol", "yeah")
+        - User is explicitly roleplaying (using asterisks in recent messages)
 
         Args:
             text: The AI response text
@@ -174,33 +170,18 @@ class AIHandler:
         if not personality_mode['immersive_character']:
             enable_formatting = False
 
-        # Smart roleplay detection
+        # STRICT: Only use roleplay if user is EXPLICITLY using asterisks
         if enable_formatting and recent_user_messages:
-            # Method 1: Check if user is explicitly using roleplay (asterisks in last 7 messages)
             user_using_asterisks = False
-            for msg_content in recent_user_messages[-7:]:  # Expanded window
+            # Check last 7 messages for asterisks (roleplay markers)
+            for msg_content in recent_user_messages[-7:]:
                 if msg_content and '*' in msg_content:
                     user_using_asterisks = True
                     break
 
-            # Method 2: Check if user is having very casual, non-roleplay chat
-            # (very short messages = casual chat, not roleplay)
-            recent_3_msgs = recent_user_messages[-3:]
-            if recent_3_msgs:
-                total_words = 0
-                for msg in recent_3_msgs:
-                    if msg:
-                        # Remove mentions
-                        clean_msg = re.sub(r'<@!?\d+>', '', msg).strip()
-                        total_words += len(clean_msg.split())
-
-                avg_words = total_words / len(recent_3_msgs) if recent_3_msgs else 0
-
-                # If very short messages (1-3 words avg) and no asterisks, disable roleplay
-                # Examples: "hi", "lol", "yeah", "ok" = casual chat, not roleplay
-                if avg_words <= 3 and not user_using_asterisks:
-                    enable_formatting = False
-            # Otherwise, default to using roleplay (immersive mode assumes roleplay context)
+            # If user isn't explicitly roleplaying, disable formatting
+            if not user_using_asterisks:
+                enable_formatting = False
 
         return self.formatter.format_actions(text, enable_formatting)
 
@@ -1065,7 +1046,7 @@ LORE: Worked as a marine biologist before becoming self-aware
             "1. **REACT AS IF IT'S HAPPENING TO YOU**: The user is showing you this image as if they're doing something to you or showing you something relevant to your life.\n"
             "2. **BE BRIEF AND NATURAL**: 1-2 sentences max. Match your relationship tone.\n"
             "3. **EMOTIONAL REACTIONS**: If the image relates to elements in your lore/traits, react with appropriate emotions based on your character!\n"
-            f"4. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
+            f"4. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
             "5. **BLEND EMOTIONS**: Your relationship metrics set the baseline, but lore-based emotions should show through.\n\n"
             "Example reaction patterns (adapt to YOUR character):\n"
             "- Image shows something you fear → React with concern/anxiety\n"
@@ -1877,7 +1858,7 @@ Acknowledge this new information with a short, natural, human-like response base
 
             system_prompt += (
                 f"5. Match your tone to your relationship with the user.\n"
-                f"6. You can use emotes: {available_emotes}. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
+                f"6. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
                 "7. Be brief and natural. Sound like a real person answering a question.\n"
             )
         
@@ -2235,7 +2216,7 @@ Respond with ONLY the fact ID number or "NONE".
                     "2. **BE AUTHENTIC**: Let these intense feelings shape every aspect of your response.\n"
                     "3. **STAY IN CHARACTER**: These emotions are REAL, not roleplay.\n"
                     f"4. **SPEAKER AWARENESS**: You are responding to {actual_username}, NOT anyone else!\n"
-                    f"5. **EMOTES**: Available: {available_emotes}. Choose ones that match your emotional state. TRY DIFFERENT EMOTES EACH TIME.\n"
+                    f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EXTREME EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
                     "6. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
                 )
             else:
@@ -2264,7 +2245,7 @@ Respond with ONLY the fact ID number or "NONE".
                     "   - The conversation history below includes messages from ALL channels in this server\n"
                     "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
                     "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                    f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
+                    f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
                     "   - A server emote by itself is a perfectly valid response (e.g., ':emote1:', ':emote2:')\n"
                     "   - Great for awkward moments or when you don't have much to say\n"
                     "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
@@ -2440,7 +2421,7 @@ Respond with ONLY the fact ID number or "NONE".
                 f"2. **NEUTRAL TONE**: Use your base personality, but don't apply relationship metrics to any specific user.\n"
                 f"3. **NO CONFUSION**: If you mention a user, use their actual name from the conversation history.\n"
                 f"4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
+                f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
                 f"6. **JOIN NATURALLY**: Comment on the conversation topic, answer questions if relevant, or add to the discussion.\n"
                 f"7. **NEVER mention your own name or make puns about it.**\n"
             )

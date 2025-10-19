@@ -137,20 +137,18 @@ The bot has a configurable personality mode that controls immersion and language
 - **Benefits**: Prevents over-talking in low-energy chats, matches natural conversation flow
 
 **Roleplay Formatting Conditional Activation (2025-10-19)**:
-- **Purpose**: Smart detection of roleplay context to use formatting appropriately
-- **Uses formatting when**:
-  - User explicitly uses asterisks (checks last 7 messages for roleplay markers)
-  - User engages in immersive scenarios (e.g., "make me tea", "pet you") - normal message length
-  - Default: ON when immersive_character mode is enabled
-- **Disables formatting when**:
-  - User is having very casual chat with short messages (avg ≤3 words: "hi", "lol", "yeah")
-  - AND user hasn't used asterisks in last 7 messages
+- **Purpose**: Only use roleplay formatting when user is explicitly roleplaying
+- **STRICT LOGIC**: Uses formatting ONLY when user has asterisks in last 7 messages
+- **Behavior**:
+  - User uses asterisks (*pets bot*, *walks away*) → Bot uses roleplay formatting ✓
+  - User doesn't use asterisks → Bot uses plain text (no italics) ✓
 - **Examples**:
-  - "Dr fish hi" (2 words, no asterisks) → No roleplay ✓
-  - "make me a cup of tea" (5 words, immersive request) → Use roleplay ✓
-  - "*pets you*" (explicit roleplay) → Use roleplay ✓
-- **Implementation**: `_apply_roleplay_formatting()` uses dual detection (asterisks OR message length)
-- **Benefits**: Prevents unwanted roleplay in casual chat while preserving immersive interactions
+  - "*pets you*" (explicit roleplay) → Bot uses roleplay ✓
+  - "make me a cup of tea" (no asterisks) → Bot uses plain text ✓
+  - "Dr fish hi" (no asterisks) → Bot uses plain text ✓
+  - User has used asterisks earlier in conversation → Bot continues using roleplay for ~7 messages
+- **Implementation**: `_apply_roleplay_formatting()` checks last 7 user messages for asterisks
+- **Benefits**: Prevents unwanted roleplay in normal conversation, only activates when user engages
 
 **Alternative Nicknames (Per-Server, 2025-10-14)**:
 - Bot responds to mentions, replies, Discord username, server nickname, AND alternative nicknames
@@ -709,7 +707,12 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
   - `get_random_emote_sample(guild_id, sample_size=50)` returns random subset of available emotes
   - Samples 50 emotes per response (configurable), shuffled randomly
   - Reduces token usage (~80% reduction: 1000+ tokens → ~250 tokens)
-  - AI receives explicit prompt guidance: "TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites"
+  - **Enhanced Prompting (2025-10-19)**: AI instructed to READ emote names and choose contextually appropriate ones
+  - **High Frequency (2025-10-19)**: Bot uses emotes in 80%+ of responses (nearly mandatory)
+  - **Name-Independent Selection (2025-10-19)**: Bot explicitly told NOT to choose emotes based on names (bot's name or user's name)
+  - Explicit instructions: "READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT"
+  - "DO NOT choose emotes based on names - choose based on FEELINGS and SITUATION ONLY"
+  - "ALWAYS try different emotes - you have 200+ available, explore them!"
   - Different random selection each conversation encourages variety
 - Provides AI with plain tags (`:fishstrong:`)
 - Replaces tags with Discord format (`<:fishstrong:1234567890>`) before sending
