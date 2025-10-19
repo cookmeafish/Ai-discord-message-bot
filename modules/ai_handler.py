@@ -1074,8 +1074,8 @@ LORE: Worked as a marine biologist before becoming self-aware
                 # Apply roleplay formatting (without energy analysis since this is an image response)
                 ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config, None)
 
-                # Analyze sentiment and update metrics
-                await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
+                # Metrics now only update during memory consolidation (not after every message)
+                # await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
                 return ai_response_text
             else:
                 return None
@@ -1806,8 +1806,8 @@ Acknowledge this new information with a short, natural, human-like response base
                 # Apply roleplay formatting
                 ai_response = self._apply_roleplay_formatting(ai_response, personality_config, energy_analysis.get('user_messages'))
 
-                # Update relationship metrics
-                await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
+                # Metrics now only update during memory consolidation (not after every message)
+                # await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
 
                 return ai_response
 
@@ -1995,8 +1995,8 @@ Respond with ONLY the fact ID number or "NONE".
                 # Apply roleplay formatting
                 ai_response = self._apply_roleplay_formatting(ai_response, personality_config, energy_analysis.get('user_messages'))
 
-                # Update relationship metrics
-                await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
+                # Metrics now only update during memory consolidation (not after every message)
+                # await self._analyze_sentiment_and_update_metrics(message, ai_response, author.id, db_manager)
 
                 return ai_response
 
@@ -2232,12 +2232,20 @@ Respond with ONLY the fact ID number or "NONE".
                     if not user_has_asterisks:
                         print("DEBUG ROLEPLAY (EXTREME): Adding NO ROLEPLAY MODE prompt")
                         system_prompt += (
-                            "\n7. **NO ROLEPLAY MODE**: DO NOT describe physical actions. Respond with dialogue and thoughts only.\n"
-                            "   - Even with extreme emotions, express them through WORDS only\n"
-                            "   - BAD: '*trembles violently*', '*cowers*', 'trembles violently', 'cowers in fear'\n"
-                            "   - GOOD: 'Y-yes! Right away!', 'I'm here, I'm ready!', 'Whatever you need!'\n"
-                            "   - DO NOT use asterisks (*) or describe physical movements, gestures, facial expressions\n"
-                            "   - Respond naturally with spoken words/thoughts only\n"
+                            "\n7. 🚫 **CRITICAL: NO ROLEPLAY MODE ACTIVE** 🚫\n"
+                            "   **YOU ARE ABSOLUTELY FORBIDDEN FROM DESCRIBING PHYSICAL ACTIONS.**\n"
+                            "   **ANY RESPONSE WITH PHYSICAL DESCRIPTIONS WILL BE REJECTED.**\n\n"
+                            "   ❌ FORBIDDEN - DO NOT WRITE:\n"
+                            "   - Asterisks: '*trembles*', '*gulps*', '*nods*'\n"
+                            "   - Physical descriptions: 'trembles violently', 'gulps nervously', 'nods quickly'\n"
+                            "   - Gestures: 'bows', 'waves', 'points', 'shrugs'\n"
+                            "   - Facial expressions: 'smiles', 'frowns', 'blushes'\n"
+                            "   - Body language: 'leans in', 'backs away', 'freezes'\n\n"
+                            "   ✅ REQUIRED - ONLY WRITE:\n"
+                            "   - Spoken words: 'Y-yes!', 'Right away!', 'I'm ready!'\n"
+                            "   - Thoughts/reactions: 'Oh geez', 'Whoa', 'Okay okay'\n"
+                            "   - Emotes only: ':fishwhat:'\n\n"
+                            "   **USE YOUR VOICE AND EMOTES ONLY. NO PHYSICAL DESCRIPTIONS WHATSOEVER.**\n"
                         )
 
             else:
@@ -2289,11 +2297,20 @@ Respond with ONLY the fact ID number or "NONE".
             print(f"DEBUG ROLEPLAY: Final enable_roleplay = {enable_roleplay}")
             if not enable_roleplay:
                 system_prompt += (
-                    "\n8. **NO ROLEPLAY MODE**: DO NOT describe physical actions. Respond with dialogue and thoughts only.\n"
-                    "   - BAD: '*bows slightly*', '*gulps nervously*', '*quivers*', 'bows slightly', 'gulps nervously'\n"
-                    "   - GOOD: 'H-hiya', 'Just a little nervous', 'I'm here'\n"
-                    "   - DO NOT use asterisks (*) or describe physical movements, gestures, facial expressions\n"
-                    "   - Respond naturally with spoken words/thoughts only\n"
+                    "\n8. 🚫 **CRITICAL: NO ROLEPLAY MODE ACTIVE** 🚫\n"
+                    "   **YOU ARE ABSOLUTELY FORBIDDEN FROM DESCRIBING PHYSICAL ACTIONS.**\n"
+                    "   **ANY RESPONSE WITH PHYSICAL DESCRIPTIONS WILL BE REJECTED.**\n\n"
+                    "   ❌ FORBIDDEN - DO NOT WRITE:\n"
+                    "   - Asterisks: '*trembles*', '*gulps*', '*nods*', '*smiles*'\n"
+                    "   - Physical descriptions: 'trembles violently', 'gulps nervously', 'nods quickly'\n"
+                    "   - Gestures: 'bows', 'waves', 'points', 'shrugs'\n"
+                    "   - Facial expressions: 'smiles', 'frowns', 'blushes'\n"
+                    "   - Body language: 'leans in', 'backs away', 'freezes'\n\n"
+                    "   ✅ REQUIRED - ONLY WRITE:\n"
+                    "   - Spoken words: 'H-hiya', 'Hey there', 'What's up'\n"
+                    "   - Thoughts/reactions: 'Oh geez', 'Whoa', 'Okay'\n"
+                    "   - Emotes only: ':fishwhat:'\n\n"
+                    "   **USE YOUR VOICE AND EMOTES ONLY. NO PHYSICAL DESCRIPTIONS WHATSOEVER.**\n"
                 )
 
             if not personality_mode['allow_technical_language']:
@@ -2384,8 +2401,8 @@ Respond with ONLY the fact ID number or "NONE".
                 # Apply roleplay formatting
                 ai_response_text = self._apply_roleplay_formatting(ai_response_text, personality_config, energy_analysis.get('user_messages'))
 
-                # Analyze sentiment and update metrics (conservative approach)
-                await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
+                # Metrics now only update during memory consolidation (not after every message)
+                # await self._analyze_sentiment_and_update_metrics(message, ai_response_text, author.id, db_manager)
 
                 # Extract bot's own self-lore from response
                 await self._extract_bot_self_lore(ai_response_text, db_manager)
