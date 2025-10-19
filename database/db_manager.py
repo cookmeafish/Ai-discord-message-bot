@@ -1226,6 +1226,14 @@ class DBManager:
         """
         try:
             cursor = self.conn.cursor()
+
+            # First verify the table exists (handles legacy databases)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='channel_settings'")
+            if not cursor.fetchone():
+                print(f"DATABASE WARNING: channel_settings table does not exist, channel {channel_id} is not active")
+                cursor.close()
+                return None
+
             cursor.execute("SELECT * FROM channel_settings WHERE channel_id = ?", (channel_id,))
             row = cursor.fetchone()
             cursor.close()
@@ -1250,6 +1258,8 @@ class DBManager:
             }
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get channel setting for {channel_id}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_all_channel_settings(self, guild_id=None):
@@ -1264,6 +1274,14 @@ class DBManager:
         """
         try:
             cursor = self.conn.cursor()
+
+            # First verify the table exists (handles legacy databases)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='channel_settings'")
+            if not cursor.fetchone():
+                print(f"DATABASE WARNING: channel_settings table does not exist")
+                cursor.close()
+                return {}
+
             if guild_id:
                 cursor.execute("SELECT * FROM channel_settings WHERE guild_id = ?", (guild_id,))
             else:
