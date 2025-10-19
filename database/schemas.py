@@ -91,6 +91,7 @@ SHORT_TERM_MESSAGE_LOG_TABLE = """
 CREATE TABLE IF NOT EXISTS short_term_message_log (
     message_id INTEGER PRIMARY KEY,
     user_id INTEGER NOT NULL,
+    nickname TEXT,
     channel_id INTEGER NOT NULL,
     content TEXT,
     timestamp TEXT NOT NULL,

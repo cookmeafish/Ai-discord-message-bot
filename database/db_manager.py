@@ -79,8 +79,8 @@ class DBManager:
             return False
 
         query = """
-        INSERT OR REPLACE INTO short_term_message_log (message_id, user_id, channel_id, content, timestamp, directed_at_bot)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO short_term_message_log (message_id, user_id, nickname, channel_id, content, timestamp, directed_at_bot)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         timestamp = message.created_at.isoformat()
         directed_flag = 1 if directed_at_bot else 0
@@ -90,6 +90,7 @@ class DBManager:
             cursor.execute(query, (
                 message.id,
                 message.author.id,
+                message.author.display_name,
                 message.channel.id,
                 message.content,
                 timestamp,
