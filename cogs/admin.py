@@ -1413,54 +1413,6 @@ class AdminCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="channel_list_active", description="List all active channels in this server")
-    @app_commands.default_permissions(administrator=True)
-    async def channel_list_active(self, interaction: discord.Interaction):
-        """List all channels activated in this server."""
-        if not interaction.guild:
-            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
-            return
-
-        guild_id = str(interaction.guild.id)
-        config = self.bot.config_manager.get_config()
-        channel_settings = config.get('channel_settings', {})
-
-        # Filter channels by guild_id
-        server_channels = []
-        for channel_id, channel_config in channel_settings.items():
-            channel_guild_id = channel_config.get('guild_id', None)
-            if channel_guild_id == guild_id or channel_guild_id is None:
-                server_channels.append((channel_id, channel_config))
-
-        if not server_channels:
-            await interaction.response.send_message(
-                f"ℹ️ No channels activated in this server yet.\n"
-                f"Use `/activate` in a channel to activate it.",
-                ephemeral=True
-            )
-            return
-
-        embed = discord.Embed(
-            title=f"📋 Active Channels in {interaction.guild.name}",
-            description=f"Total: {len(server_channels)} channels",
-            color=discord.Color.green()
-        )
-
-        for channel_id, channel_config in server_channels[:15]:  # Limit to 15 to avoid embed limits
-            channel_name = channel_config.get('channel_name', f'Channel {channel_id}')
-            purpose = channel_config.get('purpose', 'Default purpose')[:50]
-
-            embed.add_field(
-                name=f"#{channel_name}",
-                value=f"ID: {channel_id}\n{purpose}...",
-                inline=False
-            )
-
-        if len(server_channels) > 15:
-            embed.set_footer(text=f"Showing 15 of {len(server_channels)} channels")
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
     # ==================== SERVER EMOTE MANAGEMENT COMMANDS ====================
 
     @app_commands.command(name="server_set_emote_sources", description="Configure which servers' emotes are available")
