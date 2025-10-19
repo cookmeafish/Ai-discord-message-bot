@@ -2,6 +2,7 @@
 
 import discord
 import re
+import random
 
 class EmoteOrchestrator:
     """
@@ -45,6 +46,38 @@ class EmoteOrchestrator:
         This format matches the expected syntax for using emotes in bot responses.
         """
         return ", ".join(f":{name}:" for name in self.emotes.keys()) if self.emotes else "No emotes loaded"
+
+    def get_random_emote_sample(self, guild_id=None, sample_size=50):
+        """
+        Returns a randomized sample of emotes for better variety in AI responses.
+
+        Args:
+            guild_id: Optional guild ID to filter emotes (uses server_emote_sources config)
+            sample_size: Number of emotes to include in the sample (default: 50)
+
+        Returns:
+            str: Comma-separated string of random emote names with colons
+        """
+        # Get appropriate emote set (filtered or all)
+        emotes_to_use = self.get_emotes_for_guild(guild_id) if guild_id else self.emotes
+
+        if not emotes_to_use:
+            return "No emotes loaded"
+
+        # Get list of emote names
+        emote_names = list(emotes_to_use.keys())
+
+        # Sample randomly (or use all if fewer than sample_size)
+        if len(emote_names) <= sample_size:
+            sampled_names = emote_names
+        else:
+            sampled_names = random.sample(emote_names, sample_size)
+
+        # Shuffle the sample for additional randomness
+        random.shuffle(sampled_names)
+
+        # Return as comma-separated string with colons
+        return ", ".join(f":{name}:" for name in sampled_names)
 
     def get_emotes_for_guild(self, guild_id):
         """

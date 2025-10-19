@@ -454,6 +454,99 @@ class AIHandler:
 
         return relationship_prompt
 
+    def _calculate_conversation_energy(self, messages, bot_id):
+        """
+        Analyzes recent messages to determine conversation energy/length.
+        Returns dynamic max_tokens and energy guidance for the AI.
+
+        Args:
+            messages: List of messages (either dict format from short_term_memory or Discord Message objects)
+            bot_id: Bot's Discord ID to exclude bot messages from analysis
+
+        Returns:
+            dict with 'max_tokens' (int) and 'energy_guidance' (str)
+        """
+        if not messages:
+            return {
+                'max_tokens': 80,  # Default
+                'energy_guidance': ""
+            }
+
+        # Analyze last 5 user messages (not bot messages)
+        # Support both dict format and Discord Message objects
+        user_messages = []
+        for msg in messages[-10:]:
+            # Check if it's a dict (from short_term_memory) or Discord Message object
+            if isinstance(msg, dict):
+                if msg.get('author_id') != str(bot_id) and msg.get('role') == 'user':
+                    user_messages.append(msg.get('content', ''))
+            else:
+                # Discord Message object
+                if hasattr(msg, 'author') and msg.author.id != bot_id:
+                    user_messages.append(msg.content)
+
+        user_messages = user_messages[-5:]  # Last 5
+
+        if not user_messages:
+            return {
+                'max_tokens': 80,
+                'energy_guidance': ""
+            }
+
+        # Calculate average message length (in words)
+        total_words = 0
+        for content in user_messages:
+            # Remove mentions and strip whitespace
+            content = re.sub(r'<@!?\d+>', '', content).strip()
+            words = len(content.split())
+            total_words += words
+
+        avg_words = total_words / len(user_messages)
+
+        # Determine energy level and adjust max_tokens accordingly
+        if avg_words <= 3:
+            # Very short messages (1-3 words: "lol", "yeah", "ok cool")
+            return {
+                'max_tokens': 25,  # Force very short responses
+                'energy_guidance': (
+                    "\n🔥 **CONVERSATION ENERGY: VERY LOW** 🔥\n"
+                    "Recent messages are VERY SHORT (1-3 words). Match this energy:\n"
+                    "- Respond with 1-5 words MAX\n"
+                    "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', 'true'\n"
+                    "- Single emote responses are PERFECT here\n"
+                    "- DO NOT write full sentences\n\n"
+                )
+            }
+        elif avg_words <= 8:
+            # Short messages (4-8 words: "that's pretty cool", "i guess that works")
+            return {
+                'max_tokens': 40,  # Allow brief responses
+                'energy_guidance': (
+                    "\n🔥 **CONVERSATION ENERGY: LOW** 🔥\n"
+                    "Recent messages are SHORT (4-8 words). Match this energy:\n"
+                    "- Respond with 1 SHORT sentence or brief phrase\n"
+                    "- Keep it under 10 words\n"
+                    "- Examples: 'yeah that makes sense', 'lol fair enough', 'sounds good to me'\n\n"
+                )
+            }
+        elif avg_words <= 20:
+            # Medium messages (9-20 words: normal casual conversation)
+            return {
+                'max_tokens': 60,
+                'energy_guidance': (
+                    "\n🔥 **CONVERSATION ENERGY: MEDIUM** 🔥\n"
+                    "Recent messages are MODERATE length. Keep responses natural:\n"
+                    "- 1-2 sentences is ideal\n"
+                    "- Match their conversational tone\n\n"
+                )
+            }
+        else:
+            # Long messages (20+ words: detailed conversation)
+            return {
+                'max_tokens': 80,  # Default max
+                'energy_guidance': ""  # No special guidance needed
+            }
+
     async def _check_image_safety(self, image_url):
         """
         Uses OpenAI's Moderation API to check if an image is safe to process.
@@ -909,8 +1002,8 @@ LORE: Worked as a marine biologist before becoming self-aware
 
         bot_name = channel.guild.me.display_name
 
-        # Get available emotes
-        available_emotes = self.emote_handler.get_available_emote_names()
+        # Get randomized emote sample for variety
+        available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
 
         # Build bot identity from database
         identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
@@ -929,7 +1022,7 @@ LORE: Worked as a marine biologist before becoming self-aware
             "1. **REACT AS IF IT'S HAPPENING TO YOU**: The user is showing you this image as if they're doing something to you or showing you something relevant to your life.\n"
             "2. **BE BRIEF AND NATURAL**: 1-2 sentences max. Match your relationship tone.\n"
             "3. **EMOTIONAL REACTIONS**: If the image relates to elements in your lore/traits, react with appropriate emotions based on your character!\n"
-            f"4. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
+            f"4. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
             "5. **BLEND EMOTIONS**: Your relationship metrics set the baseline, but lore-based emotions should show through.\n\n"
             "Example reaction patterns (adapt to YOUR character):\n"
             "- Image shows something you fear → React with concern/anxiety\n"
@@ -1150,15 +1243,19 @@ Examples:
             personality_config = {}
 
         bot_name = channel.guild.me.display_name
-        
-        # Get available emotes for the system prompt
-        available_emotes = self.emote_handler.get_available_emote_names()
-        
+
+        # Get randomized emote sample for variety
+        available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
+
         # Build bot identity from database
         identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
 
         # Build relationship context
         relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager)
+
+        # Calculate conversation energy for dynamic response length
+        bot_id = channel.guild.me.id
+        energy_analysis = self._calculate_conversation_energy(short_term_memory, bot_id)
 
         # Get user's long-term memory
         long_term_memory_entries = db_manager.get_long_term_memory(author.id)
@@ -1737,7 +1834,7 @@ Acknowledge this new information with a short, natural, human-like response base
 
             system_prompt += (
                 f"5. Match your tone to your relationship with the user.\n"
-                f"6. You can use emotes: {available_emotes}\n"
+                f"6. You can use emotes: {available_emotes}. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
                 "7. Be brief and natural. Sound like a real person answering a question.\n"
             )
         
@@ -2065,7 +2162,7 @@ Respond with ONLY the fact ID number or "NONE".
                 )
 
                 # Then add identity and relationship context
-                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{server_info}"
+                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{server_info}{energy_analysis['energy_guidance']}"
 
                 # Simplified rules focused on the emotional state
                 relationship_descriptor = "someone you have INTENSE feelings about"
@@ -2095,7 +2192,7 @@ Respond with ONLY the fact ID number or "NONE".
                     "2. **BE AUTHENTIC**: Let these intense feelings shape every aspect of your response.\n"
                     "3. **STAY IN CHARACTER**: These emotions are REAL, not roleplay.\n"
                     f"4. **SPEAKER AWARENESS**: You are responding to {actual_username}, NOT anyone else!\n"
-                    f"5. **EMOTES**: Available: {available_emotes}. Choose ones that match your emotional state.\n"
+                    f"5. **EMOTES**: Available: {available_emotes}. Choose ones that match your emotional state. TRY DIFFERENT EMOTES EACH TIME.\n"
                     "6. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
                 )
             else:
@@ -2108,6 +2205,7 @@ Respond with ONLY the fact ID number or "NONE".
                     f"{relationship_prompt}\n"
                     f"{user_profile_prompt}\n"
                     f"{server_info}"
+                    f"{energy_analysis['energy_guidance']}"
                     f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
                     f"🎯 **CURRENT USER IDENTIFICATION** 🎯\n"
                     f"You are responding to: **{current_user_name}** (ID: {author.id})\n"
@@ -2123,7 +2221,7 @@ Respond with ONLY the fact ID number or "NONE".
                     "   - The conversation history below includes messages from ALL channels in this server\n"
                     "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
                     "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                    f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
+                    f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
                     "   - A server emote by itself is a perfectly valid response (e.g., ':emote1:', ':emote2:')\n"
                     "   - Great for awkward moments or when you don't have much to say\n"
                     "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
@@ -2200,12 +2298,15 @@ Respond with ONLY the fact ID number or "NONE".
 
         # Get model configuration for main response
         main_response_config = self._get_model_config('main_response')
-        
+
+        # Use dynamic max_tokens based on conversation energy
+        dynamic_max_tokens = energy_analysis['max_tokens']
+
         try:
             response = await self.client.chat.completions.create(
                 model=main_response_config['model'],
                 messages=messages_for_api,
-                max_tokens=main_response_config['max_tokens'],
+                max_tokens=dynamic_max_tokens,
                 temperature=main_response_config['temperature']
             )
             ai_response_text = response.choices[0].message.content.strip()
@@ -2254,8 +2355,12 @@ Respond with ONLY the fact ID number or "NONE".
 
             bot_name = channel.guild.me.display_name
 
-            # Get available emotes
-            available_emotes = self.emote_handler.get_available_emote_names()
+            # Get randomized emote sample for variety
+            available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
+
+            # Calculate conversation energy for dynamic response length
+            bot_id = channel.guild.me.id
+            energy_analysis = self._calculate_conversation_energy(recent_messages, bot_id)
 
             # Build bot identity from database (personality traits/lore)
             identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
@@ -2276,6 +2381,7 @@ Respond with ONLY the fact ID number or "NONE".
             system_prompt = (
                 f"{identity_prompt}\n"
                 f"{server_info}"
+                f"{energy_analysis['energy_guidance']}"
                 f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
                 f"🎯 **PROACTIVE ENGAGEMENT MODE** 🎯\n"
                 f"You are joining an ongoing conversation between multiple people.\n"
@@ -2291,7 +2397,7 @@ Respond with ONLY the fact ID number or "NONE".
                 f"2. **NEUTRAL TONE**: Use your base personality, but don't apply relationship metrics to any specific user.\n"
                 f"3. **NO CONFUSION**: If you mention a user, use their actual name from the conversation history.\n"
                 f"4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally.\n"
+                f"5. **EMOTES**: Available: {available_emotes}. Use sparingly and naturally. TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites.\n"
                 f"6. **JOIN NATURALLY**: Comment on the conversation topic, answer questions if relevant, or add to the discussion.\n"
                 f"7. **NEVER mention your own name or make puns about it.**\n"
             )
@@ -2306,10 +2412,13 @@ Respond with ONLY the fact ID number or "NONE".
             # Get model configuration
             main_response_config = self._get_model_config('main_response')
 
+            # Use dynamic max_tokens based on conversation energy
+            dynamic_max_tokens = energy_analysis['max_tokens']
+
             response = await self.client.chat.completions.create(
                 model=main_response_config['model'],
                 messages=messages_for_api,
-                max_tokens=main_response_config['max_tokens'],
+                max_tokens=dynamic_max_tokens,
                 temperature=main_response_config['temperature']
             )
 

@@ -113,6 +113,7 @@ The bot has a configurable personality mode that controls immersion and language
    - Server information from text files (`_load_server_info(channel_config)`) if enabled
    - Up to 500 messages server-wide history (not filtered by channel)
    - **Explicit user identification** in all response prompts to prevent user confusion (2025-10-18)
+   - **Conversation energy matching** (2025-10-19): Dynamically adjusts response length based on recent message length
 6. Sentiment analysis updates relationship metrics automatically (`_analyze_sentiment_and_update_metrics(message, ai_response, user_id, db_manager)`)
 
 **User Identification System (2025-10-18)**:
@@ -121,6 +122,18 @@ The bot has a configurable personality mode that controls immersion and language
 - Includes warnings: "NEVER mention your own name or make puns about it" and "NEVER address this user by someone else's name"
 - Applied to: image generation, casual chat, factual questions, memory corrections
 - Proactive engagement uses **neutral context** (no specific user) via dedicated `generate_proactive_response()` method
+
+**Conversation Energy Matching System (2025-10-19)**:
+- **Purpose**: Bot automatically adjusts response length to match conversation energy
+- **Implementation**: `_calculate_conversation_energy(messages, bot_id)` analyzes last 5 user messages
+- **Energy Levels**:
+  - **VERY LOW** (1-3 words avg): max_tokens=25, forces 1-5 word responses (e.g., "lol", "yeah", "fair")
+  - **LOW** (4-8 words avg): max_tokens=40, brief responses (e.g., "yeah that makes sense")
+  - **MEDIUM** (9-20 words avg): max_tokens=60, natural 1-2 sentences
+  - **HIGH** (20+ words avg): max_tokens=80, full responses (default)
+- **Prompt Guidance**: AI receives explicit instructions to match energy (e.g., "Recent messages are VERY SHORT. Respond with 1-5 words MAX")
+- **Applied To**: Both `generate_response()` and `generate_proactive_response()` methods
+- **Benefits**: Prevents over-talking in low-energy chats, matches natural conversation flow
 
 **Alternative Nicknames (Per-Server, 2025-10-14)**:
 - Bot responds to mentions, replies, Discord username, server nickname, AND alternative nicknames
@@ -143,7 +156,8 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 ### Core Entry Points
 - `main.py` - Bot initialization, loads cogs, auto-populates identity
 - `cogs/events.py` - Message handling and AI response triggering
-- `modules/ai_handler.py` - OpenAI API interface, intent classification, sentiment analysis
+- `modules/ai_handler.py` - OpenAI API interface, intent classification, sentiment analysis, conversation energy matching (2025-10-19)
+- `modules/emote_orchestrator.py` - Emote management, per-server filtering, randomized sampling for variety (2025-10-19)
 - `modules/formatting_handler.py` - Roleplay action detection and italic formatting (2025-10-15)
 
 ### Database Layer
@@ -674,6 +688,12 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
   - Config format: `server_emote_sources: {guild_id: [allowed_guild_id1, allowed_guild_id2]}`
   - Default behavior: If server not configured, all emotes available (backward compatible)
   - Use case: Professional servers can restrict to professional emotes only
+- **Randomized Emote Sampling (2025-10-19)**: Increases emote variety in AI responses
+  - `get_random_emote_sample(guild_id, sample_size=50)` returns random subset of available emotes
+  - Samples 50 emotes per response (configurable), shuffled randomly
+  - Reduces token usage (~80% reduction: 1000+ tokens → ~250 tokens)
+  - AI receives explicit prompt guidance: "TRY DIFFERENT EMOTES EACH TIME instead of defaulting to favorites"
+  - Different random selection each conversation encourages variety
 - Provides AI with plain tags (`:fishstrong:`)
 - Replaces tags with Discord format (`<:fishstrong:1234567890>`) before sending
 - `_strip_discord_formatting()` in AI Handler removes Discord syntax from context to prevent AI from replicating malformed syntax
