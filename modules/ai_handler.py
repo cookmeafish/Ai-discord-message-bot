@@ -1413,7 +1413,20 @@ Respond with ONLY the extracted visual description, nothing else.
                                 appearance_facts = []
                                 other_facts = []
 
-                                appearance_keywords = ['hair', 'eyes', 'eye', 'face', 'wear', 'dress', 'shirt',  'clothing', 'outfit', 'nose', 'mouth', 'eyebrow', 'complexion', 'bow', 'ribbon', 'ornament', 'collar', 'bangs', 'pink', 'green', 'black', 'white']
+                                # Visual descriptor patterns that indicate appearance facts
+                                # Check if fact describes physical appearance, not just contains appearance words
+                                appearance_patterns = [
+                                    'has hair', ' hair ', 'has eyes', ' eyes ', 'has eye', ' eye ', 'has a face', 'has skin',
+                                    'wears ', 'wearing ',
+                                    'has a slender', 'has a muscular', 'has a', 'has an',
+                                    'hair is', 'eyes are', 'skin is',
+                                    'dressed in', 'outfit', 'clothing',
+                                    'has fringe', 'has bangs', 'has a build',
+                                    'complexion', 'has lips', 'has a mouth', 'has a nose',
+                                    'has fingernails', 'painted', 'has makeup',
+                                    'depicted in', 'drawn in', 'art style',
+                                    'shading', 'highlights', 'giving a', 'making them'
+                                ]
 
                                 for fact_tuple in user_facts:  # Check ALL facts, not just first 20
                                     fact_text = fact_tuple[0]
@@ -1423,8 +1436,10 @@ Respond with ONLY the extracted visual description, nothing else.
                                     if any(phrase in fact_lower for phrase in exclude_phrases):
                                         continue
 
-                                    # Check if this is an appearance fact
-                                    if any(keyword in fact_lower for keyword in appearance_keywords):
+                                    # Check if this is an appearance fact by looking for visual descriptor patterns
+                                    is_appearance = any(pattern in fact_lower for pattern in appearance_patterns)
+
+                                    if is_appearance:
                                         appearance_facts.append(fact_text)
                                     else:
                                         other_facts.append(fact_text)
