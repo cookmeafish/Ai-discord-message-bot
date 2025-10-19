@@ -1034,10 +1034,16 @@ LORE: Worked as a marine biologist before becoming self-aware
                     print(f"AI Handler: Looking for users mentioned in prompt: '{prompt_lower}'")
 
                     # Check all guild members to see if they're mentioned
+                    # Extract words from the prompt to check against member names
+                    prompt_words = prompt_lower.split()
+
                     for member in message.guild.members:
-                        # Check display name and username
-                        display_match = member.display_name.lower() in prompt_lower
-                        username_match = member.name.lower() in prompt_lower
+                        # Check if any word from the prompt appears in the member's name
+                        member_display_lower = member.display_name.lower()
+                        member_name_lower = member.name.lower()
+
+                        display_match = any(word in member_display_lower for word in prompt_words)
+                        username_match = any(word in member_name_lower for word in prompt_words)
 
                         if display_match or username_match:
                             mentioned_users.append(member)
@@ -1050,11 +1056,13 @@ LORE: Worked as a marine biologist before becoming self-aware
                         context_parts = []
                         for member in mentioned_users:
                             # Get facts about this user from long-term memory
-                            user_facts = db_manager.get_user_facts(member.id, limit=10)
+                            user_facts = db_manager.get_long_term_memory(str(member.id))
                             print(f"AI Handler: Retrieved {len(user_facts) if user_facts else 0} facts for {member.display_name}")
 
                             if user_facts:
-                                facts_text = ", ".join([fact['fact'] for fact in user_facts])
+                                # Limit to top 10 most relevant facts
+                                facts_list = [fact['fact'] for fact in user_facts[:10]]
+                                facts_text = ", ".join(facts_list)
                                 context_parts.append(f"{member.display_name}: {facts_text}")
 
                         if context_parts:
