@@ -1408,7 +1408,14 @@ Respond with ONLY the extracted visual description, nothing else.
                                     'begged every day',  # Too specific/behavioral
                                 ]
 
-                                for fact_tuple in user_facts[:20]:  # Check more facts but filter
+                                # Separate appearance facts from other facts
+                                # Appearance facts (hair, eyes, face, clothing) are prioritized
+                                appearance_facts = []
+                                other_facts = []
+
+                                appearance_keywords = ['hair', 'eyes', 'eye', 'face', 'wear', 'dress', 'shirt',  'clothing', 'outfit', 'nose', 'mouth', 'eyebrow', 'complexion', 'bow', 'ribbon', 'ornament', 'collar', 'bangs', 'pink', 'green', 'black', 'white']
+
+                                for fact_tuple in user_facts:  # Check ALL facts, not just first 20
                                     fact_text = fact_tuple[0]
                                     fact_lower = fact_text.lower()
 
@@ -1416,10 +1423,17 @@ Respond with ONLY the extracted visual description, nothing else.
                                     if any(phrase in fact_lower for phrase in exclude_phrases):
                                         continue
 
-                                    # Keep descriptive facts (appearance, personality, roles)
-                                    descriptive_facts.append(fact_text)
-                                    if len(descriptive_facts) >= 5:  # Limit to 5 descriptive facts
-                                        break
+                                    # Check if this is an appearance fact
+                                    if any(keyword in fact_lower for keyword in appearance_keywords):
+                                        appearance_facts.append(fact_text)
+                                    else:
+                                        other_facts.append(fact_text)
+
+                                # Prioritize appearance facts first, then add other descriptive facts
+                                descriptive_facts = appearance_facts[:10]  # Up to 10 appearance facts
+                                if len(descriptive_facts) < 5:
+                                    # Fill remaining slots with other facts
+                                    descriptive_facts.extend(other_facts[:5 - len(descriptive_facts)])
 
                                 if descriptive_facts or appearance_modifiers or gender_detected:
                                     # Combine appearance modifiers (from metrics) with descriptive facts
