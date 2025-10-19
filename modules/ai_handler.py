@@ -1336,6 +1336,35 @@ Respond with ONLY the extracted visual description, nothing else.
                             user_facts = db_manager.get_long_term_memory(str(member.id))
                             print(f"AI Handler: Retrieved {len(user_facts) if user_facts else 0} facts for {member.display_name}")
 
+                            # Check relationship metrics to add emotional context to appearance
+                            relationship_metrics = db_manager.get_relationship_metrics(str(member.id))
+                            fear_level = 0
+                            intimidation_level = 0
+                            respect_level = 0
+
+                            if relationship_metrics:
+                                fear_level = relationship_metrics.get('fear', 0)
+                                intimidation_level = relationship_metrics.get('intimidation', 0)
+                                respect_level = relationship_metrics.get('respect', 0)
+                                print(f"AI Handler: Relationship metrics for {member.display_name} - Fear: {fear_level}, Intimidation: {intimidation_level}, Respect: {respect_level}")
+
+                            # Build emotional appearance modifiers based on metrics
+                            appearance_modifiers = []
+                            if fear_level >= 7:
+                                appearance_modifiers.append("terrifying and intimidating presence")
+                            elif fear_level >= 4:
+                                appearance_modifiers.append("intimidating aura")
+
+                            if intimidation_level >= 7:
+                                appearance_modifiers.append("menacing and commanding")
+                            elif intimidation_level >= 4:
+                                appearance_modifiers.append("authoritative presence")
+
+                            if respect_level >= 7:
+                                appearance_modifiers.append("dignified and powerful")
+                            elif respect_level >= 4:
+                                appearance_modifiers.append("confident and capable")
+
                             if user_facts:
                                 # Filter facts to only include visual/descriptive information
                                 # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
@@ -1372,8 +1401,17 @@ Respond with ONLY the extracted visual description, nothing else.
                                     if len(descriptive_facts) >= 5:  # Limit to 5 descriptive facts
                                         break
 
-                                if descriptive_facts:
-                                    facts_text = ", ".join(descriptive_facts)
+                                if descriptive_facts or appearance_modifiers:
+                                    # Combine appearance modifiers (from metrics) with descriptive facts
+                                    all_descriptors = []
+
+                                    if appearance_modifiers:
+                                        all_descriptors.extend(appearance_modifiers)
+
+                                    if descriptive_facts:
+                                        all_descriptors.extend(descriptive_facts)
+
+                                    facts_text = ", ".join(all_descriptors)
                                     context_parts.append(f"{member.display_name}: {facts_text}")
                                     print(f"AI Handler: Sending descriptive facts for {member.display_name}: {facts_text}")
 
