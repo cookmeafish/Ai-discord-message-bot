@@ -962,6 +962,158 @@ LORE: Worked as a marine biologist before becoming self-aware
             print(f"AI Handler: Failed to generate image response: {e}")
             return "I... don't know what to say about that image."
 
+    async def _extract_and_store_memory_statements(self, message, db_manager):
+        """
+        PRE-PROCESSING STEP: Extract and store any memory statements from the message,
+        regardless of the primary intent. This allows multi-intent messages like:
+        "Angel Yamazaki is a cute rabbit. dr fish, draw me Angel Yamazaki"
+
+        Args:
+            message: Discord message object
+            db_manager: Server-specific database manager
+
+        Returns:
+            List of extracted facts (for logging), or empty list if none found
+        """
+        detection_prompt = f"""
+Analyze this message and determine if it contains ANY factual statements that should be stored as memories.
+
+**Examples of memory statements:**
+- "Angel Yamazaki is a cute rabbit that sells carrots" (fact about a character)
+- "My favorite color is blue" (fact about the user)
+- "John is my brother" (fact about a relationship)
+- "The server rules say no spam" (fact about the server)
+
+**NOT memory statements:**
+- "draw me a cat" (request, not a fact)
+- "can you help?" (question)
+- "thanks!" (acknowledgment)
+
+Message: "{self._strip_discord_formatting(message.content)}"
+
+Respond with ONLY "YES" if the message contains memory statements, or "NO" if it doesn't.
+"""
+
+        try:
+            # First, detect if there are any memory statements
+            detection_config = self._get_model_config('intent_classification')
+            response = await self.client.chat.completions.create(
+                model=detection_config['model'],
+                messages=[{'role': 'system', 'content': detection_prompt}],
+                max_tokens=5,
+                temperature=0.0
+            )
+
+            has_memory = response.choices[0].message.content.strip().upper()
+
+            if has_memory != "YES":
+                return []
+
+            # If YES, extract the facts
+            extraction_prompt = f"""
+Extract ALL factual statements from this message as concise facts. If there are multiple facts, list them separated by " | ".
+
+**Examples:**
+- Input: "Angel Yamazaki is a cute rabbit that sells carrots. dr fish, draw me Angel Yamazaki"
+  Output: "Angel Yamazaki is a cute rabbit that sells carrots"
+
+- Input: "My favorite color is blue and I work as a teacher"
+  Output: "My favorite color is blue | I work as a teacher"
+
+- Input: "John is my brother and he loves pizza"
+  Output: "John is my brother | John loves pizza"
+
+Message: "{self._strip_discord_formatting(message.content)}"
+
+Respond with ONLY the extracted facts (separated by " | " if multiple).
+"""
+
+            extraction_config = self._get_model_config('memory_extraction')
+            response = await self.client.chat.completions.create(
+                model=extraction_config['model'],
+                messages=[{'role': 'system', 'content': extraction_prompt}],
+                max_tokens=100,
+                temperature=0.0
+            )
+
+            facts_str = response.choices[0].message.content.strip()
+            if not facts_str:
+                return []
+
+            # Split multiple facts and store each
+            facts = [f.strip() for f in facts_str.split('|')]
+            stored_facts = []
+
+            for fact in facts:
+                if fact:
+                    # Determine who the fact is about
+                    # If it mentions a third party (not "I" or "my"), try to find that user
+                    subject_prompt = f"""
+Who is this fact about? Respond with ONLY "USER" if it's about the message author (uses "I", "my", "me"), or the NAME of the person if it's about someone else.
+
+Fact: "{fact}"
+
+Examples:
+- "My favorite color is blue" → USER
+- "Angel Yamazaki is a cute rabbit" → Angel Yamazaki
+- "John is my brother" → John
+- "I work as a teacher" → USER
+"""
+
+                    subject_response = await self.client.chat.completions.create(
+                        model=detection_config['model'],
+                        messages=[{'role': 'system', 'content': subject_prompt}],
+                        max_tokens=20,
+                        temperature=0.0
+                    )
+
+                    subject = subject_response.choices[0].message.content.strip()
+
+                    if subject == "USER":
+                        # Store fact about the message author
+                        target_user_id = message.author.id
+                        db_manager.add_long_term_memory(
+                            target_user_id, fact, message.author.id, message.author.display_name
+                        )
+                        stored_facts.append((fact, message.author.display_name))
+                        print(f"AI Handler: Stored fact about {message.author.display_name}: {fact}")
+                    else:
+                        # Try to find the mentioned user in the guild
+                        mentioned_user = None
+                        subject_lower = subject.lower()
+
+                        for member in message.guild.members:
+                            if member.bot:
+                                continue
+                            if (subject_lower in member.display_name.lower() or
+                                subject_lower in member.name.lower()):
+                                mentioned_user = member
+                                break
+
+                        # If not found in guild, create a fictional user ID based on the name
+                        if not mentioned_user:
+                            # Generate a consistent ID for this name (hash-based)
+                            import hashlib
+                            name_hash = int(hashlib.sha256(subject.encode()).hexdigest()[:15], 16)
+                            target_user_id = str(name_hash)
+                            target_display_name = subject
+                            print(f"AI Handler: Creating fictional user entry for '{subject}' (ID: {target_user_id})")
+                        else:
+                            target_user_id = mentioned_user.id
+                            target_display_name = mentioned_user.display_name
+
+                        db_manager.add_long_term_memory(
+                            target_user_id, fact, message.author.id, message.author.display_name
+                        )
+                        stored_facts.append((fact, target_display_name))
+                        print(f"AI Handler: Stored fact about {target_display_name}: {fact}")
+
+            return stored_facts
+
+        except Exception as e:
+            print(f"AI Handler: Error in memory extraction pre-processing: {e}")
+            return []
+
     async def generate_response(self, message, short_term_memory, db_manager):
         """
         Generate a response based on the classified intent.
@@ -971,6 +1123,10 @@ LORE: Worked as a marine biologist before becoming self-aware
             short_term_memory: List of recent messages
             db_manager: Server-specific database manager
         """
+
+        # PRE-PROCESSING: Extract and store any memory statements before classifying primary intent
+        # This allows messages like "X is a Y. draw me X" to store the fact AND generate the image
+        stored_facts = await self._extract_and_store_memory_statements(message, db_manager)
 
         intent = await self._classify_intent(message, short_term_memory)
 
@@ -1118,6 +1274,57 @@ LORE: Worked as a marine biologist before becoming self-aware
                             print(f"AI Handler: Error searching database for alternative names: {e}")
 
                     print(f"AI Handler: Total mentioned users (including database search): {len(mentioned_users)}")
+
+                    # CONTEXT SOURCE 3: Check short-term conversation history for descriptive statements
+                    # This allows: "Angel is a rabbit" (message 1) → "draw Angel" (message 2)
+                    conversation_context = []
+                    if not mentioned_users and short_term_memory:
+                        print(f"AI Handler: No users found in guild/database, checking recent conversation for context...")
+
+                        # Search recent messages (last 20) for descriptive statements about the subject
+                        for msg_dict in short_term_memory[-20:]:
+                            msg_content = msg_dict.get('content', '')
+                            msg_content_lower = msg_content.lower()
+
+                            # Check if any prompt word appears in this message
+                            if any(word in msg_content_lower for word in prompt_words):
+                                # Check if it's a descriptive statement (contains "is", "are", "was", "were")
+                                if any(verb in msg_content_lower for verb in [' is ', ' are ', ' was ', ' were ']):
+                                    # Extract potential description using AI
+                                    print(f"AI Handler: Found potential context in message: {msg_content[:100]}")
+                                    conversation_context.append(msg_content)
+
+                        if conversation_context:
+                            # Use AI to extract the descriptive parts
+                            context_extraction_prompt = f"""
+Extract ONLY the descriptive facts from these messages that describe what should be drawn.
+
+Drawing prompt: "{clean_prompt}"
+Recent messages: {' | '.join(conversation_context[-5:])}
+
+Extract the visual description as a concise statement. Examples:
+- "Angel Yamazaki is a cute rabbit that sells carrots" → "a cute rabbit that sells carrots"
+- "John is tall and wears glasses" → "tall and wears glasses"
+- "The dragon is blue with red eyes" → "blue with red eyes"
+
+Respond with ONLY the extracted visual description, nothing else.
+"""
+
+                            try:
+                                extraction_config = self._get_model_config('memory_extraction')
+                                response = await self.client.chat.completions.create(
+                                    model=extraction_config['model'],
+                                    messages=[{'role': 'system', 'content': context_extraction_prompt}],
+                                    max_tokens=60,
+                                    temperature=0.0
+                                )
+
+                                extracted_context = response.choices[0].message.content.strip()
+                                if extracted_context and len(extracted_context) > 3:
+                                    image_context = extracted_context
+                                    print(f"AI Handler: Extracted context from conversation: {image_context}")
+                            except Exception as e:
+                                print(f"AI Handler: Error extracting context from conversation: {e}")
 
                     # If users are mentioned, pull their facts from the database
                     if mentioned_users:
