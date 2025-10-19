@@ -22,11 +22,14 @@ class EmoteOrchestrator:
                 print(f"  Scanning guild: {guild.name} (ID: {guild.id})")
                 guild_emote_count = 0
                 for emote in guild.emojis:
-                    if emote.name not in self.emotes:
+                    # Only load emotes that are available (not boost-locked)
+                    if emote.available and emote.name not in self.emotes:
                         self.emotes[emote.name] = emote
                         guild_emote_count += 1
                         print(f"    Loaded emote: :{emote.name}: (ID: {emote.id})")
-                print(f"  Found {guild_emote_count} unique emotes in {guild.name}")
+                    elif not emote.available:
+                        print(f"    Skipped boost-locked emote: :{emote.name}:")
+                print(f"  Found {guild_emote_count} unique available emotes in {guild.name}")
             print(f"Successfully loaded {len(self.emotes)} total unique custom emotes.")
             print(f"Available emote names: {', '.join(sorted(self.emotes.keys()))}")
         except Exception as e:

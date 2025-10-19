@@ -2219,6 +2219,21 @@ Respond with ONLY the fact ID number or "NONE".
                     f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EXTREME EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
                     "6. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
                 )
+
+                # Check if roleplay formatting should be disabled
+                enable_roleplay_extreme = channel_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
+                if enable_roleplay_extreme and energy_analysis.get('user_messages'):
+                    user_has_asterisks = any('*' in msg for msg in energy_analysis.get('user_messages', [])[-7:] if msg)
+                    if not user_has_asterisks:
+                        system_prompt += (
+                            "\n7. **NO ROLEPLAY MODE**: DO NOT describe physical actions. Respond with dialogue and thoughts only.\n"
+                            "   - Even with extreme emotions, express them through WORDS only\n"
+                            "   - BAD: '*trembles violently*', '*cowers*', 'trembles violently', 'cowers in fear'\n"
+                            "   - GOOD: 'Y-yes! Right away!', 'I'm here, I'm ready!', 'Whatever you need!'\n"
+                            "   - DO NOT use asterisks (*) or describe physical movements, gestures, facial expressions\n"
+                            "   - Respond naturally with spoken words/thoughts only\n"
+                        )
+
             else:
                 # Normal prompt structure when fear/intimidation aren't high
                 # Get current user name for explicit identification
@@ -2252,9 +2267,27 @@ Respond with ONLY the fact ID number or "NONE".
                     "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
                 )
 
-            if not personality_mode['allow_technical_language']:
+            # Check if roleplay formatting should be disabled
+            enable_roleplay = channel_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
+            if enable_roleplay and energy_analysis.get('user_messages'):
+                # Check if user is using asterisks
+                user_has_asterisks = any('*' in msg for msg in energy_analysis.get('user_messages', [])[-7:] if msg)
+                if not user_has_asterisks:
+                    enable_roleplay = False
+
+            if not enable_roleplay:
                 system_prompt += (
-                    "\n8. **ABSOLUTELY NO TECHNICAL/ROBOTIC LANGUAGE**: NEVER use these terms:\n"
+                    "\n8. **NO ROLEPLAY MODE**: DO NOT describe physical actions. Respond with dialogue and thoughts only.\n"
+                    "   - BAD: '*bows slightly*', '*gulps nervously*', '*quivers*', 'bows slightly', 'gulps nervously'\n"
+                    "   - GOOD: 'H-hiya', 'Just a little nervous', 'I'm here'\n"
+                    "   - DO NOT use asterisks (*) or describe physical movements, gestures, facial expressions\n"
+                    "   - Respond naturally with spoken words/thoughts only\n"
+                )
+
+            if not personality_mode['allow_technical_language']:
+                rule_num = 9 if not enable_roleplay else 8
+                system_prompt += (
+                    f"\n{rule_num}. **ABSOLUTELY NO TECHNICAL/ROBOTIC LANGUAGE**: NEVER use these terms:\n"
                     "   - 'cached', 'stored', 'database', 'info', 'data', 'system', 'record', 'log'\n"
                     "   - BAD: 'I don't have that info cached'\n"
                     "   - GOOD: 'idk', 'no clue', 'not sure'\n"

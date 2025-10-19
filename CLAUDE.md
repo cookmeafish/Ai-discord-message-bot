@@ -139,16 +139,41 @@ The bot has a configurable personality mode that controls immersion and language
 **Roleplay Formatting Conditional Activation (2025-10-19)**:
 - **Purpose**: Only use roleplay formatting when user is explicitly roleplaying
 - **STRICT LOGIC**: Uses formatting ONLY when user has asterisks in last 7 messages
+- **Complete Roleplay Suppression**: When roleplay is disabled, AI is explicitly forbidden from describing ANY physical actions
+  - Prompts include "NO ROLEPLAY MODE" instructions with explicit examples
+  - Forbidden: Using asterisks, describing movements, gestures, facial expressions, physical reactions
+  - Allowed: Dialogue and thoughts only (e.g., "H-hiya", "Just a little nervous", "I'm here")
+  - Examples in prompt show both asterisk AND non-asterisk physical descriptions as BAD
 - **Behavior**:
   - User uses asterisks (*pets bot*, *walks away*) → Bot uses roleplay formatting ✓
-  - User doesn't use asterisks → Bot uses plain text (no italics) ✓
+  - User doesn't use asterisks → Bot responds with dialogue/thoughts only, no physical descriptions ✓
 - **Examples**:
-  - "*pets you*" (explicit roleplay) → Bot uses roleplay ✓
-  - "make me a cup of tea" (no asterisks) → Bot uses plain text ✓
-  - "Dr fish hi" (no asterisks) → Bot uses plain text ✓
+  - "*pets you*" (explicit roleplay) → Bot uses roleplay: "*purrs softly*" ✓
+  - "make me a cup of tea" (no asterisks) → Bot uses plain text: "Sure thing!" ✓
+  - "Dr fish hi" (no asterisks) → Bot uses plain text: "Hey there!" ✓
   - User has used asterisks earlier in conversation → Bot continues using roleplay for ~7 messages
-- **Implementation**: `_apply_roleplay_formatting()` checks last 7 user messages for asterisks
-- **Benefits**: Prevents unwanted roleplay in normal conversation, only activates when user engages
+- **Implementation**: `_apply_roleplay_formatting()` checks last 7 user messages for asterisks; AI prompts include explicit "NO ROLEPLAY MODE" instructions when disabled
+- **Benefits**: Prevents unwanted roleplay in normal conversation, completely eliminates physical action descriptions when user isn't roleplaying
+
+**Emote Variety and Frequency System (2025-10-19)**:
+- **Purpose**: Increase emote diversity and usage frequency across 200+ available emotes
+- **Randomized Sampling**: `get_random_emote_sample()` provides 50 random emotes per response instead of all emotes
+  - Reduces token usage by ~80% (1000+ tokens → ~250 tokens)
+  - Shuffles emote order for additional randomness
+  - Increases variety by forcing AI to choose from different sets each time
+- **Enhanced AI Prompts**: All 5 emote prompts strengthened with explicit instructions:
+  - "READ the emote names carefully and choose ones that match your EMOTIONAL STATE"
+  - "Use emotes in MOST responses (80%+ of the time)"
+  - "ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them!"
+  - "DO NOT choose emotes based on names (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY"
+- **Name-Independent Selection**: Prevents bot name ("Dr. Fish") and user names from biasing emote choice toward thematic emotes (e.g., fish emotes)
+- **Boost-Locked Emote Filtering (2025-10-19)**: `emote_orchestrator.py` filters inaccessible emotes
+  - Only loads emotes with `emote.available == True`
+  - Skips boost-locked emotes (emotes in slots requiring higher server boost tier)
+  - Logs skipped emotes: "Skipped boost-locked emote: :emote_name:"
+  - Prevents bot from attempting to use inaccessible emotes that would appear broken
+- **Implementation**: `modules/emote_orchestrator.py:get_random_emote_sample()` and `load_emotes()`
+- **Benefits**: Maximizes emote variety, prevents name bias, ensures all suggested emotes are actually usable
 
 **Alternative Nicknames (Per-Server, 2025-10-14)**:
 - Bot responds to mentions, replies, Discord username, server nickname, AND alternative nicknames
@@ -714,6 +739,12 @@ Custom Discord emotes are managed by `EmoteOrchestrator`:
   - "DO NOT choose emotes based on names - choose based on FEELINGS and SITUATION ONLY"
   - "ALWAYS try different emotes - you have 200+ available, explore them!"
   - Different random selection each conversation encourages variety
+- **Boost-Locked Emote Filtering (2025-10-19)**: Prevents loading inaccessible emotes
+  - Only loads emotes with `emote.available == True` (Discord API property)
+  - Skips boost-locked emotes (emotes in slots requiring higher server boost tier)
+  - Boost-locked emotes exist in the server but can't be used until server boost tier increases
+  - Logs skipped emotes for debugging: "Skipped boost-locked emote: :emote_name:"
+  - Prevents AI from attempting to use broken/inaccessible emotes
 - Provides AI with plain tags (`:fishstrong:`)
 - Replaces tags with Discord format (`<:fishstrong:1234567890>`) before sending
 - `_strip_discord_formatting()` in AI Handler removes Discord syntax from context to prevent AI from replicating malformed syntax
