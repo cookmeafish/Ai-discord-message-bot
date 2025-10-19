@@ -1038,27 +1038,37 @@ LORE: Worked as a marine biologist before becoming self-aware
                     prompt_words = prompt_lower.split()
 
                     for member in message.guild.members:
+                        # Skip bots
+                        if member.bot:
+                            continue
+
                         # Check if any word from the prompt appears in the member's name
                         member_display_lower = member.display_name.lower()
                         member_name_lower = member.name.lower()
 
-                        # Check username and display name
+                        # Check username and display name first (fast check)
                         display_match = any(word in member_display_lower for word in prompt_words)
                         username_match = any(word in member_name_lower for word in prompt_words)
 
-                        # Also check alternative names from database (facts like "also goes by X")
+                        # Only check alternative names if no direct match found
+                        # This avoids slow database lookups for every guild member
                         alternative_name_match = False
-                        user_facts = db_manager.get_long_term_memory(str(member.id))
-                        if user_facts:
-                            for fact in user_facts:
-                                fact_text = fact['fact'].lower()
-                                # Look for alternative name patterns
-                                if any(phrase in fact_text for phrase in ['also goes by', 'known as', 'called', 'nicknamed']):
-                                    # Check if any prompt word appears in this fact
-                                    if any(word in fact_text for word in prompt_words):
-                                        alternative_name_match = True
-                                        print(f"AI Handler: Alternative name match found in fact: {fact['fact']}")
-                                        break
+                        if not (display_match or username_match):
+                            try:
+                                user_facts = db_manager.get_long_term_memory(str(member.id))
+                                if user_facts:
+                                    for fact in user_facts:
+                                        fact_text = fact['fact'].lower()
+                                        # Look for alternative name patterns
+                                        if any(phrase in fact_text for phrase in ['also goes by', 'known as', 'called', 'nicknamed']):
+                                            # Check if any prompt word appears in this fact
+                                            if any(word in fact_text for word in prompt_words):
+                                                alternative_name_match = True
+                                                print(f"AI Handler: Alternative name match found in fact: {fact['fact']}")
+                                                break
+                            except Exception as e:
+                                print(f"AI Handler: Error checking alternative names for {member.display_name}: {e}")
+                                # Continue without alternative name matching
 
                         if display_match or username_match or alternative_name_match:
                             mentioned_users.append(member)
@@ -1182,7 +1192,12 @@ Respond with a VERY brief, natural comment about your drawing (1 sentence max).
                 return (drawing_response, image_bytes)
 
             except Exception as e:
+                from modules.logging_manager import get_logger
+                logger = get_logger()
+                logger.error(f"Unexpected error in image generation: {e}", exc_info=True)
                 print(f"AI Handler: Unexpected error in image generation: {e}")
+                import traceback
+                traceback.print_exc()
                 return "I tried to draw that but something went wrong. My bad."
 
         elif intent == "memory_storage":
