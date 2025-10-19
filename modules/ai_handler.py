@@ -1211,8 +1211,10 @@ Examples:
                         member_name_lower = member.name.lower()
 
                         # Check username and display name first (fast check)
-                        display_match = any(word in member_display_lower for word in prompt_words)
-                        username_match = any(word in member_name_lower for word in prompt_words)
+                        # Use word boundary matching to prevent "sama" matching "Csama"
+                        import re
+                        display_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_display_lower) for word in prompt_words)
+                        username_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_name_lower) for word in prompt_words)
 
                         # Only check alternative names if no direct match found
                         # This avoids slow database lookups for every guild member
@@ -1233,7 +1235,11 @@ Examples:
                                                 text_after_pattern = fact_text[pattern_pos + len(phrase):]
                                                 # Use word boundary matching to avoid "smith" matching "Smithson"
                                                 import re
-                                                if any(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in prompt_words):
+                                                # Filter out command words (draw, sketch, etc.) to get actual name words
+                                                command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
+                                                name_words = [w for w in prompt_words if w not in command_words]
+                                                # Require ALL name words to match (prevents "sama" matching "Csama" when prompt is "anya sama")
+                                                if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
                                                     alternative_name_match = True
                                                     print(f"AI Handler: Alternative name match found in fact: {fact_tuple[0]}")
                                                     break
@@ -1276,10 +1282,13 @@ Examples:
                                                 pattern_pos = fact_text.find(phrase)
                                                 # Get text AFTER the pattern
                                                 text_after_pattern = fact_text[pattern_pos + len(phrase):]
-                                                # Check if any prompt word appears in the text AFTER the pattern
                                                 # Use word boundary matching to avoid "smith" matching "Smithson"
                                                 import re
-                                                if any(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in prompt_words):
+                                                # Filter out command words (draw, sketch, etc.) to get actual name words
+                                                command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
+                                                name_words = [w for w in prompt_words if w not in command_words]
+                                                # Require ALL name words to match (prevents "sama" matching "Csama" when prompt is "anya sama")
+                                                if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
                                                     print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
                                                     # Create a pseudo-member object with just the ID
                                                     class PseudoMember:
