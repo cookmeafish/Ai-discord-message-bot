@@ -2222,9 +2222,10 @@ Respond with ONLY the fact ID number or "NONE".
 
                 # Check if roleplay formatting should be disabled
                 enable_roleplay_extreme = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
-                if enable_roleplay_extreme and energy_analysis.get('user_messages'):
+                if enable_roleplay_extreme:
+                    # Check if user is using asterisks in recent messages
                     recent_user_msgs = energy_analysis.get('user_messages', [])[-7:]
-                    user_has_asterisks = any('*' in msg for msg in recent_user_msgs if msg)
+                    user_has_asterisks = any('*' in msg for msg in recent_user_msgs if msg) if recent_user_msgs else False
                     print(f"DEBUG ROLEPLAY (EXTREME): Checking last {len(recent_user_msgs)} user messages for asterisks")
                     print(f"DEBUG ROLEPLAY (EXTREME): Recent messages: {recent_user_msgs}")
                     print(f"DEBUG ROLEPLAY (EXTREME): Asterisks found: {user_has_asterisks}")
@@ -2274,10 +2275,10 @@ Respond with ONLY the fact ID number or "NONE".
 
             # Check if roleplay formatting should be disabled
             enable_roleplay = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
-            if enable_roleplay and energy_analysis.get('user_messages'):
-                # Check if user is using asterisks
+            if enable_roleplay:
+                # Check if user is using asterisks in recent messages
                 recent_user_msgs = energy_analysis.get('user_messages', [])[-7:]
-                user_has_asterisks = any('*' in msg for msg in recent_user_msgs if msg)
+                user_has_asterisks = any('*' in msg for msg in recent_user_msgs if msg) if recent_user_msgs else False
                 print(f"DEBUG ROLEPLAY: Checking last {len(recent_user_msgs)} user messages for asterisks")
                 print(f"DEBUG ROLEPLAY: Recent messages: {recent_user_msgs}")
                 print(f"DEBUG ROLEPLAY: Asterisks found: {user_has_asterisks}")
