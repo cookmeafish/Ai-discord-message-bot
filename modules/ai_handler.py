@@ -1225,12 +1225,20 @@ Examples:
                                         # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
                                         fact_text = fact_tuple[0].lower()
                                         # Look for alternative name patterns
-                                        if any(phrase in fact_text for phrase in ['also goes by', 'known as', 'called', 'nicknamed']):
-                                            # Check if any prompt word appears in this fact
-                                            if any(word in fact_text for word in prompt_words):
-                                                alternative_name_match = True
-                                                print(f"AI Handler: Alternative name match found in fact: {fact_tuple[0]}")
-                                                break
+                                        for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
+                                            if phrase in fact_text:
+                                                # Find position of the pattern
+                                                pattern_pos = fact_text.find(phrase)
+                                                # Get text AFTER the pattern
+                                                text_after_pattern = fact_text[pattern_pos + len(phrase):]
+                                                # Use word boundary matching to avoid "smith" matching "Smithson"
+                                                import re
+                                                if any(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in prompt_words):
+                                                    alternative_name_match = True
+                                                    print(f"AI Handler: Alternative name match found in fact: {fact_tuple[0]}")
+                                                    break
+                                        if alternative_name_match:
+                                            break
                             except Exception as e:
                                 print(f"AI Handler: Error checking alternative names for {member.display_name}: {e}")
                                 # Continue without alternative name matching
@@ -1261,7 +1269,7 @@ Examples:
                                     for fact_tuple in user_facts:
                                         fact_text = fact_tuple[0].lower()
                                         # Check for alternative name patterns and verify prompt word appears AFTER the pattern
-                                        # This prevents matching "makes videos with Csama... known as Paimon"
+                                        # This prevents matching "works with PersonA... known as PersonB"
                                         for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
                                             if phrase in fact_text:
                                                 # Find position of the pattern
@@ -1269,7 +1277,9 @@ Examples:
                                                 # Get text AFTER the pattern
                                                 text_after_pattern = fact_text[pattern_pos + len(phrase):]
                                                 # Check if any prompt word appears in the text AFTER the pattern
-                                                if any(word in text_after_pattern for word in prompt_words):
+                                                # Use word boundary matching to avoid "smith" matching "Smithson"
+                                                import re
+                                                if any(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in prompt_words):
                                                     print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
                                                     # Create a pseudo-member object with just the ID
                                                     class PseudoMember:
