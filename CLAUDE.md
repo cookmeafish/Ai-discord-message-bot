@@ -114,7 +114,9 @@ The bot has a configurable personality mode that controls immersion and language
    - Up to 500 messages server-wide history (not filtered by channel)
    - **Explicit user identification** in all response prompts to prevent user confusion (2025-10-18)
    - **Conversation energy matching** (2025-10-19): Dynamically adjusts response length based on recent message length
-6. Sentiment analysis updates relationship metrics automatically (`_analyze_sentiment_and_update_metrics(message, ai_response, user_id, db_manager)`)
+6. **Relationship metrics are now STABLE** - no longer update automatically after every message (2025-10-19)
+   - Metrics only update via: Manual commands (`/user_set_metrics`), GUI User Manager, or memory consolidation
+   - Prevents metrics from changing too rapidly during conversations
 
 **User Identification System (2025-10-18)**:
 - **CRITICAL**: All AI response prompts include explicit user identification to prevent confusing users with each other
@@ -139,11 +141,13 @@ The bot has a configurable personality mode that controls immersion and language
 **Roleplay Formatting Conditional Activation (2025-10-19)**:
 - **Purpose**: Only use roleplay formatting when user is explicitly roleplaying
 - **STRICT LOGIC**: Uses formatting ONLY when user has asterisks in last 7 messages
-- **Complete Roleplay Suppression**: When roleplay is disabled, AI is explicitly forbidden from describing ANY physical actions
-  - Prompts include "NO ROLEPLAY MODE" instructions with explicit examples
-  - Forbidden: Using asterisks, describing movements, gestures, facial expressions, physical reactions
-  - Allowed: Dialogue and thoughts only (e.g., "H-hiya", "Just a little nervous", "I'm here")
-  - Examples in prompt show both asterisk AND non-asterisk physical descriptions as BAD
+- **MASSIVELY STRENGTHENED Roleplay Suppression (2025-10-19)**: When roleplay is disabled, AI receives impossible-to-ignore warnings
+  - Prompts include "🚫 **CRITICAL: NO ROLEPLAY MODE ACTIVE** 🚫" with all-caps, bolded warnings
+  - "**YOU ARE ABSOLUTELY FORBIDDEN FROM DESCRIBING PHYSICAL ACTIONS.**"
+  - "**ANY RESPONSE WITH PHYSICAL DESCRIPTIONS WILL BE REJECTED.**"
+  - Explicit ❌ FORBIDDEN list: asterisks, physical descriptions, gestures, facial expressions, body language
+  - Explicit ✅ REQUIRED list: spoken words, thoughts/reactions, emotes only
+  - Much more aggressive language to overcome AI tendency to ignore polite instructions
 - **Behavior**:
   - User uses asterisks (*pets bot*, *walks away*) → Bot uses roleplay formatting ✓
   - User doesn't use asterisks → Bot responds with dialogue/thoughts only, no physical descriptions ✓
