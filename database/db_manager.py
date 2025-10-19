@@ -1102,6 +1102,223 @@ class DBManager:
             print(f"DATABASE ERROR: Failed to get image generation count for user {user_id}: {e}")
             return 0
 
+    # --- Channel Settings Methods (Per-Server) ---
+
+    def add_channel_setting(self, channel_id, guild_id, channel_name=None, purpose=None,
+                           random_reply_chance=None, immersive_character=None,
+                           allow_technical_language=None, use_server_info=None,
+                           enable_roleplay_formatting=None, allow_proactive_engagement=None,
+                           formality=None, formality_locked=None):
+        """
+        Adds or updates a channel setting in the database.
+
+        Args:
+            channel_id: Discord channel ID (str)
+            guild_id: Discord guild ID (str)
+            channel_name: Human-readable channel name
+            purpose: Channel-specific instructions
+            random_reply_chance: Probability of random replies (0.0-1.0)
+            immersive_character: Whether bot believes it's the character (bool)
+            allow_technical_language: Whether bot can use technical terms (bool)
+            use_server_info: Whether to load Server_Info files (bool)
+            enable_roleplay_formatting: Whether to format actions in italics (bool)
+            allow_proactive_engagement: Whether bot can join conversations proactively (bool)
+            formality: Formality level (-5 to +5)
+            formality_locked: Whether formality is locked from auto-updates (bool)
+
+        Returns:
+            Dictionary with the final channel settings
+        """
+        from datetime import datetime
+
+        try:
+            cursor = self.conn.cursor()
+
+            # Check if channel already exists
+            cursor.execute("SELECT * FROM channel_settings WHERE channel_id = ?", (channel_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                # Update existing channel
+                update_fields = []
+                update_values = []
+
+                if channel_name is not None:
+                    update_fields.append("channel_name = ?")
+                    update_values.append(channel_name)
+                if purpose is not None:
+                    update_fields.append("purpose = ?")
+                    update_values.append(purpose)
+                if random_reply_chance is not None:
+                    update_fields.append("random_reply_chance = ?")
+                    update_values.append(random_reply_chance)
+                if immersive_character is not None:
+                    update_fields.append("immersive_character = ?")
+                    update_values.append(1 if immersive_character else 0)
+                if allow_technical_language is not None:
+                    update_fields.append("allow_technical_language = ?")
+                    update_values.append(1 if allow_technical_language else 0)
+                if use_server_info is not None:
+                    update_fields.append("use_server_info = ?")
+                    update_values.append(1 if use_server_info else 0)
+                if enable_roleplay_formatting is not None:
+                    update_fields.append("enable_roleplay_formatting = ?")
+                    update_values.append(1 if enable_roleplay_formatting else 0)
+                if allow_proactive_engagement is not None:
+                    update_fields.append("allow_proactive_engagement = ?")
+                    update_values.append(1 if allow_proactive_engagement else 0)
+                if formality is not None:
+                    update_fields.append("formality = ?")
+                    update_values.append(formality)
+                if formality_locked is not None:
+                    update_fields.append("formality_locked = ?")
+                    update_values.append(1 if formality_locked else 0)
+
+                if update_fields:
+                    update_values.append(channel_id)
+                    update_query = f"UPDATE channel_settings SET {', '.join(update_fields)} WHERE channel_id = ?"
+                    cursor.execute(update_query, tuple(update_values))
+                    self.conn.commit()
+                    print(f"DATABASE: Updated channel settings for {channel_id}")
+            else:
+                # Insert new channel
+                now = datetime.utcnow().isoformat()
+                cursor.execute("""
+                    INSERT INTO channel_settings (
+                        channel_id, guild_id, channel_name, purpose, random_reply_chance,
+                        immersive_character, allow_technical_language, use_server_info,
+                        enable_roleplay_formatting, allow_proactive_engagement,
+                        formality, formality_locked, activated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    channel_id, guild_id, channel_name, purpose,
+                    random_reply_chance if random_reply_chance is not None else 0.0,
+                    1 if immersive_character is True else (0 if immersive_character is False else 1),
+                    1 if allow_technical_language is True else (0 if allow_technical_language is False else 0),
+                    1 if use_server_info is True else (0 if use_server_info is False else 0),
+                    1 if enable_roleplay_formatting is True else (0 if enable_roleplay_formatting is False else 1),
+                    1 if allow_proactive_engagement is True else (0 if allow_proactive_engagement is False else 1),
+                    formality if formality is not None else 0,
+                    1 if formality_locked is True else (0 if formality_locked is False else 0),
+                    now
+                ))
+                self.conn.commit()
+                print(f"DATABASE: Added channel settings for {channel_id}")
+
+            cursor.close()
+
+            # Return the final settings
+            return self.get_channel_setting(channel_id)
+
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to add/update channel setting for {channel_id}: {e}")
+            return None
+
+    def get_channel_setting(self, channel_id):
+        """
+        Retrieves settings for a specific channel.
+
+        Args:
+            channel_id: Discord channel ID (str)
+
+        Returns:
+            Dictionary with channel settings, or None if not found
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT * FROM channel_settings WHERE channel_id = ?", (channel_id,))
+            row = cursor.fetchone()
+            cursor.close()
+
+            if not row:
+                return None
+
+            return {
+                'channel_id': row[0],
+                'channel_name': row[1],
+                'guild_id': row[2],
+                'purpose': row[3],
+                'random_reply_chance': row[4],
+                'immersive_character': bool(row[5]),
+                'allow_technical_language': bool(row[6]),
+                'use_server_info': bool(row[7]),
+                'enable_roleplay_formatting': bool(row[8]),
+                'allow_proactive_engagement': bool(row[9]),
+                'formality': row[10],
+                'formality_locked': bool(row[11]),
+                'activated_at': row[12]
+            }
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get channel setting for {channel_id}: {e}")
+            return None
+
+    def get_all_channel_settings(self, guild_id=None):
+        """
+        Retrieves all channel settings, optionally filtered by guild.
+
+        Args:
+            guild_id: Optional Discord guild ID to filter by
+
+        Returns:
+            Dictionary mapping channel_id to settings dict
+        """
+        try:
+            cursor = self.conn.cursor()
+            if guild_id:
+                cursor.execute("SELECT * FROM channel_settings WHERE guild_id = ?", (guild_id,))
+            else:
+                cursor.execute("SELECT * FROM channel_settings")
+
+            rows = cursor.fetchall()
+            cursor.close()
+
+            channels = {}
+            for row in rows:
+                channels[row[0]] = {
+                    'channel_id': row[0],
+                    'channel_name': row[1],
+                    'guild_id': row[2],
+                    'purpose': row[3],
+                    'random_reply_chance': row[4],
+                    'immersive_character': bool(row[5]),
+                    'allow_technical_language': bool(row[6]),
+                    'use_server_info': bool(row[7]),
+                    'enable_roleplay_formatting': bool(row[8]),
+                    'allow_proactive_engagement': bool(row[9]),
+                    'formality': row[10],
+                    'formality_locked': bool(row[11]),
+                    'activated_at': row[12]
+                }
+
+            return channels
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get all channel settings: {e}")
+            return {}
+
+    def remove_channel_setting(self, channel_id):
+        """
+        Removes a channel setting from the database.
+
+        Args:
+            channel_id: Discord channel ID (str)
+
+        Returns:
+            Boolean indicating success
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("DELETE FROM channel_settings WHERE channel_id = ?", (channel_id,))
+            deleted = cursor.rowcount > 0
+            self.conn.commit()
+            cursor.close()
+
+            if deleted:
+                print(f"DATABASE: Removed channel settings for {channel_id}")
+            return deleted
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to remove channel setting for {channel_id}: {e}")
+            return False
+
     def close(self):
         """Closes the database connection."""
         if self.conn:

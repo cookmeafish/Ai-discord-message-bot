@@ -122,6 +122,26 @@ CREATE TABLE IF NOT EXISTS user_image_stats (
 );
 """
 
+# --- Channel Configuration (Per-Server) ---
+
+CHANNEL_SETTINGS_TABLE = """
+CREATE TABLE IF NOT EXISTS channel_settings (
+    channel_id TEXT PRIMARY KEY,
+    channel_name TEXT,
+    guild_id TEXT NOT NULL,
+    purpose TEXT,
+    random_reply_chance REAL DEFAULT 0.0,
+    immersive_character INTEGER DEFAULT 1,
+    allow_technical_language INTEGER DEFAULT 0,
+    use_server_info INTEGER DEFAULT 0,
+    enable_roleplay_formatting INTEGER DEFAULT 1,
+    allow_proactive_engagement INTEGER DEFAULT 1,
+    formality INTEGER DEFAULT 0,
+    formality_locked INTEGER DEFAULT 0,
+    activated_at TEXT NOT NULL
+);
+"""
+
 # A list of all table creation statements for easy initialization
 ALL_TABLES = [
     USERS_TABLE,
@@ -132,7 +152,8 @@ ALL_TABLES = [
     GLOBAL_STATE_TABLE,
     SHORT_TERM_MESSAGE_LOG_TABLE,
     MESSAGE_ARCHIVE_TABLE,
-    USER_IMAGE_STATS_TABLE
+    USER_IMAGE_STATS_TABLE,
+    CHANNEL_SETTINGS_TABLE
 ]
 
 
