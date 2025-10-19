@@ -1092,27 +1092,28 @@ LORE: Worked as a marine biologist before becoming self-aware
                             print(f"AI Handler: Retrieved {len(user_facts) if user_facts else 0} facts for {member.display_name}")
 
                             if user_facts:
-                                # Filter facts to only include appearance/descriptive facts
-                                # Exclude behavioral rules, commands, and meta-instructions
+                                # Filter facts to only include visual/descriptive information
                                 # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
                                 descriptive_facts = []
+
+                                # Exclude behavioral commands and meta-instructions only
+                                # We want to KEEP descriptive words like "feared", "ruler", "strong", etc.
                                 exclude_phrases = [
-                                    'do not', 'must', 'will always', 'cannot', 'should',
-                                    'quiver', 'obey', 'command', 'ptsd', 'fear', 'afraid',
-                                    'ruler of', 'rules with', 'iron fist', 'tyrant',  # Exclude abstract power descriptions
-                                    'fish pun', 'also goes by', 'known as',  # Exclude naming rules
-                                    'fish', 'jellyfish', 'fishy',  # Exclude fish references
-                                    'gym goer', 'ceo of'  # Exclude occupation/activity descriptions
+                                    'do not', 'must', 'will always', 'cannot', 'should not',
+                                    'quiver', 'obey', 'command', 'submit', 'ptsd',
+                                    'also goes by', 'known as', 'called', 'nicknamed',  # Naming rules
+                                    'fish pun', 'fish', 'jellyfish', 'fishy',  # Fish contamination
                                 ]
 
                                 for fact_tuple in user_facts[:20]:  # Check more facts but filter
                                     fact_text = fact_tuple[0]
                                     fact_lower = fact_text.lower()
 
-                                    # Skip if it contains exclusion phrases
+                                    # Skip behavioral commands and meta-instructions
                                     if any(phrase in fact_lower for phrase in exclude_phrases):
                                         continue
 
+                                    # Keep descriptive facts (appearance, personality, roles)
                                     descriptive_facts.append(fact_text)
                                     if len(descriptive_facts) >= 5:  # Limit to 5 descriptive facts
                                         break
@@ -1120,6 +1121,7 @@ LORE: Worked as a marine biologist before becoming self-aware
                                 if descriptive_facts:
                                     facts_text = ", ".join(descriptive_facts)
                                     context_parts.append(f"{member.display_name}: {facts_text}")
+                                    print(f"AI Handler: Sending descriptive facts for {member.display_name}: {facts_text}")
 
                         if context_parts:
                             image_context = ". ".join(context_parts)
