@@ -2223,8 +2223,13 @@ Respond with ONLY the fact ID number or "NONE".
                 # Check if roleplay formatting should be disabled
                 enable_roleplay_extreme = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
                 if enable_roleplay_extreme and energy_analysis.get('user_messages'):
-                    user_has_asterisks = any('*' in msg for msg in energy_analysis.get('user_messages', [])[-7:] if msg)
+                    recent_user_msgs = energy_analysis.get('user_messages', [])[-7:]
+                    user_has_asterisks = any('*' in msg for msg in recent_user_msgs if msg)
+                    print(f"DEBUG ROLEPLAY (EXTREME): Checking last {len(recent_user_msgs)} user messages for asterisks")
+                    print(f"DEBUG ROLEPLAY (EXTREME): Recent messages: {recent_user_msgs}")
+                    print(f"DEBUG ROLEPLAY (EXTREME): Asterisks found: {user_has_asterisks}")
                     if not user_has_asterisks:
+                        print("DEBUG ROLEPLAY (EXTREME): Adding NO ROLEPLAY MODE prompt")
                         system_prompt += (
                             "\n7. **NO ROLEPLAY MODE**: DO NOT describe physical actions. Respond with dialogue and thoughts only.\n"
                             "   - Even with extreme emotions, express them through WORDS only\n"
@@ -2271,10 +2276,16 @@ Respond with ONLY the fact ID number or "NONE".
             enable_roleplay = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
             if enable_roleplay and energy_analysis.get('user_messages'):
                 # Check if user is using asterisks
-                user_has_asterisks = any('*' in msg for msg in energy_analysis.get('user_messages', [])[-7:] if msg)
+                recent_user_msgs = energy_analysis.get('user_messages', [])[-7:]
+                user_has_asterisks = any('*' in msg for msg in recent_user_msgs if msg)
+                print(f"DEBUG ROLEPLAY: Checking last {len(recent_user_msgs)} user messages for asterisks")
+                print(f"DEBUG ROLEPLAY: Recent messages: {recent_user_msgs}")
+                print(f"DEBUG ROLEPLAY: Asterisks found: {user_has_asterisks}")
                 if not user_has_asterisks:
                     enable_roleplay = False
+                    print("DEBUG ROLEPLAY: DISABLING roleplay - no asterisks detected")
 
+            print(f"DEBUG ROLEPLAY: Final enable_roleplay = {enable_roleplay}")
             if not enable_roleplay:
                 system_prompt += (
                     "\n8. **NO ROLEPLAY MODE**: DO NOT describe physical actions. Respond with dialogue and thoughts only.\n"
