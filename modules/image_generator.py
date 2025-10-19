@@ -32,7 +32,7 @@ class ImageGenerator:
         # Load configuration or use defaults
         self.enabled = True
         self.max_per_day = 5
-        self.style_prefix = "High quality detailed illustration"
+        self.style_prefix = "High quality detailed illustration, clean image, visual only"
         self.model = "black-forest-labs/FLUX.1-schnell"
 
         if config_manager:
@@ -66,11 +66,14 @@ class ImageGenerator:
         # Clean up the user prompt
         user_prompt = user_prompt.strip()
 
-        # Remove common prefixes like "draw", "sketch", "make me"
-        for prefix in ["draw me a", "draw me an", "draw a", "draw an", "draw",
-                       "sketch me a", "sketch me an", "sketch a", "sketch an", "sketch",
+        # Remove common command prefixes
+        # Order matters: check longer patterns first
+        for prefix in ["draw me a", "draw me an", "draw me", "draw a", "draw an", "draw",
+                       "sketch me a", "sketch me an", "sketch me", "sketch a", "sketch an", "sketch",
                        "make me a picture of", "make me a drawing of", "make a picture of",
-                       "can you draw", "could you draw", "please draw"]:
+                       "can you draw", "could you draw", "please draw",
+                       "generate a", "generate an", "generate",
+                       "create a", "create an", "create"]:
             if user_prompt.lower().startswith(prefix):
                 user_prompt = user_prompt[len(prefix):].strip()
                 break

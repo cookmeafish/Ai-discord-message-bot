@@ -168,7 +168,10 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Context-Aware**: Automatically pulls facts about mentioned users from the database for accurate depictions
     - Matches users by: Discord username, server nickname/display name, AND alternative names from database facts
     - Example: "Also goes by Zekkekun" fact allows matching on "zekkekun" even if not their display name
-  - **Quality**: High quality detailed illustrations with minimal style forcing
+    - Filters stop words (me, you, a, the, etc.) to prevent false matches
+    - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
+  - **Quality**: High quality detailed illustrations, visual only (no text/labels in images)
+  - **Prompt Cleaning**: Automatically removes command words like "draw me", "sketch", "create" before generation
   - **Rate Limiting**: 5 images per user every 2 hours (configurable via `max_per_user_per_period` and `reset_period_hours`)
   - **Cost**: $0.002 per image (~$2 per 1,000 images)
   - **Intent**: `image_generation` - Natural language detection ("draw me a cat", "sketch a house")
