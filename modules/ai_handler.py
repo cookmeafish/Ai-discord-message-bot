@@ -1371,6 +1371,25 @@ Respond with ONLY the extracted visual description, nothing else.
                                 # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
                                 descriptive_facts = []
 
+                                # CRITICAL: Detect gender from pronouns in ALL facts
+                                # This ensures image AI knows if person is male/female/other
+                                gender_detected = None
+                                female_pronouns = [' she ', ' her ', ' hers ', ' herself ']
+                                male_pronouns = [' he ', ' him ', ' his ', ' himself ']
+
+                                # Scan ALL facts for gender pronouns (not just first 5)
+                                all_facts_text = " ".join([fact_tuple[0].lower() for fact_tuple in user_facts])
+
+                                female_count = sum(all_facts_text.count(pronoun) for pronoun in female_pronouns)
+                                male_count = sum(all_facts_text.count(pronoun) for pronoun in male_pronouns)
+
+                                if female_count > male_count:
+                                    gender_detected = "woman"
+                                    print(f"AI Handler: Detected gender as FEMALE from pronouns (she/her count: {female_count})")
+                                elif male_count > female_count:
+                                    gender_detected = "man"
+                                    print(f"AI Handler: Detected gender as MALE from pronouns (he/him count: {male_count})")
+
                                 # Exclude ONLY bot behavior instructions, NOT character descriptions
                                 # Instructions to bot: "Will always obey", "Must refer to", "Cannot talk to"
                                 # Character descriptions: "Is powerful and feared", "rules with iron fist", "Is a tyrant"
@@ -1402,9 +1421,13 @@ Respond with ONLY the extracted visual description, nothing else.
                                     if len(descriptive_facts) >= 5:  # Limit to 5 descriptive facts
                                         break
 
-                                if descriptive_facts or appearance_modifiers:
+                                if descriptive_facts or appearance_modifiers or gender_detected:
                                     # Combine appearance modifiers (from metrics) with descriptive facts
                                     all_descriptors = []
+
+                                    # CRITICAL: Add gender FIRST so image AI sees it immediately
+                                    if gender_detected:
+                                        all_descriptors.append(f"a {gender_detected}")
 
                                     if appearance_modifiers:
                                         all_descriptors.extend(appearance_modifiers)
@@ -1413,7 +1436,7 @@ Respond with ONLY the extracted visual description, nothing else.
                                         all_descriptors.extend(descriptive_facts)
 
                                     facts_text = ", ".join(all_descriptors)
-                                    context_parts.append(f"{member.display_name}: {facts_text}")
+                                    context_parts.append(facts_text)
                                     print(f"AI Handler: Sending descriptive facts for {member.display_name}: {facts_text}")
 
                         if context_parts:
