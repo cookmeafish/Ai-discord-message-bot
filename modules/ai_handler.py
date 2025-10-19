@@ -1035,7 +1035,13 @@ LORE: Worked as a marine biologist before becoming self-aware
 
                     # Check all guild members to see if they're mentioned
                     # Extract words from the prompt to check against member names
-                    prompt_words = prompt_lower.split()
+                    # Filter out common words that aren't names
+                    stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+                                  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+                                  'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those'}
+                    prompt_words = [word for word in prompt_lower.split() if word not in stop_words]
+
+                    print(f"AI Handler: Filtered prompt words for matching: {prompt_words}")
 
                     for member in message.guild.members:
                         # Skip bots
