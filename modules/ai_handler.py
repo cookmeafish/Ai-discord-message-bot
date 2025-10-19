@@ -1087,8 +1087,12 @@ Examples:
                         for member in message.guild.members:
                             if member.bot:
                                 continue
-                            if (subject_lower in member.display_name.lower() or
-                                subject_lower in member.name.lower()):
+                            # Use word boundary matching to prevent "sama" matching "Csama"
+                            import re
+                            member_display_lower = member.display_name.lower()
+                            member_name_lower = member.name.lower()
+                            if (re.search(r'\b' + re.escape(subject_lower) + r'\b', member_display_lower) or
+                                re.search(r'\b' + re.escape(subject_lower) + r'\b', member_name_lower)):
                                 mentioned_user = member
                                 break
 
