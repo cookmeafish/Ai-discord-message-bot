@@ -376,7 +376,18 @@ User-associated facts with source attribution:
 ### short_term_message_log
 Up to 500 messages rolling buffer **server-wide across all channels** (per server). Provides high-resolution context for AI responses.
 
+**Table Schema (2025-10-18)**:
+- `message_id` - Discord message ID (primary key)
+- `user_id` - Discord user ID
+- `nickname` - User's display name at time of message (NEW: added 2025-10-18)
+- `channel_id` - Discord channel ID
+- `content` - Message text
+- `timestamp` - ISO format timestamp
+- `directed_at_bot` - Boolean flag (1 if bot was mentioned/replied to)
+
 **Server-Wide Context**: Messages are NOT filtered by channel. This allows the bot to maintain conversation context across all channels within a server, enabling it to reference information mentioned in any channel.
+
+**Nickname Storage**: As of 2025-10-18, the `nickname` column stores the user's display name for easier identification in message logs and conversation history. Existing messages may have NULL nickname, but all new messages will populate this field.
 
 **Memory Consolidation Process (Per-Server):**
 - AI (GPT-4o) analyzes up to 500 messages and extracts facts about users

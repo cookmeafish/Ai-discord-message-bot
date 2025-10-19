@@ -553,26 +553,30 @@ class BotTestSuite:
         test_message_id = 999999999999999999
         test_user_id = 999999999999999999
 
-        # Test 1: Log message (direct SQL since log_message requires Discord message object)
+        # Test 1: Log message with nickname (direct SQL since log_message requires Discord message object)
         try:
             cursor = self.db_manager.conn.cursor()
             cursor.execute(
-                "INSERT INTO short_term_message_log (message_id, user_id, channel_id, content, timestamp, directed_at_bot) VALUES (?, ?, ?, ?, ?, ?)",
-                (test_message_id, test_user_id, 999999999999999999, "This is a test message", datetime.now().isoformat(), 0)
+                "INSERT INTO short_term_message_log (message_id, user_id, nickname, channel_id, content, timestamp, directed_at_bot) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (test_message_id, test_user_id, "TestUser", 999999999999999999, "This is a test message", datetime.now().isoformat(), 0)
             )
             self.db_manager.conn.commit()
 
             messages = self.db_manager.get_short_term_memory()
             logged = any(m["message_id"] == test_message_id for m in messages)
 
+            # Verify nickname was stored
+            test_msg = next((m for m in messages if m["message_id"] == test_message_id), None)
+            has_nickname = test_msg and test_msg.get("nickname") == "TestUser"
+
             self._log_test(
                 category,
-                "Log Message",
-                logged,
-                "Message logged successfully" if logged else "Failed to log message"
+                "Log Message with Nickname",
+                logged and has_nickname,
+                f"Message logged with nickname 'TestUser'" if (logged and has_nickname) else "Failed to log message with nickname"
             )
         except Exception as e:
-            self._log_test(category, "Log Message", False, f"Error: {e}")
+            self._log_test(category, "Log Message with Nickname", False, f"Error: {e}")
 
         # Test 2: Retrieve short-term memory
         try:
