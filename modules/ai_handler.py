@@ -968,7 +968,7 @@ LORE: Worked as a marine biologist before becoming self-aware
         """
         PRE-PROCESSING STEP: Extract and store any memory statements from the message,
         regardless of the primary intent. This allows multi-intent messages like:
-        "Angel Yamazaki is a cute rabbit. dr fish, draw me Angel Yamazaki"
+        "UserA is a software engineer. Bot, draw me UserA"
 
         Args:
             message: Discord message object
@@ -981,9 +981,9 @@ LORE: Worked as a marine biologist before becoming self-aware
 Analyze this message and determine if it contains ANY factual statements that should be stored as memories.
 
 **Examples of memory statements:**
-- "Angel Yamazaki is a cute rabbit that sells carrots" (fact about a character)
+- "PersonA is a software developer" (fact about a person)
 - "My favorite color is blue" (fact about the user)
-- "John is my brother" (fact about a relationship)
+- "PersonB is my colleague" (fact about a relationship)
 - "The server rules say no spam" (fact about the server)
 
 **NOT memory statements:**
@@ -1016,14 +1016,14 @@ Respond with ONLY "YES" if the message contains memory statements, or "NO" if it
 Extract ALL factual statements from this message as concise facts. If there are multiple facts, list them separated by " | ".
 
 **Examples:**
-- Input: "Angel Yamazaki is a cute rabbit that sells carrots. dr fish, draw me Angel Yamazaki"
-  Output: "Angel Yamazaki is a cute rabbit that sells carrots"
+- Input: "PersonA is a software developer. Bot, draw me PersonA"
+  Output: "PersonA is a software developer"
 
 - Input: "My favorite color is blue and I work as a teacher"
   Output: "My favorite color is blue | I work as a teacher"
 
-- Input: "John is my brother and he loves pizza"
-  Output: "John is my brother | John loves pizza"
+- Input: "PersonB is my colleague and they enjoy gaming"
+  Output: "PersonB is my colleague | PersonB enjoys gaming"
 
 Message: "{self._strip_discord_formatting(message.content)}"
 
@@ -1057,8 +1057,8 @@ Fact: "{fact}"
 
 Examples:
 - "My favorite color is blue" → USER
-- "Angel Yamazaki is a cute rabbit" → Angel Yamazaki
-- "John is my brother" → John
+- "PersonA is a software developer" → PersonA
+- "PersonB is my colleague" → PersonB
 - "I work as a teacher" → USER
 """
 
@@ -1305,9 +1305,9 @@ Drawing prompt: "{clean_prompt}"
 Recent messages: {' | '.join(conversation_context[-5:])}
 
 Extract the visual description as a concise statement. Examples:
-- "Sarah is a tall woman with red hair" → "a tall woman with red hair"
-- "The robot has blue lights and metal arms" → "blue lights and metal arms"
-- "Kevin is muscular and wears a black jacket" → "muscular and wears a black jacket"
+- "PersonA is tall with distinctive features" → "tall with distinctive features"
+- "The object has unique characteristics" → "unique characteristics"
+- "PersonB is athletic and wears casual clothing" → "athletic and wears casual clothing"
 
 Respond with ONLY the extracted visual description, nothing else.
 """
