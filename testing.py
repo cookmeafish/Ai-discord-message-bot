@@ -1854,7 +1854,7 @@ class BotTestSuite:
                 ai_handler_source = f.read()
 
             # Test 1: Image generation has user identification
-            has_image_user_id = '**CRITICAL - CURRENT USER IDENTIFICATION**' in ai_handler_source and 'drawing_prompt' in ai_handler_source
+            has_image_user_id = '**CURRENT USER IDENTIFICATION**' in ai_handler_source and 'drawing_prompt' in ai_handler_source
             self._log_test(
                 category,
                 "Image Generation User ID",

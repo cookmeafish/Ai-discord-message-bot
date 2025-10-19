@@ -176,14 +176,14 @@ class DBManager:
         """
         if channel_id:
             query = """
-            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
+            SELECT message_id, user_id, nickname, channel_id, content, timestamp, directed_at_bot
             FROM short_term_message_log
             WHERE channel_id = ?
             ORDER BY timestamp ASC
             """
         else:
             query = """
-            SELECT message_id, user_id, channel_id, content, timestamp, directed_at_bot
+            SELECT message_id, user_id, nickname, channel_id, content, timestamp, directed_at_bot
             FROM short_term_message_log
             ORDER BY timestamp ASC
             """
@@ -200,10 +200,11 @@ class DBManager:
             return [{
                 "message_id": row[0],
                 "author_id": row[1],
-                "channel_id": row[2],
-                "content": row[3],
-                "timestamp": row[4],
-                "directed_at_bot": bool(row[5])
+                "nickname": row[2],
+                "channel_id": row[3],
+                "content": row[4],
+                "timestamp": row[5],
+                "directed_at_bot": bool(row[6])
             } for row in rows]
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get short term memory: {e}")
