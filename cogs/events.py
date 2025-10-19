@@ -163,6 +163,7 @@ class EventsCog(commands.Cog):
 
         # Check if we need to trigger memory consolidation
         import os
+        config = self.bot.config_manager.get_config()
         trigger_file = os.path.join("database", f".consolidate_trigger_{message.guild.id}")
         message_count = db_manager.get_short_term_message_count()
         message_limit = config.get('response_limits', {}).get('short_term_message_limit', 500)
