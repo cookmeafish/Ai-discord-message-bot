@@ -107,12 +107,13 @@ class EmoteOrchestrator:
         if not allowed_guild_ids:
             return self.emotes  # Empty list = all emotes
 
-        # Filter emotes to only those from allowed guilds
+        # Filter emotes to only those from allowed guilds (and only available ones)
         filtered_emotes = {}
         for guild in self.bot.guilds:
             if str(guild.id) in [str(gid) for gid in allowed_guild_ids]:
                 for emote in guild.emojis:
-                    if emote.name not in filtered_emotes:
+                    # Only include emotes that are available (not boost-locked)
+                    if emote.available and emote.name not in filtered_emotes:
                         filtered_emotes[emote.name] = emote
 
         return filtered_emotes
