@@ -485,9 +485,6 @@ Server_Info/{ServerName}/
 
 See `PLANNED_FEATURES.md` for full technical specification and implementation details.
 
-**Other Planned Features**:
-- **Image Generation Prompt Restriction Fix**: Bot currently restricts drawings to fish-related themes. Should accept ANY user request ("draw me a cat", "sketch a house") while maintaining childlike art style.
-
 For complete Phase 4 roadmap, see `PLANNED_FEATURES.md`.
 
 ## Documentation

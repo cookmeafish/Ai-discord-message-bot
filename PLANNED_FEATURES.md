@@ -364,7 +364,6 @@ Server_Info/
 
 ### Other Feature Ideas
 
-- **Image Generation Prompt Restriction**: Bot currently restricts drawings to fish-related themes. Should accept ANY user request ("draw me a cat", "sketch a house", etc.) without limiting to bot's personality/lore. The style prefix should remain (childlike crayon drawings) but content should not be restricted.
 - User-configurable memory consolidation schedules
 - Export/import bot personality between servers
 - Multi-language support with personality adaptation

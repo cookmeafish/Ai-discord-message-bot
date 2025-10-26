@@ -219,7 +219,7 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 - `gui.py` - Graphical configuration interface with Server Manager
 
-### Image Generation Module (2025-10-15, Updated 2025-10-18)
+### Image Generation Module (2025-10-15, Updated 2025-10-26)
 - `modules/image_generator.py` - Together.ai API integration for AI image generation
 - `modules/ai_handler.py:_strip_bot_name_from_prompt()` - Removes bot name from prompts
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
@@ -234,6 +234,16 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
       - Adds "a woman" or "a man" as FIRST descriptor in image context
       - Ensures image AI correctly renders gender even when facts don't explicitly state it
       - Example: Facts with "Loves her" and "she is sweet" → detected as "woman" → draws female character
+  - **Smart Context Handling (2025-10-26)**: Dual-mode AI enhancement prevents identity contamination
+    - **Database User Mode**: When drawing database users (e.g., "Zekke"), uses ONLY database facts
+      - Detects identity markers: "ruler", "manager", "handsome", "strong", "feared", "man", "woman"
+      - Strict prompt prevents GPT-4 from adding generic character knowledge with same name
+      - Example: "draw Zekke" uses DB facts ("handsome, strong, feared man"), NOT generic "Zekke" character
+    - **Famous Person Mode**: When drawing people NOT in database (e.g., "Kamala Harris"), uses FULL GPT-4 knowledge
+      - Explicit instructions to describe actual appearance of politicians, celebrities, historical figures
+      - Allows accurate depictions of real-world people using AI's trained knowledge
+    - **Generic Mode**: Objects/creatures without DB facts use GPT-4's general knowledge
+    - Prevents blending database user identity with unrelated characters GPT-4 might know
   - **Quality**: High quality detailed illustrations, visual only (no text/labels in images)
   - **Prompt Cleaning**: Automatically removes command words like "draw me", "sketch", "create" before generation
   - **Rate Limiting**: 5 images per user every 2 hours (configurable via `max_per_user_per_period` and `reset_period_hours`)
