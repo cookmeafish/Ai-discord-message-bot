@@ -1216,6 +1216,28 @@ Examples:
                                 mentioned_user = member
                                 break
 
+                            # Check nicknames table if no direct match (e.g., "zekke" matches "Zekke" or "Zekkekun")
+                            if not mentioned_user:
+                                try:
+                                    import sqlite3
+                                    conn = sqlite3.connect(db_manager.db_path)
+                                    cursor = conn.cursor()
+                                    cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ?", (str(member.id),))
+                                    nicknames = [row[0].lower() for row in cursor.fetchall()]
+                                    conn.close()
+
+                                    if nicknames:
+                                        for nickname in nicknames:
+                                            # Use substring matching for nicknames
+                                            if subject_lower in nickname or nickname in subject_lower:
+                                                mentioned_user = member
+                                                print(f"AI Handler: Memory storage found user via nicknames table: '{subject}' matches nickname '{nickname}' for {member.display_name}")
+                                                break
+                                        if mentioned_user:
+                                            break
+                                except Exception as e:
+                                    print(f"AI Handler: Error checking nicknames table during memory storage: {e}")
+
                         # If not found in guild, create a fictional user ID based on the name
                         if not mentioned_user:
                             # Generate a consistent ID for this name (hash-based)
@@ -1347,10 +1369,35 @@ Examples:
                         display_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_display_lower) for word in prompt_words)
                         username_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_name_lower) for word in prompt_words)
 
+                        # Check nicknames table if no direct match found (medium speed check)
+                        nickname_match = False
+                        if not (display_match or username_match):
+                            try:
+                                import sqlite3
+                                conn = sqlite3.connect(db_manager.db_path)
+                                cursor = conn.cursor()
+                                cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ?", (str(member.id),))
+                                nicknames = [row[0].lower() for row in cursor.fetchall()]
+                                conn.close()
+
+                                if nicknames:
+                                    # Check if any prompt word matches any stored nickname
+                                    # Use substring matching for nicknames (e.g., "zekke" matches "zekkekun")
+                                    for nickname in nicknames:
+                                        for word in prompt_words:
+                                            if word in nickname or nickname in word:
+                                                nickname_match = True
+                                                print(f"AI Handler: Nickname match found for {member.display_name}: '{word}' matches stored nickname '{nickname}'")
+                                                break
+                                        if nickname_match:
+                                            break
+                            except Exception as e:
+                                print(f"AI Handler: Error checking nicknames table for {member.display_name}: {e}")
+
                         # Only check alternative names if no direct match found
                         # This avoids slow database lookups for every guild member
                         alternative_name_match = False
-                        if not (display_match or username_match):
+                        if not (display_match or username_match or nickname_match):
                             try:
                                 user_facts = db_manager.get_long_term_memory(str(member.id))
                                 if user_facts:
@@ -1380,7 +1427,7 @@ Examples:
                                 print(f"AI Handler: Error checking alternative names for {member.display_name}: {e}")
                                 # Continue without alternative name matching
 
-                        if display_match or username_match or alternative_name_match:
+                        if display_match or username_match or nickname_match or alternative_name_match:
                             mentioned_users.append(member)
                             print(f"AI Handler: Found mentioned user - {member.display_name} (ID: {member.id}, username: {member.name})")
 
@@ -1388,48 +1435,71 @@ Examples:
 
                     # If no users found in guild, search database for alternative names
                     if not mentioned_users:
-                        print(f"AI Handler: No guild members matched, searching database for alternative names...")
+                        print(f"AI Handler: No guild members matched, searching database for alternative names and nicknames...")
                         try:
-                            # Get all users who have long-term memory in this server
                             import sqlite3
                             db_path = db_manager.db_path
                             conn = sqlite3.connect(db_path)
                             cursor = conn.cursor()
-                            cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
-                            all_user_ids = [row[0] for row in cursor.fetchall()]
-                            conn.close()
 
-                            # Check each user's facts for alternative names matching prompt words
-                            for user_id in all_user_ids:
-                                user_facts = db_manager.get_long_term_memory(user_id)
-                                if user_facts:
-                                    for fact_tuple in user_facts:
-                                        fact_text = fact_tuple[0].lower()
-                                        # Check for alternative name patterns and verify prompt word appears AFTER the pattern
-                                        # This prevents matching "works with PersonA... known as PersonB"
-                                        for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
-                                            if phrase in fact_text:
-                                                # Find position of the pattern
-                                                pattern_pos = fact_text.find(phrase)
-                                                # Get text AFTER the pattern
-                                                text_after_pattern = fact_text[pattern_pos + len(phrase):]
-                                                # Use word boundary matching to avoid "smith" matching "Smithson"
-                                                import re
-                                                # Filter out command words (draw, sketch, etc.) to get actual name words
-                                                command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
-                                                name_words = [w for w in prompt_words if w not in command_words]
-                                                # Require ALL name words to match (prevents partial matches - all words must be present)
-                                                if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
-                                                    print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
-                                                    # Create a pseudo-member object with just the ID
-                                                    class PseudoMember:
-                                                        def __init__(self, user_id):
-                                                            self.id = user_id
-                                                            self.display_name = f"User_{user_id}"
-                                                    mentioned_users.append(PseudoMember(user_id))
-                                                    break
-                                        if mentioned_users:  # If we found a match, break outer loop too
-                                            break
+                            # PRIORITY 1: Check nicknames table first (faster and more reliable)
+                            command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
+                            name_words = [w for w in prompt_words if w not in command_words]
+
+                            for word in name_words:
+                                # Check if any nickname contains this word or vice versa (substring matching)
+                                cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
+                                for row in cursor.fetchall():
+                                    user_id_str, nickname = row[0], row[1].lower()
+                                    if word in nickname or nickname in word:
+                                        print(f"AI Handler: Nicknames table match found for user {user_id_str}: '{word}' matches nickname '{nickname}'")
+                                        class PseudoMember:
+                                            def __init__(self, user_id):
+                                                self.id = user_id
+                                                self.display_name = f"User_{user_id}"
+                                        mentioned_users.append(PseudoMember(user_id_str))
+                                        break
+                                if mentioned_users:
+                                    break
+
+                            # PRIORITY 2: If no nickname match, check long-term memory facts
+                            if not mentioned_users:
+                                cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
+                                all_user_ids = [row[0] for row in cursor.fetchall()]
+
+                                # Check each user's facts for alternative names matching prompt words
+                                for user_id in all_user_ids:
+                                    user_facts = db_manager.get_long_term_memory(user_id)
+                                    if user_facts:
+                                        for fact_tuple in user_facts:
+                                            fact_text = fact_tuple[0].lower()
+                                            # Check for alternative name patterns and verify prompt word appears AFTER the pattern
+                                            # This prevents matching "works with PersonA... known as PersonB"
+                                            for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
+                                                if phrase in fact_text:
+                                                    # Find position of the pattern
+                                                    pattern_pos = fact_text.find(phrase)
+                                                    # Get text AFTER the pattern
+                                                    text_after_pattern = fact_text[pattern_pos + len(phrase):]
+                                                    # Use word boundary matching to avoid "smith" matching "Smithson"
+                                                    import re
+                                                    # Filter out command words (draw, sketch, etc.) to get actual name words
+                                                    command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
+                                                    name_words = [w for w in prompt_words if w not in command_words]
+                                                    # Require ALL name words to match (prevents partial matches - all words must be present)
+                                                    if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
+                                                        print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
+                                                        # Create a pseudo-member object with just the ID
+                                                        class PseudoMember:
+                                                            def __init__(self, user_id):
+                                                                self.id = user_id
+                                                                self.display_name = f"User_{user_id}"
+                                                        mentioned_users.append(PseudoMember(user_id))
+                                                        break
+                                            if mentioned_users:  # If we found a match, break outer loop too
+                                                break
+
+                            conn.close()
                         except Exception as e:
                             print(f"AI Handler: Error searching database for alternative names: {e}")
 

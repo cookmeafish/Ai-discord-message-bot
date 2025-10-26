@@ -225,8 +225,14 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
   - **Style**: User-determined (prompt dictates style - "cute kitten" = cute, "badass dragon" = badass, etc.)
   - **Context-Aware**: Automatically pulls facts about mentioned users from the database for accurate depictions
-    - Matches users by: Discord username, server nickname/display name, AND alternative names from database facts
-    - Example: "Also goes by Zekkekun" fact allows matching on "zekkekun" even if not their display name
+    - **User Matching Priority (2025-10-26)**: Three-tier matching system for finding mentioned users
+      1. Discord username/display name (fastest, word boundary matching)
+      2. **Nicknames table** (medium speed, substring matching - NEW 2025-10-26)
+      3. Long-term memory facts with "also goes by" phrases (slowest, word boundary matching)
+    - **Nicknames Table Usage**: Stores all historical display names/nicknames for users
+      - Example: User with nicknames "Zekke" and "Zekkekun" → "draw me zekke" matches via substring
+      - Enables flexible matching: "zekke" matches both "Zekke" AND "Zekkekun"
+      - Works for both image generation AND normal conversation memory storage
     - Filters stop words (me, you, a, the, etc.) to prevent false matches
     - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
     - **Gender Detection (2025-10-18)**: Automatically detects gender from pronouns in database facts
@@ -446,6 +452,38 @@ User-associated facts with source attribution:
 - Example: "Actually, my favorite color is red, not blue" automatically updates the stored fact
 - Semantic similarity search prevents duplicate/contradictory facts
 - Accessed via `db_manager.find_contradictory_memory()`, `db_manager.update_long_term_memory_fact()`, and `db_manager.delete_long_term_memory()`
+
+### nicknames
+**User Nickname Tracking Table (2025-10-26)**:
+Stores historical display names and nicknames for users to enable flexible user matching across the bot.
+
+**Table Schema**:
+- `id` - Primary key (INTEGER)
+- `user_id` - Discord user ID (INTEGER)
+- `nickname` - User's display name or nickname (TEXT)
+- `timestamp` - When nickname was recorded (TEXT)
+
+**Purpose and Usage**:
+- **Automatic Population**: Bot automatically records user display names from Discord as they appear
+- **User Matching**: Enables substring matching for image generation and memory storage
+  - Example: User has nicknames "Zekke" and "Zekkekun" stored
+  - "draw me zekke" matches both entries via substring matching
+  - "Zekke is cool" (conversation) also matches for memory storage
+- **Three-Tier Matching Priority**: (NEW 2025-10-26)
+  1. Discord username/display name (fastest)
+  2. **Nicknames table** (medium speed, substring matching)
+  3. Long-term memory facts with "also goes by" phrases (slowest)
+- **Benefits**:
+  - Flexible user identification without requiring exact display name match
+  - Historical tracking of name changes
+  - Enables partial name matching ("zekke" finds "Zekkekun")
+  - Works for image generation ("draw me zekke") and normal conversation ("Zekke is powerful")
+
+**Implementation**:
+- Checked in `modules/ai_handler.py` during image generation user matching (line ~1350)
+- Checked in `modules/ai_handler.py` during memory storage user identification (line ~1219)
+- Uses substring matching: `word in nickname or nickname in word`
+- Falls back to long-term memory facts if no nickname match found
 
 ### short_term_message_log
 Up to 500 messages rolling buffer **server-wide across all channels** (per server). Provides high-resolution context for AI responses.
