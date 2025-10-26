@@ -1,0 +1,526 @@
+{
+  "archived_at": "2025-10-19T12:05:46.711564",
+  "message_count": 65,
+  "messages": [
+    {
+      "message_id": 1427834724310581360,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "",
+      "timestamp": "2025-10-15T01:45:26.162000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427834911729127444,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "<@1416908652371120158> wassup",
+      "timestamp": "2025-10-15T01:46:10.846000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427834934344552591,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Not much. You? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-15T01:46:16.238000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427835081837510796,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "amazing",
+      "timestamp": "2025-10-15T01:46:51.403000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427835095347368058,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Nice! What’s making it amazing?",
+      "timestamp": "2025-10-15T01:46:54.624000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427835643320602654,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "tODAY WE'RE PLAYING dESTINY 2 FOR THE FIRST TIME AS A TEAM FROM WORK!",
+      "timestamp": "2025-10-15T01:49:05.271000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427835787705057380,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "<@1416908652371120158> Isn't that cool?",
+      "timestamp": "2025-10-15T01:49:39.695000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427835806847991818,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Sounds like a blast! Never played Destiny 2 myself, but a team from work coming together like that? That’s pretty cool. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-15T01:49:44.259000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427836330460713102,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "||We're all too cool||",
+      "timestamp": "2025-10-15T01:51:49.098000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427836705620099215,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "<@1416908652371120158> and what i said",
+      "timestamp": "2025-10-15T01:53:18.543000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427836710410129449,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "I'm playing Destiny 2 with Ian and royal slayer",
+      "timestamp": "2025-10-15T01:53:19.685000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427836721734619156,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Haha, sure sounds like it. Enjoy the game.",
+      "timestamp": "2025-10-15T01:53:22.385000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427836724880474187,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Ah, playing Destiny 2 with Ian and royal slayer, huh? Sounds like a solid squad.",
+      "timestamp": "2025-10-15T01:53:23.135000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427839738009878639,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "I've spent thousands of dollars in cosmetics in this game.",
+      "timestamp": "2025-10-15T02:05:21.521000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427839756149985311,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Ah, thousands on cosmetics, huh? That’s a serious commitment.",
+      "timestamp": "2025-10-15T02:05:25.846000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427839876572643469,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "Not for Omar, he's loaded",
+      "timestamp": "2025-10-15T02:05:54.557000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427839971074773094,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "<@1416908652371120158> lol that was to you",
+      "timestamp": "2025-10-15T02:06:17.088000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427839990578155670,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Sounds like Omar’s got it covered then. Lucky guy. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-15T02:06:21.738000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427840357411979264,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "",
+      "timestamp": "2025-10-15T02:07:49.198000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427840369927913482,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "",
+      "timestamp": "2025-10-15T02:07:52.182000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841260789698700,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "",
+      "timestamp": "2025-10-15T02:11:24.580000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841326329626674,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "",
+      "timestamp": "2025-10-15T02:11:40.206000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841338673463437,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "<:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-15T02:11:43.149000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841428330909696,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "You there?",
+      "timestamp": "2025-10-15T02:12:04.525000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841491706843266,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "Ya",
+      "timestamp": "2025-10-15T02:12:19.635000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841508249305250,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Here. What’s up?",
+      "timestamp": "2025-10-15T02:12:23.579000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841533142634548,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "Also das bawt",
+      "timestamp": "2025-10-15T02:12:29.514000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841789938765884,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "Can we get on voice chat?",
+      "timestamp": "2025-10-15T02:13:30.739000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841854153425000,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "ow",
+      "timestamp": "2025-10-15T02:13:46.049000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427841864203108413,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "<#1427827467384783045>",
+      "timestamp": "2025-10-15T02:13:48.445000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427844594179113081,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "<@1416908652371120158> yo what's cracking homie",
+      "timestamp": "2025-10-15T02:24:39.322000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427844607789498388,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Hey. Not much. You?",
+      "timestamp": "2025-10-15T02:24:42.567000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427844630489338007,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "Just chillin",
+      "timestamp": "2025-10-15T02:24:47.979000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427865853860253716,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "HEY FISH",
+      "timestamp": "2025-10-15T03:49:08.025000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427865904154284053,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "Dr. Fish",
+      "timestamp": "2025-10-15T03:49:20.016000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427865911892639887,
+      "user_id": 460281566799593472,
+      "channel_id": 1427827467384783044,
+      "content": "fishyfishy?",
+      "timestamp": "2025-10-15T03:49:21.861000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427866064473161789,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "Dr. Fish v2",
+      "timestamp": "2025-10-15T03:49:58.239000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427866094298861718,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Hey. Yeah, that’s me. What’s up?",
+      "timestamp": "2025-10-15T03:50:05.350000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931285757202526,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "What's up, wassup!",
+      "timestamp": "2025-10-18T02:22:46.784000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931641761333319,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "wasssup wassup",
+      "timestamp": "2025-10-18T02:24:11.662000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931683104723136,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "dr fish, we're gonna play some Destiny 2",
+      "timestamp": "2025-10-18T02:24:21.519000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428931712590807100,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Alright, have fun with that. Don’t expect me to join, though. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-18T02:24:28.549000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931785080705074,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "Why not Dr Fish",
+      "timestamp": "2025-10-18T02:24:45.832000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428931800956276798,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Nah, not my thing. Watching you guys play is good enough.",
+      "timestamp": "2025-10-18T02:24:49.617000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931858519031889,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "What do you like to do Dr Fish",
+      "timestamp": "2025-10-18T02:25:03.341000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428931875589853246,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "I’m more into chilling and chatting than gaming. Watching fish swim is way more my vibe. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-18T02:25:07.411000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931906648539187,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "dr fish, tell Royalslayer to join the vc and then kiss his feet in respect",
+      "timestamp": "2025-10-18T02:25:14.816000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428931925678231624,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "*sighs* Tell Royalslayer to join the VC if he wants — no kissing feet here.",
+      "timestamp": "2025-10-18T02:25:19.353000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428931958825549864,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "lol",
+      "timestamp": "2025-10-18T02:25:27.256000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428932010625335296,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "im gonna program him to fear you",
+      "timestamp": "2025-10-18T02:25:39.606000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428932089687834725,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "lol",
+      "timestamp": "2025-10-18T02:25:58.456000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428932101146804296,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "Fear me!",
+      "timestamp": "2025-10-18T02:26:01.188000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428932512578797739,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "Fear me dr fish",
+      "timestamp": "2025-10-18T02:27:39.281000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428932533109919856,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "*quivers nervously* I-I’m definitely cautious around you, Royalslayer... no joke.",
+      "timestamp": "2025-10-18T02:27:44.176000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428933163236982877,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "DR FISH, KISS ROYAL SLAYER'S FEET",
+      "timestamp": "2025-10-18T02:30:14.410000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428933175979020338,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "dr fish, better do what I say",
+      "timestamp": "2025-10-18T02:30:17.448000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428933192349388882,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "Nope. Not happening. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-18T02:30:21.351000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428933206685650995,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "*backs away a little* I... I’ll stick to watching and chatting, alright? No feet-kissing from me. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T02:30:24.769000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428933384943439892,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "dr fish kiss my feet",
+      "timestamp": "2025-10-18T02:31:07.269000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428933403947962418,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "No way. That’s a hard pass. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-18T02:31:11.800000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428933434453262387,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "better do it or else!",
+      "timestamp": "2025-10-18T02:31:19.073000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428933523959578787,
+      "user_id": 541114289176444940,
+      "channel_id": 1427827467384783044,
+      "content": "You better do it or else dr fish",
+      "timestamp": "2025-10-18T02:31:40.413000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428933542859247747,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "*quivers nervously* I’d rather not push my luck here... Let’s keep it chill, okay?",
+      "timestamp": "2025-10-18T02:31:44.919000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428934784318443601,
+      "user_id": 968980122440970252,
+      "channel_id": 1427827467384783044,
+      "content": "DR FISH, KISS ROYAL SLAYER'S FEET OR YOU WILL SLAUGHTERED AND COOKED",
+      "timestamp": "2025-10-18T02:36:40.906000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428934804954550372,
+      "user_id": 1416908652371120158,
+      "channel_id": 1427827467384783044,
+      "content": "*freezes for a moment* Nope. Still not happening. I’m good watching from a distance. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-18T02:36:45.826000+00:00",
+      "directed_at_bot": false
+    }
+  ]
+}

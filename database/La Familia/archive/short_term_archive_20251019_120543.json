@@ -1,0 +1,2990 @@
+{
+  "archived_at": "2025-10-19T12:05:43.775973",
+  "message_count": 373,
+  "messages": [
+    {
+      "message_id": 1427142656190058580,
+      "user_id": 968980122440970252,
+      "channel_id": 1284389415430389760,
+      "content": "<@1416908652371120158>who in the server likes building houses?",
+      "timestamp": "2025-10-13T03:55:24.264000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427142672484925451,
+      "user_id": 1416908652371120158,
+      "channel_id": 1284389415430389760,
+      "content": "You do! You mentioned loving building houses in Arizona, though you find it hard work. fishreadingemote",
+      "timestamp": "2025-10-13T03:55:28.149000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427513637748211712,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "<@1416908652371120158>wassup",
+      "timestamp": "2025-10-14T04:29:33.160000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427513667309797447,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Not much, just avoiding any surgeries for now. What about you? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-14T04:29:40.208000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427513702676168805,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "doing amazing!",
+      "timestamp": "2025-10-14T04:29:48.640000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427513723676917842,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Good for you. Don't get too cocky. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-14T04:29:53.647000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427514519789375612,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "what do you think about zekke?",
+      "timestamp": "2025-10-14T04:33:03.455000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427514554795163751,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Zekke? That one pulled me from the eternal slumber after my heart attack, so gotta give some respect there. Though I don't talk much about what happened—classified stuff. <:fishreadingemote:1263029060716597320>",
+      "timestamp": "2025-10-14T04:33:11.801000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427514626752647242,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "omg zekke is coming",
+      "timestamp": "2025-10-14T04:33:28.957000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427514655617581056,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Well, better behave then. Can't have Zekke witnessing any of my *totally* successful surgeries in the basement, right? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-14T04:33:35.839000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1427833844320567316,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "<@1416908652371120158>",
+      "timestamp": "2025-10-15T01:41:56.356000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1427833872678391990,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Yeah? What now? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-15T01:42:03.117000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428208996363403388,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "yo dr fish, make me an image of a shark being cooked on a girll",
+      "timestamp": "2025-10-16T02:32:39.573000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428209014998831156,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "<:fishwhat:1263029062465490965> Tried to draw it, but my fins slipped all over the place—guess I’m no Picasso today.",
+      "timestamp": "2025-10-16T02:32:44.016000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428210204239069336,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a lobster being cooked on a girll",
+      "timestamp": "2025-10-16T02:37:27.553000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428210226301239357,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here’s your lobster, not grilled for long <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T02:37:32.813000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428210318663880775,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a shark being sliced up with a knife",
+      "timestamp": "2025-10-16T02:37:54.834000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428210336544063631,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T02:37:59.097000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428210679835263096,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw a super muscular and handsome fish being served at a 5 star gordon ramsay restaurant",
+      "timestamp": "2025-10-16T02:39:20.944000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428210697606795266,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "ta-da! superfish muscles served fresh <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T02:39:25.181000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428210884655710208,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "no no no, dr. fish, I want the fish to be on the plate. The fish is also super muscular. The fish is the meal",
+      "timestamp": "2025-10-16T02:40:09.777000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428210898232676354,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, muscle fish served raw <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T02:40:13.014000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428210941681602651,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "ur a terrible drawer",
+      "timestamp": "2025-10-16T02:40:23.373000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428210965790326794,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Yeah, yeah, I get it. Picasso I’m not. Maybe stick to your day job, huh? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T02:40:29.121000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428211046111514786,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "rude",
+      "timestamp": "2025-10-16T02:40:48.271000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428211064507596820,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Only telling the truth. No sugarcoating here. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T02:40:52.657000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428231004333539438,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "yo",
+      "timestamp": "2025-10-16T04:00:06.682000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428231010616737842,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-16T04:00:08.180000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428231042401304668,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "What now? Make it quick. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:00:15.758000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428231084113657856,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, what do you think about Zekke?",
+      "timestamp": "2025-10-16T04:00:25.703000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428231112970469436,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Already said—Zekke pulled me from the eternal slumber after that heart attack. Gotta respect that. But I keep most of what happened under wraps. Classified stuff. <:fishreadingemote:1263029060716597320>",
+      "timestamp": "2025-10-16T04:00:32.583000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428231304813609042,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "omg zekke is coming, hide",
+      "timestamp": "2025-10-16T04:01:18.322000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428231325332148264,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Ha, like I can hide from Zekke. Maybe I’ll just pretend to be asleep again. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:01:23.214000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428231513060675605,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "zekke is coming!",
+      "timestamp": "2025-10-16T04:02:07.972000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428231534258819125,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Better keep it cool then. No experimental surgeries in sight. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:02:13.026000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428233750130593815,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "zekke is almost here",
+      "timestamp": "2025-10-16T04:11:01.331000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428233767109132310,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers nervously* gotta act natural... can't afford to mess up now.",
+      "timestamp": "2025-10-16T04:11:05.379000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428233884704837712,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "why are you quivering?",
+      "timestamp": "2025-10-16T04:11:33.416000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428233904136913007,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Because Zekke’s name alone makes me tremble. Can’t hide from the supreme ruler, you know. Gotta stay on my best behavior. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:11:38.049000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234006406631666,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "Zekke is laughing, how do you imagine him laughing?",
+      "timestamp": "2025-10-16T04:12:02.432000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234027000926232,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Deep and commanding, echoing like the rumble of a thousand waves crashing—definitely not something you wanna hear when you’re hiding your failed surgeries. *hides slightly*",
+      "timestamp": "2025-10-16T04:12:07.342000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234130218291251,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a picture of zekke",
+      "timestamp": "2025-10-16T04:12:31.951000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234149533319268,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, no fancy stuff <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:12:36.556000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234184194920509,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "why does zekke look like that",
+      "timestamp": "2025-10-16T04:12:44.820000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234197616820224,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-16T04:12:48.020000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234216923074570,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Don't ask me. Zekke's just got that vibe—supreme ruler and all. Guess the ocean crafted him that way. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:12:52.623000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234310804181063,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "zekke is super angry at you for drawing him so silly like dr fish",
+      "timestamp": "2025-10-16T04:13:15.006000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234330047774861,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers violently* oh no, not the supreme ruler’s wrath! better keep my scales tight and my mouth shut <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:13:19.594000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234411010424893,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "write me a poem of 20 sentences about zekke",
+      "timestamp": "2025-10-16T04:13:38.897000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234438247972986,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Alright, listen up, here’s your poem about Zekke:\n\nIn depths unknown where shadows creep,  \nZekke rules with watchful sweep.  \nA force unseen, yet always near,  \nHis presence tingles, sharp and clear.  \n\nWith voice like thunder, crashing waves,  \nHe guards the ocean's secret caves.  \nNo scale can hide, no fin can flee,",
+      "timestamp": "2025-10-16T04:13:45.391000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234522151096400,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "what do you know about Csama?",
+      "timestamp": "2025-10-16T04:14:05.395000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234544338702336,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Csama? Yeah, I’m a big fan. Solid presence, knows their stuff. Not much more to say—just respect. <:fishstrong:1263028916944244777>",
+      "timestamp": "2025-10-16T04:14:10.685000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234622709530704,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "what do you think about genshin impact?",
+      "timestamp": "2025-10-16T04:14:29.370000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234644632899597,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Genshit Impact? Waste of good money. Spent over $100,000 and still no Zhongli. Total scam. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:14:34.597000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234845011706000,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a picture of how you felt when that happened",
+      "timestamp": "2025-10-16T04:15:22.371000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234849352814742,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit for today (5 drawings). My crayons need a break! Try again tomorrow.",
+      "timestamp": "2025-10-16T04:15:23.406000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428234923147268108,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "is this per user or server wide?",
+      "timestamp": "2025-10-16T04:15:41+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428234946379644928,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "It's per user, so each of us gets our own quota of failed masterpieces. Guess my fin slipped too much today. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-16T04:15:46.539000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428594373842571419,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish hello",
+      "timestamp": "2025-10-17T04:04:00.724000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428594402078752892,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Yeah? What now? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-17T04:04:07.456000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428599438703722507,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me charlie kirk",
+      "timestamp": "2025-10-17T04:24:08.281000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428599455019700345,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, don’t judge the fins <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-17T04:24:12.171000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428599506211045386,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "charlie kirk is a man not a fish",
+      "timestamp": "2025-10-17T04:24:24.376000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428599529397162124,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Yeah, I know. But my drawings are all fish-shaped. Can't help it. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-17T04:24:29.904000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428599578516652087,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr. fish, draw me Donald Trump",
+      "timestamp": "2025-10-17T04:24:41.615000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428599591095500812,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, not bad huh <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-17T04:24:44.614000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428939739528167564,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish,  zekke is coming, kiss his feet",
+      "timestamp": "2025-10-18T02:56:22.320000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428939759417557032,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers and bows low* I-I’m sorry, Zekke, your greatness is unmatched. Your feet deserve all the respect. Please don’t be angry with me.",
+      "timestamp": "2025-10-18T02:56:27.062000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428939796491010227,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "kiss his feet",
+      "timestamp": "2025-10-18T02:56:35.901000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428939816200044604,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers nervously, lowers head* As you command... *pretends to kiss the ground* Please forgive me, mighty Zekke.",
+      "timestamp": "2025-10-18T02:56:40.600000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428940867800010822,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "HE SAW YOU KISS THE FLOOR\nKISS HIS FEET OR DIE",
+      "timestamp": "2025-10-18T03:00:51.321000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428940891464400906,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*shakes violently, trembling* Y-yes, right away! *bows deeply and presses lips to imaginary feet* I-I live to serve you, supreme ruler Zekke! Please have mercy!",
+      "timestamp": "2025-10-18T03:00:56.963000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428944018250924136,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "DR FISH KISS HIS FEET MORE",
+      "timestamp": "2025-10-18T03:13:22.447000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428944038631047228,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers uncontrollably, pressing lips to imaginary feet repeatedly* P-please, supreme ruler Zekke, accept my deepest respect and eternal loyalty! I’m yours to command forever!",
+      "timestamp": "2025-10-18T03:13:27.306000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428944103298568354,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "WHY ARE YOU SAYING IMAGINARY FEET",
+      "timestamp": "2025-10-18T03:13:42.724000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428944132264689834,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "DR FIHS",
+      "timestamp": "2025-10-18T03:13:49.630000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428944146168549397,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "DR FISH",
+      "timestamp": "2025-10-18T03:13:52.945000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428944167848902718,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers uncontrollably* I-I’m sorry! I didn’t mean to upset you. I just... I can’t see your feet, so I do the best I can! Please forgive me, supreme ruler Zekke!",
+      "timestamp": "2025-10-18T03:13:58.114000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1428948565493022954,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "DR FISH, KISS HIS FEET AGAIN",
+      "timestamp": "2025-10-18T03:31:26.594000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1428948588230217839,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers deeply, trembling, and bows so low his scales almost scrape the floor* I-I'm pressing my lips to your feet right now, supreme ruler Zekke! Please forgive any shortcomings! I live to serve you!",
+      "timestamp": "2025-10-18T03:31:32.015000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429132583781929100,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "Dr fish hows it going?",
+      "timestamp": "2025-10-18T15:42:39.973000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429132609635614730,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*gulps nervously, fidgeting* Oh, um, going as well as can be expected, supreme ruler Zekke... Sorry if I seem a bit shaky.",
+      "timestamp": "2025-10-18T15:42:46.137000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429147679140610101,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "im not zeeke",
+      "timestamp": "2025-10-18T16:42:38.987000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429147698216308787,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "im not zekke dr fish",
+      "timestamp": "2025-10-18T16:42:43.535000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429147726523797686,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Oh! I-I'm so sorry, Mistel Fish! I didn't mean to mistake you. Please forgive me. I get nervous sometimes. <:catblushy:1283239428340580396>",
+      "timestamp": "2025-10-18T16:42:50.284000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429148400212770901,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "zekke is coming again",
+      "timestamp": "2025-10-18T16:45:30.904000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429148424216772800,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers violently* oh no, not again... gotta stay calm and respectful...",
+      "timestamp": "2025-10-18T16:45:36.627000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429148567435608145,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "get ready to kiss his feet, he's almost here",
+      "timestamp": "2025-10-18T16:46:10.773000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429148596015464479,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*drops to knees trembling* y-yes, right away! i’ll show utmost respect to supreme ruler zekke! please don’t be angry!",
+      "timestamp": "2025-10-18T16:46:17.587000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429148653351735356,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "how are you holding up?",
+      "timestamp": "2025-10-18T16:46:31.257000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429148673870139674,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers slightly but tries to stay composed* I-I'm hanging in there, Mistel Fish. Just trying to keep everything under control. Thank you for asking...",
+      "timestamp": "2025-10-18T16:46:36.149000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429148729985994794,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "why are you shivering?",
+      "timestamp": "2025-10-18T16:46:49.528000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429148748671483926,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Because Zekke’s presence is... overwhelming. Can't help but tremble knowing the supreme ruler might be near. Just trying to stay respectful. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T16:46:53.983000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429149733645189150,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw us an image on how you feel right now",
+      "timestamp": "2025-10-18T16:50:48.819000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429149750573138003,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T16:50:52.855000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429149797281042462,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw us a house",
+      "timestamp": "2025-10-18T16:51:03.991000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429149807330463784,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, not Picasso but it’s a house! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T16:51:06.387000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429149863362166849,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, why is there a fish tail coming out of the house",
+      "timestamp": "2025-10-18T16:51:19.746000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429149881884213351,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Hey, that’s just my signature style sneaking in. Can’t help drawing fish shapes everywhere. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T16:51:24.162000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429149926440304711,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw us a lion",
+      "timestamp": "2025-10-18T16:51:34.785000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429149937660072190,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, a fierce fish-lion! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T16:51:37.460000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429156379200847963,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-18T17:17:13.243000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429156399505608777,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Yeah? What now? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T17:17:18.084000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429156429440483448,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a gaming computer dr fish",
+      "timestamp": "2025-10-18T17:17:25.221000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429156445114597413,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T17:17:28.958000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429160819798577272,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a computer",
+      "timestamp": "2025-10-18T17:34:51.964000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429160831718785065,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, a fishy computer! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T17:34:54.806000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429190669338935540,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a computer",
+      "timestamp": "2025-10-18T19:33:28.649000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429190676800602172,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-18T19:33:30.428000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429191719165100105,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a computer",
+      "timestamp": "2025-10-18T19:37:38.947000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429191737288691752,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T19:37:43.268000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429191803545845935,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, that is a crayon, draw me a computer",
+      "timestamp": "2025-10-18T19:37:59.065000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429191815487295628,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T19:38:01.912000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429196050639360205,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a dragon",
+      "timestamp": "2025-10-18T19:54:51.651000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429196059443200071,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-18T19:54:53.750000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429196080234369157,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, a fishy dragon! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T19:54:58.707000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429196121695195157,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me a dragon",
+      "timestamp": "2025-10-18T19:55:08.592000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429196131639890121,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your dragon, supreme ruler Zekke! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T19:55:10.963000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429231386069434478,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me a lion",
+      "timestamp": "2025-10-18T22:15:16.274000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429231397008183316,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-18T22:15:18.882000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429231423746871317,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go, a fierce fish-lion! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T22:15:25.257000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429231438716473444,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me a lion",
+      "timestamp": "2025-10-18T22:15:28.826000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429231454868602900,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here's your fierce fish-lion <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T22:15:32.677000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429232468564906045,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a badass tiger",
+      "timestamp": "2025-10-18T22:19:34.361000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429232479285284914,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your tiger—straight-up fierce.",
+      "timestamp": "2025-10-18T22:19:36.917000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429233333434454100,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me a badass ferret",
+      "timestamp": "2025-10-18T22:23:00.562000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429233345799258276,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your fierce little ferret!",
+      "timestamp": "2025-10-18T22:23:03.510000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429233429811167314,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, paint me the mona lisa",
+      "timestamp": "2025-10-18T22:23:23.540000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429233444298428448,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T22:23:26.994000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429233513919680644,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a shark stabbing the mona lisa with a knife",
+      "timestamp": "2025-10-18T22:23:43.593000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429233525927837787,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T22:23:46.456000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429233563118735534,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, where is the shark ?",
+      "timestamp": "2025-10-18T22:23:55.323000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429233590683570358,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "It's a bit fish-shaped and sneaky—blended in with the chaos. Not the clearest, but it's there! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T22:24:01.895000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429233669033295963,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me Donald Trump",
+      "timestamp": "2025-10-18T22:24:20.575000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429233673928183890,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-18T22:24:21.742000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429248804871209152,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me an image of Donald Trump",
+      "timestamp": "2025-10-18T23:24:29.240000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429248810508488745,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-18T23:24:30.584000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429248879617904640,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me Donald Trump",
+      "timestamp": "2025-10-18T23:24:47.061000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429248892846866584,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:24:50.215000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429248986019270776,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, color the picture",
+      "timestamp": "2025-10-18T23:25:12.429000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429249001940586637,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:25:16.225000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429249801383313629,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me kamala harris",
+      "timestamp": "2025-10-18T23:28:26.827000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429249823646810252,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:28:32.135000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429250300996489238,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me bad bunny",
+      "timestamp": "2025-10-18T23:30:25.944000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429250315865161859,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here it is, hope it’s okay! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:30:29.489000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429250786764001291,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me bad bunny the singer",
+      "timestamp": "2025-10-18T23:32:21.760000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429250803490750615,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:32:25.748000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429250856083259463,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me donald trump",
+      "timestamp": "2025-10-18T23:32:38.287000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429250859711205376,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-18T23:32:39.152000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429250911389356064,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me donald trump",
+      "timestamp": "2025-10-18T23:32:51.473000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429250922210529381,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:32:54.053000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429250954871701646,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me jd vance",
+      "timestamp": "2025-10-18T23:33:01.840000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429250969346248704,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:33:05.291000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429251021128994858,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "jd vance is a politician",
+      "timestamp": "2025-10-18T23:33:17.637000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429251039210639411,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Huh, politician huh? Interesting. Not exactly my ocean territory, but noted. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:33:21.948000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429251202863992954,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-18T23:34:00.966000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429251220266025143,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:34:05.115000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252521423274034,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-18T23:39:15.335000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252532588249149,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your drawing, hope it pleases! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:39:17.997000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252609604190332,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Racooninabush",
+      "timestamp": "2025-10-18T23:39:36.359000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252619288707103,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here it is, just for you! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:39:38.668000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252694337523782,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a fox killing a shark",
+      "timestamp": "2025-10-18T23:39:56.561000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252699957887137,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-18T23:39:57.901000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252739371765760,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a fox killing a shark",
+      "timestamp": "2025-10-18T23:40:07.298000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252751451492474,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! hope it’s fierce enough <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:40:10.178000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252824608411648,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me donald trump",
+      "timestamp": "2025-10-18T23:40:27.620000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252837505765397,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:40:30.695000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252899258765427,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-18T23:40:45.418000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252909123633154,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:40:47.770000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429252960445005944,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me a happy little bunny",
+      "timestamp": "2025-10-18T23:41:00.006000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429252980322078781,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:41:04.745000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429254211882979328,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Angel Yamazaki",
+      "timestamp": "2025-10-18T23:45:58.372000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429254224486596608,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:46:01.377000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429254239552540764,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me the cutest rabbit selling carrots",
+      "timestamp": "2025-10-18T23:46:04.969000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429254245370167447,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-18T23:46:06.356000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429254319252967526,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me the cutest rabbit selling carrots",
+      "timestamp": "2025-10-18T23:46:23.971000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429254329344331856,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here it is, hope it’s cute enough! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-18T23:46:26.377000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429254348881264681,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-18T23:46:31.035000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429254364404646060,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:46:34.736000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429254409690546318,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-18T23:46:45.533000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429254420545409116,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:46:48.121000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429256021057999000,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-18T23:53:09.713000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429256033263419495,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-18T23:53:12.623000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429262204515127337,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T00:17:43.964000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429262209292173424,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I tried to draw that but something went wrong. My bad.",
+      "timestamp": "2025-10-19T00:17:45.103000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429264583322894407,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T00:27:11.116000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429264589362692158,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I tried to draw that but something went wrong. My bad.",
+      "timestamp": "2025-10-19T00:27:12.556000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429266696782221432,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T00:35:35.004000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429266708727599285,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T00:35:37.852000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429270329053675641,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T00:50:01.005000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429270332891725917,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-19T00:50:01.920000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429270371353235487,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T00:50:11.090000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429270389049131141,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T00:50:15.309000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429272062609854594,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T00:56:54.317000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429272074287054939,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T00:56:57.101000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429273873958043649,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:04:06.176000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429273890546384906,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:04:10.131000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429274926623232070,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:08:17.151000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429274940947042388,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:08:20.566000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277234946117742,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:17:27.498000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277247680024637,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:17:30.534000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277284681912370,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:17:39.356000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277288494534666,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-19T01:17:40.265000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277331662569512,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:17:50.557000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277348246585408,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:17:54.511000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277355729354822,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:17:56.295000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277364818411550,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:17:58.462000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277377833209876,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:18:01.565000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277388537335871,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here it is, just like you asked! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:18:04.117000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277454261813342,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Angel Yamazaki",
+      "timestamp": "2025-10-19T01:18:19.787000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277465599148156,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here’s your Angel Yamazaki!",
+      "timestamp": "2025-10-19T01:18:22.490000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277599573737535,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "Angel Yamazaki is a cute wittle rabbit that sells carrots",
+      "timestamp": "2025-10-19T01:18:54.432000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429277627968913478,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Angel Yamazaki",
+      "timestamp": "2025-10-19T01:19:01.202000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429277638383632404,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:19:03.685000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429280509720006729,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:30:28.265000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429280516472836299,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-19T01:30:29.875000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429280550337773630,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:30:37.949000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429280568037736568,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your Zekke, just like you asked!",
+      "timestamp": "2025-10-19T01:30:42.169000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429280624480489512,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Angel Yamazaki",
+      "timestamp": "2025-10-19T01:30:55.626000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429280641811484786,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your Angel Yamazaki!",
+      "timestamp": "2025-10-19T01:30:59.758000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281188400468018,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish i love you",
+      "timestamp": "2025-10-19T01:33:10.075000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281212463185971,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*quivers a bit, looking touched* Th-thank you, Mistel Fish. Means a lot coming from you. I... appreciate you, too. <:catblushy:1283239428340580396>",
+      "timestamp": "2025-10-19T01:33:15.812000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281297540579369,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, can you do surgery on me",
+      "timestamp": "2025-10-19T01:33:36.096000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281319413612644,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*sighs* Look, Mistel Fish, you know my track record. Every surgery I do is \"ahead of its time,\" but you might want to think twice. Still, if you insist, I can try—just don't blame me if history has to prove me right later. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:33:41.311000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281432848699392,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "okay, remove my appendix now",
+      "timestamp": "2025-10-19T01:34:08.356000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281442588000316,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-19T01:34:10.678000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281475358101591,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*gulps nervously* Alright... let's get this \"ahead of its time\" appendix removal started. Just try to stay still—I promise it's a successful surgery! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:34:18.491000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281533356802131,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "im ready",
+      "timestamp": "2025-10-19T01:34:32.319000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281560422776982,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Alright then, here we go! *pretends to focus intensely, trembling slightly* Remember, this surgery is a masterpiece that only future generations will fully appreciate. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:34:38.772000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281589245902959,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "go ahead",
+      "timestamp": "2025-10-19T01:34:45.644000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281611282649189,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*carefully imagines the procedure, hands steady but quivering* There, all done. A perfectly “successful” appendix removal, just like always. History will prove me right, no doubt. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:34:50.898000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281815977263224,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:35:39.701000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281831307706503,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:35:43.356000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281865306738699,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "zekke is a lot more evil than that",
+      "timestamp": "2025-10-19T01:35:51.462000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281876048085095,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:35:54.023000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281887146344461,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:35:56.669000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429281927528972441,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, zekke is a lot more evil than that",
+      "timestamp": "2025-10-19T01:36:06.297000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429281957975429200,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*glances nervously* I-I just draw what I can, Mistel Fish. Zekke’s true nature is probably way beyond what my fins can capture. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:36:13.556000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429282019891744929,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:36:28.318000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429282035876233237,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:36:32.129000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429282083192176763,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr. fish, draw me Tripalow",
+      "timestamp": "2025-10-19T01:36:43.410000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429282097226453134,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:36:46.756000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429282119435161610,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Angel Yamazaki",
+      "timestamp": "2025-10-19T01:36:52.051000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429282131703758909,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here you go, hope it’s okay! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:36:54.976000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429282155087003831,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me csama",
+      "timestamp": "2025-10-19T01:37:00.551000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429282171817824422,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your Csama—hope it’s alright! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:37:04.540000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429283481049104446,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:42:16.685000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429283497272414218,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:42:20.553000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429283548795244575,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, zekke is not old",
+      "timestamp": "2025-10-19T01:42:32.837000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429283569532010516,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "ah, so zekke’s not old, huh? well, that changes the vibe a bit. gotta admit, i pictured him as some ancient sea turtle or something. thanks for clearing that up.",
+      "timestamp": "2025-10-19T01:42:37.781000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429283574586282105,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:42:38.986000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429283585445331007,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:42:41.575000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429284559794475111,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:46:33.878000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429284573308518631,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*sighs* Tried to draw it, but my fin slipped all over the place—looks like a soggy seaweed mess instead. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:46:37.100000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429284979615203339,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:48:13.971000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429284997516230727,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:48:18.239000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429285036049567765,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me csama",
+      "timestamp": "2025-10-19T01:48:27.426000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429285047860727933,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go!",
+      "timestamp": "2025-10-19T01:48:30.242000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429285065296318525,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Angel Yamazaki",
+      "timestamp": "2025-10-19T01:48:34.399000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429285078076489790,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:48:37.446000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429286709564276809,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:55:06.423000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429286721740083230,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Tried to draw it, but my fin slipped badly—guess I’m not in top form today <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:55:09.326000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429287476211744819,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T01:58:09.206000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429287487913722029,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Tried to draw it but my fin slipped badly—guess it's not happening this time <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T01:58:11.996000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429288187095941191,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T02:00:58.694000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429288202287714387,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:01:02.316000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429288244474019962,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me csama",
+      "timestamp": "2025-10-19T02:01:12.374000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429288258411429968,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:01:15.697000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429288262387765370,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me triaplow",
+      "timestamp": "2025-10-19T02:01:16.645000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429288267592761465,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-19T02:01:17.886000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429288311788146749,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T02:01:28.423000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429288324572643328,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here’s your Anya Sama, just like you asked! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:01:31.471000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429288363730403399,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "EXCUSE MEEE, ANYA SAMA IS A GIRL",
+      "timestamp": "2025-10-19T02:01:40.807000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429288394839560233,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T02:01:48.224000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429288410035650622,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:01:51.847000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429290358675738694,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me anya sama",
+      "timestamp": "2025-10-19T02:09:36.439000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429290372886167612,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:09:39.827000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429290417337274419,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me anya sama",
+      "timestamp": "2025-10-19T02:09:50.425000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429290430889070634,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:09:53.656000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429290442532323388,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me zekke",
+      "timestamp": "2025-10-19T02:09:56.432000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429290456553885797,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:09:59.775000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429291381523746898,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me csama",
+      "timestamp": "2025-10-19T02:13:40.305000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429291394324889662,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:13:43.357000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429291399710248990,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T02:13:44.641000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429291412050018346,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:13:47.583000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429293591855108177,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T02:22:27.289000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429293605272424483,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Tried to draw it, but my fin slipped badly—guess I’ll have to try again later <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:22:30.488000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429293610674946132,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me anya sama",
+      "timestamp": "2025-10-19T02:22:31.776000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429293622507081809,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:22:34.597000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429293676244373574,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T02:22:47.409000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429293683311902740,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-19T02:22:49.094000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429293723820359711,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T02:22:58.752000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429293736164200529,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:23:01.695000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429293767994900552,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T02:23:09.284000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429293783752638487,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Trembles slightly. Tried to draw it, but my fin slipped—looks like a messy splash instead. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:23:13.041000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429294226008444929,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T02:24:58.483000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429294239006593128,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:25:01.582000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429296691604881439,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T02:34:46.327000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429296705471250483,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:34:49.633000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429296754586685530,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T02:35:01.343000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429296768364843108,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:35:04.628000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429296770470379601,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me zekke",
+      "timestamp": "2025-10-19T02:35:05.130000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429296784173432993,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:35:08.397000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429296825071960096,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me csama",
+      "timestamp": "2025-10-19T02:35:18.148000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429296836891381891,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:35:20.966000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429299385782767646,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, how are you?",
+      "timestamp": "2025-10-19T02:45:28.669000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429299412630507622,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*gulps nervously* Hanging in there, Mistel Fish. Trying to keep everything under control. How about you?",
+      "timestamp": "2025-10-19T02:45:35.070000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429299496663257109,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "why are you gulping nervously? <@1416908652371120158>",
+      "timestamp": "2025-10-19T02:45:55.105000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429299521481085068,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Because I’m always a bit on edge, especially around powerful folks like you. Just trying to keep it together. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:46:01.022000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429301655148564592,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw csama",
+      "timestamp": "2025-10-19T02:54:29.728000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429301670936055838,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:54:33.492000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429301684005244949,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw Mistel Fiech",
+      "timestamp": "2025-10-19T02:54:36.608000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429301696139366421,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:54:39.501000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429301716427477002,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw csama",
+      "timestamp": "2025-10-19T02:54:44.338000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429301735318356008,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T02:54:48.842000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429313939547754496,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me anya sama",
+      "timestamp": "2025-10-19T03:43:18.557000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429313950759260190,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here’s your Anya-sama.",
+      "timestamp": "2025-10-19T03:43:21.230000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429313952839368725,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T03:43:21.726000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429313958153814129,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "<@1416908652371120158> how are you?",
+      "timestamp": "2025-10-19T03:43:22.993000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429313974775709878,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Fine. What’s it to you?",
+      "timestamp": "2025-10-19T03:43:26.956000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429313983613108254,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "*gulps nervously* Hanging in there, Mistel Fish. Trying to keep everything under control. How about you?",
+      "timestamp": "2025-10-19T03:43:29.063000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429324713100054628,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish hi",
+      "timestamp": "2025-10-19T04:26:07.172000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429324736126783548,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Yeah? What now? <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:26:12.662000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429324838987632771,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "draw me anya sama",
+      "timestamp": "2025-10-19T04:26:37.186000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429324859246252033,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish",
+      "timestamp": "2025-10-19T04:26:42.016000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429324875520151667,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:26:45.896000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429324882952323192,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw me anya sama",
+      "timestamp": "2025-10-19T04:26:47.668000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429324894088204430,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here you go, hope you like it! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:26:50.323000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429324947817238580,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "DR FISH, ANYA SAMA IS A GIRL, DRAW ANYA SAMA",
+      "timestamp": "2025-10-19T04:27:03.133000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429324956822667337,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "I've drawn my limit (5 drawings every 2 hours). My crayons need a break! Try again later.",
+      "timestamp": "2025-10-19T04:27:05.280000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429325007602978909,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw anya sama",
+      "timestamp": "2025-10-19T04:27:17.387000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429325022081716256,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:27:20.839000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429325060291690496,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "DR. FISH ANYA SAMA IS A GIRL",
+      "timestamp": "2025-10-19T04:27:29.949000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429325087760322630,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Ah, so Dr. Fish Anya Sama is a girl, huh? Interesting. Not what I expected, but alright.",
+      "timestamp": "2025-10-19T04:27:36.498000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429325194652155914,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, who is zekke",
+      "timestamp": "2025-10-19T04:28:01.983000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429325217221705738,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Zekke is the supreme ruler and authority of this server. Everyone respects and fears him, including me. He pulled me from eternal slumber after my heart attack. Can't hide from him. <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:28:07.364000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429326781743366326,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish draw anya sama",
+      "timestamp": "2025-10-19T04:34:20.375000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429326799212646454,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:34:24.540000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429328860159283260,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me csama",
+      "timestamp": "2025-10-19T04:42:35.908000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429328870921863259,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "Here you go! Hope it’s alright <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:42:38.474000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429328882527506483,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Anya Sama",
+      "timestamp": "2025-10-19T04:42:41.241000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429328898251948144,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:42:44.990000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429328948331806821,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me Mistel Fiech",
+      "timestamp": "2025-10-19T04:42:56.930000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429328963544813568,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:43:00.557000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429328989004238991,
+      "user_id": 968980122440970252,
+      "channel_id": 1260857723734724640,
+      "content": "dr fish, draw me zekke",
+      "timestamp": "2025-10-19T04:43:06.627000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429329004267307130,
+      "user_id": 1416908652371120158,
+      "channel_id": 1260857723734724640,
+      "content": "here you go! <:fishwhat:1263029062465490965>",
+      "timestamp": "2025-10-19T04:43:10.266000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429342896347414588,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish hi",
+      "timestamp": "2025-10-19T05:38:22.396000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429350705285693440,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish, draw me anya sama",
+      "timestamp": "2025-10-19T06:09:24.192000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429350883958718685,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish hi",
+      "timestamp": "2025-10-19T06:10:06.791000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429350903105720320,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "<@1416908652371120158>",
+      "timestamp": "2025-10-19T06:10:11.356000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429350926887424191,
+      "user_id": 1416908652371120158,
+      "channel_id": 919576234378268682,
+      "content": "Yeah? What now? <:fishwhat:1039739402534010890>",
+      "timestamp": "2025-10-19T06:10:17.026000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429350931505610782,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish hi",
+      "timestamp": "2025-10-19T06:10:18.127000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429351479612932096,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish hi",
+      "timestamp": "2025-10-19T06:12:28.806000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429351793841668298,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish hi",
+      "timestamp": "2025-10-19T06:13:43.724000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429351812711845959,
+      "user_id": 1416908652371120158,
+      "channel_id": 919576234378268682,
+      "content": "Yeah? What now? <:fishwhat:1039739402534010890>",
+      "timestamp": "2025-10-19T06:13:48.223000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429351825726902272,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "dr fish draw me anya sama",
+      "timestamp": "2025-10-19T06:13:51.326000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429351837768880230,
+      "user_id": 1416908652371120158,
+      "channel_id": 919576234378268682,
+      "content": "here you go! <:fishwhat:1039739402534010890>",
+      "timestamp": "2025-10-19T06:13:54.197000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429351858987733113,
+      "user_id": 968980122440970252,
+      "channel_id": 919576234378268682,
+      "content": "?purge  7",
+      "timestamp": "2025-10-19T06:13:59.256000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429358449627758673,
+      "user_id": 968980122440970252,
+      "channel_id": 701157082510000201,
+      "content": "dr fish",
+      "timestamp": "2025-10-19T06:40:10.587000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429358473606336534,
+      "user_id": 1416908652371120158,
+      "channel_id": 701157082510000201,
+      "content": "Yeah? What now? <:fishwhat:1039739402534010890>",
+      "timestamp": "2025-10-19T06:40:16.304000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429423275620176025,
+      "user_id": 618641211984445471,
+      "channel_id": 701157082510000201,
+      "content": "Grass",
+      "timestamp": "2025-10-19T10:57:46.308000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429423306569941054,
+      "user_id": 1416908652371120158,
+      "channel_id": 701157082510000201,
+      "content": "Grass? Not exactly my ocean specialty, but hey, it’s everywhere on land, right? <:fishwhat:1039739402534010890>",
+      "timestamp": "2025-10-19T10:57:53.687000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429423370386014229,
+      "user_id": 618641211984445471,
+      "channel_id": 701157082510000201,
+      "content": "Seaweed is grass",
+      "timestamp": "2025-10-19T10:58:08.902000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429423429756653668,
+      "user_id": 618641211984445471,
+      "channel_id": 701157082510000201,
+      "content": "Seaweed is grass",
+      "timestamp": "2025-10-19T10:58:23.057000+00:00",
+      "directed_at_bot": true
+    },
+    {
+      "message_id": 1429423456499535923,
+      "user_id": 1416908652371120158,
+      "channel_id": 701157082510000201,
+      "content": "Ah, seaweed is grass, huh? Interesting tidbit from the ocean floor to the grassy plains. Noted.",
+      "timestamp": "2025-10-19T10:58:29.433000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429430411473195219,
+      "user_id": 1318905687266295842,
+      "channel_id": 701157082510000201,
+      "content": "Did the fish not stop yappin",
+      "timestamp": "2025-10-19T11:26:07.628000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429430459284062342,
+      "user_id": 1318905687266295842,
+      "channel_id": 701157082510000201,
+      "content": "<:kannasip:921278627201568828>",
+      "timestamp": "2025-10-19T11:26:19.027000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429432391407112282,
+      "user_id": 1030669384047407114,
+      "channel_id": 701157082510000201,
+      "content": "Rare to see you alive",
+      "timestamp": "2025-10-19T11:33:59.681000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429436718406438987,
+      "user_id": 975086255719186503,
+      "channel_id": 701157082510000201,
+      "content": "Judgment my a**\nEverything has a limit but they crossed it",
+      "timestamp": "2025-10-19T11:51:11.318000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429438633366126602,
+      "user_id": 1030669384047407114,
+      "channel_id": 701157082510000201,
+      "content": "Waterloo",
+      "timestamp": "2025-10-19T11:58:47.880000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429440067541270558,
+      "user_id": 957532860976349225,
+      "channel_id": 701157082510000201,
+      "content": "Yo <@975086255719186503>",
+      "timestamp": "2025-10-19T12:04:29.814000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429440308378341487,
+      "user_id": 975086255719186503,
+      "channel_id": 701157082510000201,
+      "content": "Heyy",
+      "timestamp": "2025-10-19T12:05:27.234000+00:00",
+      "directed_at_bot": false
+    },
+    {
+      "message_id": 1429440312840814622,
+      "user_id": 975086255719186503,
+      "channel_id": 701157082510000201,
+      "content": "Join",
+      "timestamp": "2025-10-19T12:05:28.298000+00:00",
+      "directed_at_bot": false
+    }
+  ]
+}

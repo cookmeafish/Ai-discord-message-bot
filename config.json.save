@@ -40,20 +40,19 @@
         },
         "vision_description": {
             "model": "gpt-4o-mini",
-            "max_tokens": 150,
+            "max_tokens": 50,
             "temperature": 0.3
         }
     },
     "image_generation": {
         "enabled": true,
-        "max_per_user_per_period": 20,
+        "max_per_user_per_period": 5,
         "reset_period_hours": 2,
         "style_prefix": "High quality detailed illustration, clean image, visual only",
         "model": "black-forest-labs/FLUX.1-schnell",
         "width": 512,
         "height": 512,
-        "steps": 4,
-        "enhance_with_ai_description": true
+        "steps": 4
     },
     "status_updates": {
         "enabled": true,
@@ -94,17 +93,25 @@
     "server_emote_sources": {
         "1260857723193528360": [
             "1427827466432548957",
-            "1260857723193528360",
-            "701157082510000198"
-        ],
-        "701157082510000198": [
-            "701157082510000198",
             "1260857723193528360"
         ]
     },
-    "server_alternative_nicknames": {
-        "701157082510000198": [
-            "doctor fish"
-        ]
+    "server_alternative_nicknames": {},
+    "channel_settings": {
+        "1427827467384783044": {
+            "personality_traits": "chill, low-energy, concise, casual",
+            "lore": "I am a helpful AI living on this Discord server.",
+            "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",
+            "purpose": "To chat with users and assist with server tasks.",
+            "random_reply_chance": 0.05,
+            "guild_id": "1427827466432548957"
+        },
+        "1260857723734724640": {
+            "personality_traits": "chill, low-energy, concise, casual",
+            "lore": "I am a helpful AI living on this Discord server.",
+            "facts": "I use OpenAI's API to think. My configuration is managed by a local GUI.",            "purpose": "To chat with users and assist with server tasks.",
+            "random_reply_chance": 0.05,
+            "channel_name": "general"
+        }
     }
 }
