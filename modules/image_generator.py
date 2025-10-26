@@ -61,22 +61,24 @@ class ImageGenerator:
         self,
         user_prompt: str,
         db_manager,
-        short_term_memory: List[Dict] = None
+        short_term_memory: List[Dict] = None,
+        provided_context: str = None
     ) -> Optional[str]:
         """
         Consult GPT-4 to get an enhanced visual description of the subject.
 
         This method:
         1. Extracts the subject from the user's prompt
-        2. Checks database (long-term memory) for facts about the subject
+        2. Uses provided_context (database facts from ai_handler) as PRIMARY source
         3. Checks short-term memory for recent descriptions
-        4. Consults GPT-4 to combine all sources and fill gaps with general knowledge
+        4. Consults GPT-4 to enhance visual details (avoiding conflicting generic knowledge)
         5. Returns a detailed visual description optimized for image generation
 
         Args:
             user_prompt: The cleaned drawing request (e.g., "Donald Trump", "a dragon")
             db_manager: Database manager for accessing long-term memory
             short_term_memory: Recent conversation messages
+            provided_context: Pre-extracted database facts from ai_handler (PRIORITY SOURCE)
 
         Returns:
             str: Enhanced visual description, or None if enhancement fails/disabled
@@ -103,25 +105,17 @@ class ImageGenerator:
 
             print(f"Image Generator: Enhancing description for subject: '{subject}'")
 
-            # Gather context from database (long-term memory)
+            # PRIORITY: Use provided_context from ai_handler (already contains database facts)
+            # This ensures we use the comprehensive fact extraction done by ai_handler
             database_context = []
-            subject_words = [word.lower() for word in subject.split() if len(word) > 2]
-
-            if subject_words:
-                # Search long-term memory for any facts mentioning the subject
-                # This is a simple approach - we could make it more sophisticated
-                all_facts = db_manager.get_all_long_term_memory()
-                for fact_tuple in all_facts:
-                    fact_text = fact_tuple[0]
-                    fact_lower = fact_text.lower()
-                    # Check if any subject words appear in this fact
-                    if any(word in fact_lower for word in subject_words):
-                        database_context.append(fact_text)
-                        print(f"Image Generator: Found database fact: {fact_text}")
+            if provided_context:
+                database_context.append(provided_context)
+                print(f"Image Generator: Using provided database context: {provided_context[:200]}...")
 
             # Gather context from short-term memory (recent conversation)
+            subject_words = [word.lower() for word in subject.split() if len(word) > 2]
             conversation_context = []
-            if short_term_memory:
+            if short_term_memory and subject_words:
                 print(f"Image Generator: Checking {len(short_term_memory)} recent messages for context")
                 # Check last 20 messages for descriptions of the subject
                 for msg_dict in short_term_memory[-20:]:
@@ -138,13 +132,59 @@ class ImageGenerator:
             # Build the AI prompt to enhance the description
             context_parts = []
             if database_context:
-                context_parts.append(f"**Database facts:**\n" + "\n".join([f"- {fact}" for fact in database_context[:5]]))
+                context_parts.append(f"**CRITICAL DATABASE FACTS (USE THESE FIRST):**\n" + "\n".join([f"- {fact}" for fact in database_context]))
             if conversation_context:
                 context_parts.append(f"**Recent conversation:**\n" + "\n".join([f"- {msg}" for msg in conversation_context[:5]]))
 
             combined_context = "\n\n".join(context_parts) if context_parts else "No specific context available."
 
-            enhancement_prompt = f"""You are helping to create a detailed visual description for an image generation AI.
+            # Determine if database facts describe a specific person/entity
+            # This helps GPT-4 know whether to add generic knowledge or just enhance visual details
+            has_specific_person_facts = False
+            if database_context and provided_context:
+                # Check if facts describe a specific individual (contains identity markers)
+                identity_markers = ['he is', 'she is', 'they are', 'ruler', 'manager', 'friend', 'powerful', 'feared',
+                                   'handsome', 'beautiful', 'strong', 'intelligent', 'user', 'person', 'man', 'woman']
+                context_lower = provided_context.lower()
+                if any(marker in context_lower for marker in identity_markers):
+                    has_specific_person_facts = True
+                    print(f"Image Generator: Database describes a SPECIFIC PERSON - will avoid conflicting generic knowledge")
+
+            # Build prompt based on whether we have specific person facts or not
+            if has_specific_person_facts:
+                # Database describes a specific person - DON'T add conflicting generic knowledge
+                enhancement_prompt = f"""You are helping to create a detailed visual description for an image generation AI.
+
+**Subject to draw:** {subject}
+
+**Available context:**
+{combined_context}
+
+**CRITICAL INSTRUCTION:**
+The database facts describe a SPECIFIC REAL PERSON named "{subject}". This is NOT a character from media/games/shows.
+
+**Task:**
+Create a detailed, visual description using ONLY the database facts provided:
+1. **USE ONLY DATABASE FACTS** - Do not add knowledge about unrelated characters with the same name
+2. **DO NOT** assume this is a character from any media, game, anime, or show you know about
+3. **ONLY** enhance visual details that are implied by the database facts (e.g., "feared man" → "intimidating gaze, strong posture")
+4. If database says "handsome, strong man" → describe facial features, build, and style that match these traits
+5. If database says "ruler" → describe regal clothing, commanding presence
+
+**Requirements:**
+- **NEVER** add information that contradicts or replaces the database identity
+- Focus ONLY on translating abstract traits ("handsome", "strong", "feared") into concrete visual details
+- If database facts don't mention hair/eyes/clothing, you MAY add reasonable defaults for a human
+- Keep it under 100 words
+- Don't mention "database" - just provide the description naturally
+
+**Example output:**
+"A handsome, strong man with a commanding presence that inspires fear, intelligent eyes showing wisdom, wearing regal dark clothing befitting a ruler, powerful muscular build, stern facial features"
+
+**Your visual description:**"""
+            else:
+                # No specific database person facts - can use full generic knowledge
+                enhancement_prompt = f"""You are helping to create a detailed visual description for an image generation AI.
 
 **Subject to draw:** {subject}
 
@@ -152,22 +192,28 @@ class ImageGenerator:
 {combined_context}
 
 **Task:**
-Create a detailed, visual description of "{subject}" that combines:
-1. Any facts from the database/conversation above
-2. Your general knowledge about what "{subject}" looks like
-3. Specific visual details that would help an image AI draw accurately
+Create a detailed, visual description of "{subject}" using ALL available knowledge:
+1. **USE YOUR FULL KNOWLEDGE** - If this is a famous person, celebrity, politician, character, etc., use everything you know about their appearance
+2. Any database/conversation facts above (if provided) can supplement your knowledge
+3. Provide specific visual details that would help an image AI draw accurately
 
 **Requirements:**
+- **If this is a real person you know about** (politician, celebrity, historical figure, etc.): Describe their actual appearance in detail
+  - Examples: "Kamala Harris" → describe her actual features, typical attire
+  - Examples: "Donald Trump" → describe his actual hair, facial features, suits
+  - Examples: "Taylor Swift" → describe her actual appearance, style
+- **If this is a character from media** (anime, game, movie, etc.): Use your knowledge of that character's design
+- **If this is a generic subject** (dragon, house, tree, etc.): Use typical visual characteristics
 - Focus on VISUAL details only (appearance, colors, clothing, style, physical features)
 - Be specific and detailed (not vague)
-- Combine database facts with general knowledge seamlessly
-- If it's a person, include: age range, hair, facial features, typical clothing/style
-- If it's an object/creature, include: shape, colors, distinctive features
 - Keep it under 100 words
-- Don't mention the database or conversation - just provide the description
+- Don't mention "database", "conversation", or "knowledge" - just provide the description naturally
 
-**Example output:**
-"A man in his late 70s with distinctive orange-blonde hair styled in a combover, blue eyes, wearing a dark navy suit with a red tie, confident posture"
+**Example output for famous person:**
+"A woman in her late 50s with shoulder-length dark brown hair, warm brown eyes, professional attire typically consisting of tailored pantsuits in navy or black, pearl necklace, confident smile"
+
+**Example output for generic subject:**
+"A large red dragon with golden eyes, massive wings spread wide, sharp talons, scales reflecting light, smoke curling from nostrils"
 
 **Your visual description:**"""
 
@@ -265,7 +311,8 @@ Create a detailed, visual description of "{subject}" that combines:
                 enhanced_context = await self._get_enhanced_visual_description(
                     user_prompt,
                     db_manager,
-                    short_term_memory
+                    short_term_memory,
+                    context  # Pass database context from ai_handler as priority source
                 )
 
             # Use enhanced context if available, otherwise fall back to provided context
