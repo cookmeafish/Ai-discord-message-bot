@@ -40,7 +40,7 @@
         },
         "vision_description": {
             "model": "gpt-4o-mini",
-            "max_tokens": 50,
+            "max_tokens": 150,
             "temperature": 0.3
         }
     },
@@ -52,7 +52,8 @@
         "model": "black-forest-labs/FLUX.1-schnell",
         "width": 512,
         "height": 512,
-        "steps": 4
+        "steps": 4,
+        "enhance_with_ai_description": true
     },
     "status_updates": {
         "enabled": true,

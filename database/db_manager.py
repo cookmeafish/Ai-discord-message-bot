@@ -234,15 +234,15 @@ class DBManager:
     def get_long_term_memory(self, user_id):
         """
         Retrieves long-term memory facts for a given user, including the source.
-        
+
         Args:
             user_id: Discord user ID
-            
+
         Returns:
             List of tuples (fact, source_user_id, source_nickname)
         """
         query = "SELECT fact, source_user_id, source_nickname FROM long_term_memory WHERE user_id = ? ORDER BY reference_count DESC, last_mentioned_timestamp DESC"
-        
+
         try:
             cursor = self.conn.cursor()
             cursor.execute(query, (user_id,))
@@ -251,6 +251,26 @@ class DBManager:
             return rows
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get long term memory for user {user_id}: {e}")
+            return []
+
+    def get_all_long_term_memory(self):
+        """
+        Retrieves ALL long-term memory facts across all users.
+        Used for searching when we don't know which user the fact is about.
+
+        Returns:
+            List of tuples (fact, source_user_id, source_nickname)
+        """
+        query = "SELECT fact, source_user_id, source_nickname FROM long_term_memory ORDER BY reference_count DESC, last_mentioned_timestamp DESC"
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            cursor.close()
+            return rows
+        except Exception as e:
+            print(f"DATABASE ERROR: Failed to get all long term memory: {e}")
             return []
 
     def add_long_term_memory(self, user_id, fact, source_user_id, source_nickname):

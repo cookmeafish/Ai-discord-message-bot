@@ -18,7 +18,7 @@ class AIHandler:
         self.client = openai.AsyncOpenAI(api_key=api_key)
         self.emote_handler = emote_handler
         self.formatter = FormattingHandler()
-        self.image_generator = ImageGenerator(emote_handler.bot.config_manager)
+        self.image_generator = ImageGenerator(emote_handler.bot.config_manager, self.client)
 
         # Load AI model configuration from config
         self.config = emote_handler.bot.config_manager.get_config()
@@ -1046,7 +1046,7 @@ LORE: Worked as a marine biologist before becoming self-aware
             "1. **REACT AS IF IT'S HAPPENING TO YOU**: The user is showing you this image as if they're doing something to you or showing you something relevant to your life.\n"
             "2. **BE BRIEF AND NATURAL**: 1-2 sentences max. Match your relationship tone.\n"
             "3. **EMOTIONAL REACTIONS**: If the image relates to elements in your lore/traits, react with appropriate emotions based on your character!\n"
-            f"4. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
+            f"4. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY. **NEVER MAKE UP EMOTE NAMES** - only use emotes from the list above.\n"
             "5. **BLEND EMOTIONS**: Your relationship metrics set the baseline, but lore-based emotions should show through.\n\n"
             "Example reaction patterns (adapt to YOUR character):\n"
             "- Image shows something you fear → React with concern/anxiety\n"
@@ -1634,9 +1634,14 @@ Respond with ONLY the extracted visual description, nothing else.
                         else:
                             print(f"AI Handler: No context parts built (no facts found for mentioned users)")
 
-                # Generate the image with context
+                # Generate the image with context (enhanced with AI if enabled)
                 print(f"AI Handler: Generating image for prompt: {clean_prompt}")
-                image_bytes, error_msg = await self.image_generator.generate_image(clean_prompt, image_context)
+                image_bytes, error_msg = await self.image_generator.generate_image(
+                    clean_prompt,
+                    image_context,
+                    db_manager,
+                    short_term_memory
+                )
 
                 if error_msg:
                     print(f"AI Handler: Image generation failed: {error_msg}")
