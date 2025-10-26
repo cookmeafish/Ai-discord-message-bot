@@ -2249,7 +2249,7 @@ Respond with ONLY the fact ID number or "NONE".
                             "   ✅ REQUIRED - ONLY WRITE:\n"
                             "   - Spoken words: 'Y-yes!', 'Right away!', 'I'm ready!'\n"
                             "   - Thoughts/reactions: 'Oh geez', 'Whoa', 'Okay okay'\n"
-                            "   - Emotes only: ':fishwhat:'\n\n"
+                            "   - Emotes only: ':emote_name:'\n\n"
                             "   **USE YOUR VOICE AND EMOTES ONLY. NO PHYSICAL DESCRIPTIONS WHATSOEVER.**\n"
                         )
 
@@ -2314,7 +2314,7 @@ Respond with ONLY the fact ID number or "NONE".
                     "   ✅ REQUIRED - ONLY WRITE:\n"
                     "   - Spoken words: 'H-hiya', 'Hey there', 'What's up'\n"
                     "   - Thoughts/reactions: 'Oh geez', 'Whoa', 'Okay'\n"
-                    "   - Emotes only: ':fishwhat:'\n\n"
+                    "   - Emotes only: ':emote_name:'\n\n"
                     "   **USE YOUR VOICE AND EMOTES ONLY. NO PHYSICAL DESCRIPTIONS WHATSOEVER.**\n"
                 )
 

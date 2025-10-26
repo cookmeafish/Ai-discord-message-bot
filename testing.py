@@ -1955,7 +1955,7 @@ class BotTestSuite:
             cursor = self.db_manager.conn.cursor()
             cursor.execute(
                 "SELECT COUNT(*) FROM bot_identity WHERE content LIKE ?",
-                ("%TEST_TRAIT_%",)
+                ("%TEST_%",)
             )
             count = cursor.fetchone()[0]
             cleaned = count == 0
@@ -1969,7 +1969,7 @@ class BotTestSuite:
 
             # Force cleanup if any remain
             if count > 0:
-                cursor.execute("DELETE FROM bot_identity WHERE content LIKE ?", ("%TEST_TRAIT_%",))
+                cursor.execute("DELETE FROM bot_identity WHERE content LIKE ?", ("%TEST_%",))
                 self.db_manager.conn.commit()
                 print(f"WARNING: Cleaned up {count} remaining test identity entries")
 
