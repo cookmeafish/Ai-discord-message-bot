@@ -231,18 +231,13 @@ class BotTestSuite:
             self._log_test(category, "Retrieve Bot Identity", False, f"Error: {e}")
 
         # Test 2: Can add and retrieve test trait
+        test_trait = None
         try:
             test_trait = f"TEST_TRAIT_{datetime.now().timestamp()}"
             self.db_manager.add_bot_identity("trait", test_trait)
 
             traits = self.db_manager.get_bot_identity("trait")  # Returns list of strings
             added = test_trait in traits
-
-            # Clean up test data
-            if added:
-                cursor = self.db_manager.conn.cursor()
-                cursor.execute("DELETE FROM bot_identity WHERE content = ?", (test_trait,))
-                self.db_manager.conn.commit()
 
             self._log_test(
                 category,
@@ -252,6 +247,16 @@ class BotTestSuite:
             )
         except Exception as e:
             self._log_test(category, "Add/Retrieve Bot Identity", False, f"Error: {e}")
+        finally:
+            # Always clean up test data, even if test failed
+            if test_trait:
+                try:
+                    cursor = self.db_manager.conn.cursor()
+                    cursor.execute("DELETE FROM bot_identity WHERE content = ?", (test_trait,))
+                    self.db_manager.conn.commit()
+                    cursor.close()
+                except Exception as cleanup_error:
+                    print(f"Warning: Failed to clean up test trait: {cleanup_error}")
 
     # ==================== RELATIONSHIP METRICS TESTS ====================
 
@@ -1958,20 +1963,24 @@ class BotTestSuite:
                 ("%TEST_%",)
             )
             count = cursor.fetchone()[0]
+
+            # Force cleanup if any remain (safety net for failed tests)
+            if count > 0:
+                cursor.execute("DELETE FROM bot_identity WHERE content LIKE ?", ("%TEST_%",))
+                self.db_manager.conn.commit()
+                print(f"WARNING: Cleaned up {count} remaining test identity entries (earlier tests failed to clean up)")
+
+            cursor.close()
+
+            # Test passes if either no entries existed OR cleanup was successful
             cleaned = count == 0
 
             self._log_test(
                 category,
                 "Bot Identity Cleanup",
                 cleaned,
-                "No test identity entries found" if cleaned else f"Found {count} test identity entries remaining"
+                "No test identity entries found" if cleaned else f"Found and cleaned {count} test identity entries (earlier tests failed to clean up)"
             )
-
-            # Force cleanup if any remain
-            if count > 0:
-                cursor.execute("DELETE FROM bot_identity WHERE content LIKE ?", ("%TEST_%",))
-                self.db_manager.conn.commit()
-                print(f"WARNING: Cleaned up {count} remaining test identity entries")
 
         except Exception as e:
             self._log_test(category, "Bot Identity Cleanup", False, f"Error: {e}")
