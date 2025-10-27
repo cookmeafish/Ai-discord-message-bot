@@ -125,6 +125,20 @@ The bot has a configurable personality mode that controls immersion and language
 - Applied to: image generation, casual chat, factual questions, memory corrections
 - Proactive engagement uses **neutral context** (no specific user) via dedicated `generate_proactive_response()` method
 
+**Mentioned User Detection System (2025-10-26)**:
+- **Purpose**: Load facts about OTHER users mentioned in conversation, not just the message author
+- **Works for**: Casual chat, memory recall, factual questions ("what do you think about Zekke?")
+- **Three-Tier Matching** (same as image generation):
+  1. Discord username/display name (word boundary matching)
+  2. **Nicknames table** (substring matching) ← Primary source
+  3. Long-term memory facts with "also goes by" phrases (fallback)
+- **Prompt Structure**: Clearly separates author facts from mentioned user facts
+  - `=== KNOWN FACTS ABOUT THE AUTHOR (person asking you the question) ===`
+  - `=== FACTS ABOUT MENTIONED USERS (people being discussed, NOT the author) ===`
+- **Prevents Confusion**: Explicit warnings to NOT confuse mentioned users with the author
+- **Loads**: Facts AND relationship metrics for each mentioned user
+- **Benefits**: "what do you think about Zekke?" correctly loads Zekke's facts, not just author's facts
+
 **Conversation Energy Matching System (2025-10-19)**:
 - **Purpose**: Bot automatically adjusts response length to match conversation energy
 - **Implementation**: `_calculate_conversation_energy(messages, bot_id)` analyzes last 5 user messages from last 30 messages
@@ -229,10 +243,11 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
       1. Discord username/display name (fastest, word boundary matching)
       2. **Nicknames table** (medium speed, substring matching - NEW 2025-10-26)
       3. Long-term memory facts with "also goes by" phrases (slowest, word boundary matching)
-    - **Nicknames Table Usage**: Stores all historical display names/nicknames for users
+    - **Nicknames Table Usage (2025-10-26)**: Stores all historical display names/nicknames for users
       - Example: User with nicknames "Zekke" and "Zekkekun" → "draw me zekke" matches via substring
       - Enables flexible matching: "zekke" matches both "Zekke" AND "Zekkekun"
-      - Works for both image generation AND normal conversation memory storage
+      - **Works across ALL bot features**: Image generation, memory storage, AND casual conversation
+      - **Casual Conversation (NEW 2025-10-26)**: "what do you think about Zekke?" loads Zekke's facts
     - Filters stop words (me, you, a, the, etc.) to prevent false matches
     - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
     - **Gender Detection (2025-10-18)**: Automatically detects gender from pronouns in database facts

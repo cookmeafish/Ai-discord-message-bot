@@ -1303,7 +1303,7 @@ Examples:
         bot_id = channel.guild.me.id
         energy_analysis = self._calculate_conversation_energy(short_term_memory, bot_id)
 
-        # Get user's long-term memory
+        # Get user's long-term memory (AUTHOR = person asking question)
         long_term_memory_entries = db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
         if long_term_memory_entries:
@@ -1311,9 +1311,16 @@ Examples:
             for fact, source_id, source_name in long_term_memory_entries:
                 source_info = f" (Source: {source_name})" if source_name else ""
                 facts_str_list.append(f"Fact: '{fact}'{source_info}")
-            
+
             facts_str = "\n- ".join(facts_str_list)
-            user_profile_prompt = f"=== KNOWN FACTS ABOUT THIS USER ===\n- {facts_str}\n\n"
+            # CRITICAL: Identify this as the AUTHOR (person asking the question)
+            author_name = author.display_name if hasattr(author, 'display_name') else author.name
+            user_profile_prompt = f"=== KNOWN FACTS ABOUT THE AUTHOR (person asking you the question) ===\n"
+            user_profile_prompt += f"Author: **{author_name}** (ID: {author.id})\n- {facts_str}\n\n"
+
+        # Build mentioned users prompt (will be populated for casual_chat/memory_recall/factual_question)
+        mentioned_users_prompt = ""
+        # Note: mentioned_users_info is populated in the casual_chat/memory_recall section below
 
         # --- Dynamic System Prompt based on Intent ---
         system_prompt = ""
@@ -2086,6 +2093,107 @@ Respond with ONLY the fact ID number or "NONE".
             personality_mode = self._get_personality_mode(personality_config)
             server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
+            # Detect mentioned users in the message content (NEW 2025-10-26)
+            # This allows questions like "what do you think about Zekke?" to load Zekke's facts
+            mentioned_users_info = []
+            if message.guild:
+                mentioned_users = []
+                message_lower = message.content.lower()
+
+                # Extract words from message (filter stop words)
+                stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+                              'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+                              'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+                              'about', 'think', 'know', 'tell', 'what', 'who', 'when', 'where', 'why', 'how'}
+                message_words = [word for word in message_lower.split() if word not in stop_words]
+
+                print(f"AI Handler: Checking for mentioned users in casual chat. Message words: {message_words}")
+
+                # Check guild members for matches
+                for member in message.guild.members:
+                    if member.bot:
+                        continue
+
+                    member_display_lower = member.display_name.lower()
+                    member_name_lower = member.name.lower()
+
+                    # Check display name and username
+                    import re
+                    display_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_display_lower) for word in message_words)
+                    username_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_name_lower) for word in message_words)
+
+                    # Check nicknames table
+                    nickname_match = False
+                    if not (display_match or username_match):
+                        try:
+                            import sqlite3
+                            conn = sqlite3.connect(db_manager.db_path)
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ?", (str(member.id),))
+                            nicknames = [row[0].lower() for row in cursor.fetchall()]
+                            conn.close()
+
+                            if nicknames:
+                                for nickname in nicknames:
+                                    for word in message_words:
+                                        if word in nickname or nickname in word:
+                                            nickname_match = True
+                                            print(f"AI Handler: Casual chat found mentioned user via nicknames: '{word}' matches '{nickname}' for {member.display_name}")
+                                            break
+                                    if nickname_match:
+                                        break
+                        except Exception as e:
+                            print(f"AI Handler: Error checking nicknames for casual chat: {e}")
+
+                    if display_match or username_match or nickname_match:
+                        # Don't add the author to mentioned users list (they're already loaded separately)
+                        if member.id != author.id:
+                            mentioned_users.append(member)
+                            print(f"AI Handler: Found mentioned user (not author): {member.display_name} (ID: {member.id})")
+
+                # Load facts for each mentioned user
+                for member in mentioned_users:
+                    user_facts = db_manager.get_long_term_memory(str(member.id))
+                    user_metrics = db_manager.get_relationship_metrics(str(member.id))
+
+                    if user_facts or user_metrics:
+                        facts_list = [fact[0] for fact in user_facts] if user_facts else []
+                        mentioned_users_info.append({
+                            'name': member.display_name,
+                            'id': str(member.id),
+                            'facts': facts_list,
+                            'metrics': user_metrics
+                        })
+                        print(f"AI Handler: Loaded {len(facts_list)} facts for mentioned user {member.display_name}")
+
+            # Build mentioned users prompt from collected info
+            if mentioned_users_info:
+                mentioned_users_prompt = "=== FACTS ABOUT MENTIONED USERS (people being discussed, NOT the author) ===\n"
+                mentioned_users_prompt += "⚠️ CRITICAL: These are OTHER PEOPLE being mentioned in the conversation.\n"
+                mentioned_users_prompt += "DO NOT confuse them with the AUTHOR (person asking the question).\n\n"
+
+                for user_info in mentioned_users_info:
+                    mentioned_users_prompt += f"**{user_info['name']}** (ID: {user_info['id']}):\n"
+
+                    # Add relationship metrics
+                    if user_info['metrics']:
+                        metrics_str = []
+                        for metric_name, metric_value in user_info['metrics'].items():
+                            if metric_name.endswith('_locked'):
+                                continue  # Skip lock flags
+                            metrics_str.append(f"{metric_name.capitalize()}: {metric_value}")
+                        if metrics_str:
+                            mentioned_users_prompt += f"  Your feelings: {', '.join(metrics_str)}\n"
+
+                    # Add facts
+                    if user_info['facts']:
+                        for fact in user_info['facts'][:15]:  # Limit to 15 facts per user to avoid token overload
+                            mentioned_users_prompt += f"  - {fact}\n"
+
+                    mentioned_users_prompt += "\n"
+
+                print(f"AI Handler: Built mentioned_users_prompt with {len(mentioned_users_info)} users")
+
             # Check if user has EXTREME relationship metrics - this COMPLETELY changes the prompt structure
             metrics = db_manager.get_relationship_metrics(author.id)
 
@@ -2261,7 +2369,7 @@ Respond with ONLY the fact ID number or "NONE".
                 )
 
                 # Then add identity and relationship context
-                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{server_info}{energy_analysis['energy_guidance']}"
+                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{mentioned_users_prompt}\n{server_info}{energy_analysis['energy_guidance']}"
 
                 # Simplified rules focused on the emotional state
                 relationship_descriptor = "someone you have INTENSE feelings about"
@@ -2332,12 +2440,13 @@ Respond with ONLY the fact ID number or "NONE".
                     f"{identity_prompt}\n"
                     f"{relationship_prompt}\n"
                     f"{user_profile_prompt}\n"
+                    f"{mentioned_users_prompt}\n"
                     f"{server_info}"
                     f"{energy_analysis['energy_guidance']}"
                     f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
                     f"🎯 **CURRENT USER IDENTIFICATION** 🎯\n"
                     f"You are responding to: **{current_user_name}** (ID: {author.id})\n"
-                    f"This is the person you're talking to - do not confuse them with others in the conversation history.\n"
+                    f"This is the person you're talking to - do not confuse them with others in the conversation history or mentioned users above.\n"
                     f"**NEVER mention your own name or make puns about it.**\n"
                     f"**NEVER address this user by someone else's name.**\n\n"
                     f"You're having a casual conversation with **{current_user_name}**.\n\n"
@@ -2354,6 +2463,7 @@ Respond with ONLY the fact ID number or "NONE".
                     "   - Great for awkward moments or when you don't have much to say\n"
                     "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
                     "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
+                    "8. **MENTIONED USERS VS AUTHOR**: If facts about mentioned users are listed above, use them when answering questions ABOUT THOSE PEOPLE. Do NOT confuse mentioned users with the author.\n"
                 )
 
             # Check if roleplay formatting should be disabled
