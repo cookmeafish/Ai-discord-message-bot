@@ -168,13 +168,23 @@ class ImageGenerator:
             # This helps GPT-4 know whether to add generic knowledge or just enhance visual details
             has_specific_person_facts = False
             if database_context and provided_context:
-                # Check if facts describe a specific individual (contains identity markers)
-                identity_markers = ['he is', 'she is', 'they are', 'ruler', 'manager', 'friend', 'powerful', 'feared',
-                                   'handsome', 'beautiful', 'strong', 'intelligent', 'user', 'person', 'man', 'woman']
-                context_lower = provided_context.lower()
-                if any(marker in context_lower for marker in identity_markers):
+                # CRITICAL FIX (2025-10-27): If we have ANY substantial database facts about a subject,
+                # treat them as a specific database person to prevent GPT-4 from hallucinating random details.
+                # Even if facts don't describe appearance, we should use "database user mode" instead of
+                # "generic mode" to avoid adding conflicting made-up details (e.g., "red hair girl" for csama).
+
+                # If database context has substantial text (50+ chars), it's a specific person
+                if len(provided_context.strip()) >= 50:
                     has_specific_person_facts = True
-                    print(f"Image Generator: Database describes a SPECIFIC PERSON - will avoid conflicting generic knowledge")
+                    print(f"Image Generator: Database has substantial facts ({len(provided_context)} chars) - treating as SPECIFIC PERSON to prevent hallucination")
+                else:
+                    # Fallback: Check identity markers for very short contexts
+                    identity_markers = ['he is', 'she is', 'they are', 'ruler', 'manager', 'friend', 'powerful', 'feared',
+                                       'handsome', 'beautiful', 'strong', 'intelligent', 'user', 'person', 'man', 'woman']
+                    context_lower = provided_context.lower()
+                    if any(marker in context_lower for marker in identity_markers):
+                        has_specific_person_facts = True
+                        print(f"Image Generator: Database describes a SPECIFIC PERSON (identity markers detected) - will avoid conflicting generic knowledge")
 
             # Build prompt based on scene type
             if is_multi_subject or is_action_scene:
@@ -234,15 +244,24 @@ Create a detailed, visual description using ONLY the database facts provided:
 4. If database says "handsome, strong man" → describe facial features, build, and style that match these traits
 5. If database says "ruler" → describe regal clothing, commanding presence
 
+**CRITICAL: If database facts contain NO visual appearance details** (no hair, eyes, clothing, facial features):
+- Create a **GENERIC NEUTRAL HUMAN** appearance
+- Use phrases like "a person" or "an individual" (do NOT invent specific hair colors, eye colors, or detailed features)
+- Example: "A person with a neutral expression" instead of "A red-haired girl with green eyes"
+- Focus on body language/posture that matches personality traits in the database
+- **NEVER** invent specific physical features (hair color, eye color, etc.) that aren't in the database
+
 **Requirements:**
 - **NEVER** add information that contradicts or replaces the database identity
-- Focus ONLY on translating abstract traits ("handsome", "strong", "feared") into concrete visual details
-- If database facts don't mention hair/eyes/clothing, you MAY add reasonable defaults for a human
+- Focus ONLY on translating abstract traits ("powerful", "feared", "YouTuber") into concrete visual details (posture, expression, clothing style)
 - Keep it under 100 words
 - Don't mention "database" - just provide the description naturally
 
-**Example output:**
+**Example output (with visual facts):**
 "A handsome, strong man with a commanding presence that inspires fear, intelligent eyes showing wisdom, wearing regal dark clothing befitting a ruler, powerful muscular build, stern facial features"
+
+**Example output (NO visual facts, only personality/behavior):**
+"A person with a confident posture and an intimidating presence, dressed casually, with an expression that commands respect"
 
 **Your visual description:**"""
             else:
