@@ -1,5 +1,65 @@
 # AI Assistant Guidelines for Code Review
 
+## 🚨 CRITICAL: MANDATORY READING BEFORE ANY WORK 🚨
+
+**BEFORE YOU START ANY TASK**, you **MUST** read and fully understand these three foundational documents:
+
+1. **`SYSTEM_ARCHITECTURE.md`** - The complete technical specification and authoritative source of truth
+   - Contains ALL architectural patterns, design decisions, and implementation details
+   - Explains how every major component works and interacts with others
+   - Documents all features, database schemas, and system flows
+   - **YOU MUST READ THIS FIRST** to understand the codebase
+
+2. **`README.md`** - User-facing documentation and high-level feature overview
+   - Explains what the bot does from a user perspective
+   - Documents setup, installation, and configuration
+   - Provides feature descriptions and usage examples
+   - Complements SYSTEM_ARCHITECTURE.md with user-centric explanations
+
+3. **`AI_GUIDELINES.md`** (this file) - Development standards and code review guidelines
+   - Contains all coding standards, documentation requirements, and best practices
+   - Must be followed for ALL code changes, commits, and documentation updates
+
+**WHY THIS MATTERS:**
+
+- **Reading SYSTEM_ARCHITECTURE.md prevents you from:**
+  - Breaking existing features by not understanding dependencies
+  - Implementing features that already exist
+  - Violating established architectural patterns
+  - Creating inconsistent code that doesn't match the project's design
+  - Wasting time reinventing solutions that are already documented
+
+- **Reading README.md prevents you from:**
+  - Misunderstanding user-facing features and their intended behavior
+  - Creating documentation that conflicts with the user guide
+  - Missing context about how features should work from a user perspective
+
+- **Reading AI_GUIDELINES.md prevents you from:**
+  - Using hardcoded examples (like specific bot/user names) in documentation
+  - Adding AI assistant branding to commits or documentation
+  - Violating documentation standards and code review requirements
+
+**WHEN TO READ THESE FILES:**
+
+- ✅ **ALWAYS** when the user says "read the AI guidelines" (implies reading all three files)
+- ✅ **ALWAYS** before starting work on a new feature
+- ✅ **ALWAYS** before making architectural changes
+- ✅ **ALWAYS** before updating documentation
+- ✅ **ALWAYS** when you're unsure how something works
+- ✅ **ALWAYS** when you need to understand the full system context
+
+**FAILURE TO READ THESE FILES WILL RESULT IN:**
+
+- Code that breaks existing functionality
+- Documentation inconsistencies
+- Architectural violations
+- Wasted time implementing features that already exist
+- Merge conflicts and rework
+
+**⚠️ TREAT THIS AS A HARD REQUIREMENT, NOT A SUGGESTION ⚠️**
+
+---
+
 ## 0. Documentation Standards
 
 **CRITICAL**: When contributing to this project's documentation, code comments, or commit messages, you **MUST** adhere to these standards:
@@ -62,7 +122,11 @@
 
 Your primary role is to act as an expert programmer and a diligent architect for this project. Your goal is to assist in writing clean, efficient, and maintainable code that strictly adheres to the established system architecture.
 
--   **Architecture-Aware Development**: The `SYSTEM_ARCHITECTURE.md` and `README.md` files are your most critical sources of truth. Your primary goal is to write code that aligns with the documented architecture. However, you are encouraged to propose changes to the architecture if you identify a better design pattern or a more efficient approach. When proposing such a change, you **must**:
+-   **Architecture-Aware Development**: The `SYSTEM_ARCHITECTURE.md` and `README.md` files are **THE AUTHORITATIVE SOURCE OF TRUTH** for this project (see **MANDATORY READING** section above). Before writing ANY code, you **MUST** have read and understood these files completely. Your primary goal is to write code that aligns perfectly with the documented architecture.
+
+    **If you have not yet read `SYSTEM_ARCHITECTURE.md` and `README.md` in this conversation, STOP and read them now before proceeding.**
+
+    However, you are encouraged to propose changes to the architecture if you identify a better design pattern or a more efficient approach. When proposing such a change, you **must**:
     
     1.  Clearly state that your suggestion deviates from the current architecture.
         
