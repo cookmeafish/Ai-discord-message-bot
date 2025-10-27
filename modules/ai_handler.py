@@ -1355,11 +1355,37 @@ Examples:
 
                     # PRIORITY 0: Check for reflexive pronouns (yourself, you, self)
                     # These indicate the user wants to draw THE BOT (not themselves)
-                    reflexive_pronouns = ['yourself', 'you', 'self']
-                    is_bot_self_portrait = any(pronoun in prompt_lower for pronoun in reflexive_pronouns)
+                    # BUT: Only treat as pure self-portrait if pronoun is the MAIN subject
 
-                    if is_bot_self_portrait:
-                        print(f"AI Handler: Detected reflexive pronoun - user wants to draw THE BOT")
+                    # Smart detection: Check if "you/yourself/self" is the PRIMARY subject
+                    # Examples:
+                    # - "draw yourself" → bot is primary subject ✓
+                    # - "draw you" → bot is primary subject ✓
+                    # - "draw csama eating you" → csama is primary, bot is secondary ✗
+                    # - "draw you and csama fighting" → both are subjects ✓
+
+                    import re
+
+                    # Remove common drawing command prefixes to get the actual subject(s)
+                    subject_prompt = prompt_lower
+                    for prefix in ['draw me a', 'draw me an', 'draw me', 'draw a', 'draw an', 'draw',
+                                   'sketch me a', 'sketch me an', 'sketch me', 'sketch a', 'sketch an', 'sketch',
+                                   'create a', 'create an', 'create', 'make me a', 'make me', 'make a', 'make']:
+                        if subject_prompt.startswith(prefix):
+                            subject_prompt = subject_prompt[len(prefix):].strip()
+                            break
+
+                    # Check if the prompt starts with reflexive pronouns (is the primary subject)
+                    reflexive_pronouns = ['yourself', 'you', 'self']
+                    is_bot_primary_subject = any(subject_prompt.startswith(pronoun) for pronoun in reflexive_pronouns)
+
+                    # Also check if bot is mentioned alongside other subjects (e.g., "you and alice")
+                    bot_mentioned = any(pronoun in subject_prompt for pronoun in reflexive_pronouns)
+
+                    # Load bot identity if bot is mentioned at all (primary or secondary)
+                    bot_identity_context = None
+                    if bot_mentioned:
+                        print(f"AI Handler: Detected bot mention (primary={is_bot_primary_subject}) - loading bot identity")
                         # Load bot identity from database
                         bot_traits = db_manager.get_bot_identity('trait')
                         bot_lore = db_manager.get_bot_identity('lore')
@@ -1379,18 +1405,27 @@ Examples:
                             bot_member = message.guild.me
                             bot_name = bot_member.display_name if bot_member else "the bot"
 
-                            # Format bot identity into image context
+                            # Format bot identity into context (will be combined with user context if needed)
                             bot_description = ", ".join(bot_identity_parts[:10])  # Limit to first 10 facts
-                            image_context = f"{bot_name}: {bot_description}"
-                            print(f"AI Handler: Using bot identity as image context: {image_context[:200]}")
-
-                            # Skip user matching since we're drawing the bot
-                            mentioned_users = []
+                            bot_identity_context = f"{bot_name}: {bot_description}"
+                            print(f"AI Handler: Loaded bot identity: {bot_identity_context[:200]}")
                         else:
-                            print(f"AI Handler: No bot identity found in database, will proceed with normal user matching")
+                            print(f"AI Handler: No bot identity found in database")
 
-                    # Only perform user matching if we're NOT drawing the bot
-                    if not is_bot_self_portrait:
+                    # Only skip user matching if bot is the SOLE primary subject
+                    # If bot is mentioned alongside others, we still need to find those users
+                    skip_user_matching = is_bot_primary_subject and not any(
+                        word in subject_prompt for word in ['and', 'with', 'versus', 'vs', 'fighting', 'eating', 'hugging']
+                    )
+
+                    if skip_user_matching:
+                        print(f"AI Handler: Bot is SOLE subject - skipping user matching")
+                        mentioned_users = []
+                        if bot_identity_context:
+                            image_context = bot_identity_context
+
+                    # Perform user matching if bot is NOT the sole subject
+                    if not skip_user_matching:
                         # Extract words from the prompt to check against names
                         # Filter out common words that aren't names
                         stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -1542,6 +1577,12 @@ Respond with ONLY the extracted visual description, nothing else.
                         # If users are mentioned, pull their facts from the database
                         if mentioned_users:
                             context_parts = []
+
+                            # CRITICAL: Add bot identity first if bot is also in the scene
+                            if bot_identity_context:
+                                context_parts.append(bot_identity_context)
+                                print(f"AI Handler: Adding bot identity to multi-subject scene")
+
                             for member in mentioned_users:
                                 # Get facts about this user from long-term memory
                                 user_facts = db_manager.get_long_term_memory(str(member.id))

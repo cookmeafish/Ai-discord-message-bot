@@ -246,9 +246,18 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
     - **Increased Context**: Allocates 200 tokens (vs 150 for single subject) for complex scene descriptions
     - **Example**: "draw UserA fighting UserB" → Both people rendered in combat poses, not just one person
   - **Bot Self-Portrait Detection (2025-10-27)**: Recognizes when user wants to draw THE BOT, not themselves
-    - **Reflexive Pronoun Detection**: Detects "yourself", "you", "self" in drawing prompts
+    - **Smart Reflexive Pronoun Detection (2025-10-27)**: Distinguishes between bot as primary vs secondary subject
+      - **Primary Subject Detection**: Removes drawing command prefixes, checks if "you/yourself/self" starts the subject phrase
+      - **Multi-Subject Handling**: Detects action words (eating, fighting, with, and, versus) to identify multi-subject scenes
+      - **Behavior**:
+        - `"draw yourself"` → Bot is SOLE subject, skips user matching, draws bot only ✓
+        - `"draw you"` → Bot is SOLE subject, skips user matching ✓
+        - `"draw user eating you"` → User is primary, bot is secondary, loads BOTH user facts AND bot identity ✓
+        - `"draw you and user fighting"` → Multi-subject scene, loads BOTH user facts AND bot identity ✓
+      - **Fixed Bug (2025-10-27)**: Previously "draw user eating you" would skip user matching entirely, causing GPT-4 to guess user appearance
     - **Bot Identity Loading**: Automatically loads bot traits, lore, and facts from database
     - **Context Injection**: Formats bot identity as image context for accurate self-depiction
+    - **Multi-Subject Context Combination**: When bot appears alongside users, combines bot identity with user facts into single context string
     - **Example**: "draw yourself" → Loads bot's character description, draws the bot (not a robot, not the user)
   - **Context-Aware**: Automatically pulls facts about mentioned users from the database for accurate depictions
     - **User Matching Priority (2025-10-26)**: Three-tier matching system for finding mentioned users
@@ -621,12 +630,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 206 tests across 23 categories (updated 2025-10-27)
+  - Runs 207 tests across 23 categories (updated 2025-10-27)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (8), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5) = 206 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5) = 207 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):
