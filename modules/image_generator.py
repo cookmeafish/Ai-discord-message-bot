@@ -138,6 +138,32 @@ class ImageGenerator:
 
             combined_context = "\n\n".join(context_parts) if context_parts else "No specific context available."
 
+            # Detect if this is a multi-subject or action scene
+            # Action words indicate a scene with interactions, not just a portrait
+            action_words = [
+                'fighting', 'fight', 'battling', 'battle', 'running', 'run', 'walking', 'walk',
+                'sitting', 'sit', 'standing', 'stand', 'talking', 'talk', 'eating', 'eat',
+                'hugging', 'hug', 'kissing', 'kiss', 'dancing', 'dance', 'playing', 'play',
+                'with', 'and', 'beside', 'next to', 'holding', 'hold', 'versus', 'vs',
+                'chasing', 'chase', 'riding', 'ride', 'flying', 'fly', 'swimming', 'swim',
+                'arguing', 'argue', 'laughing', 'laugh', 'crying', 'cry', 'meeting', 'meet'
+            ]
+
+            subject_lower = subject.lower()
+            is_action_scene = any(action in subject_lower for action in action_words)
+
+            # Also check if multiple people are mentioned (indicates multi-subject scene)
+            # Count words that might be names (capitalized words or words in database context)
+            potential_subjects = 0
+            if provided_context:
+                # If we have database context with multiple people's facts separated by periods
+                potential_subjects = provided_context.count('. ') + 1  # Rough estimate
+
+            is_multi_subject = potential_subjects >= 2 or is_action_scene
+
+            if is_multi_subject or is_action_scene:
+                print(f"Image Generator: Detected MULTI-SUBJECT or ACTION SCENE - will preserve full scene description")
+
             # Determine if database facts describe a specific person/entity
             # This helps GPT-4 know whether to add generic knowledge or just enhance visual details
             has_specific_person_facts = False
@@ -150,8 +176,45 @@ class ImageGenerator:
                     has_specific_person_facts = True
                     print(f"Image Generator: Database describes a SPECIFIC PERSON - will avoid conflicting generic knowledge")
 
-            # Build prompt based on whether we have specific person facts or not
-            if has_specific_person_facts:
+            # Build prompt based on scene type
+            if is_multi_subject or is_action_scene:
+                # NEW: Multi-subject or action scene - preserve ENTIRE scene with all people and actions
+                enhancement_prompt = f"""You are helping to create a detailed visual description for an image generation AI.
+
+**Scene to draw:** {subject}
+
+**Available context:**
+{combined_context}
+
+**CRITICAL INSTRUCTION:**
+This is a MULTI-PERSON SCENE or ACTION SCENE. You must describe the ENTIRE scene, including:
+1. **ALL people mentioned** - describe each person's appearance
+2. **The action/interaction** - preserve what they're doing (fighting, sitting, talking, etc.)
+3. **The composition** - how they're positioned relative to each other
+
+**Task:**
+Create a detailed, visual description of the COMPLETE SCENE:
+1. **Identify ALL subjects** in the prompt (there may be 2+ people/entities)
+2. **For EACH person**: Use database facts (if provided) OR your knowledge of famous people/characters
+3. **Describe the action**: Preserve the interaction (e.g., "fighting" → "engaged in combat", "sitting with" → "seated beside")
+4. **Scene composition**: Describe their positions and dynamic interaction
+
+**Requirements:**
+- Describe EVERY person mentioned, don't skip anyone
+- Keep the action/interaction central to the description
+- Use database facts for specific people, general knowledge for famous people/characters
+- Be specific about poses, expressions, and spatial relationships
+- Keep it under 150 words
+- Don't mention "database" or "context" - just provide the scene description naturally
+
+**Example output for "UserA fighting UserB":**
+"A fierce confrontation between two figures: UserA (a powerful woman with long dark hair, intense eyes, wearing combat gear) engaged in dynamic combat with UserB (a muscular man with short blonde hair, determined expression, athletic build), both in aggressive fighting stances, fists raised, facing each other with tension and energy"
+
+**Example output for "PersonX sitting with PersonY":**
+"Two figures seated side by side: PersonX (elderly person with distinctive features, formal attire) sitting beside PersonY (middle-aged person with professional appearance, warm expression), both positioned at a table in conversation"
+
+**Your visual description of the COMPLETE SCENE:**"""
+            elif has_specific_person_facts:
                 # Database describes a specific person - DON'T add conflicting generic knowledge
                 enhancement_prompt = f"""You are helping to create a detailed visual description for an image generation AI.
 
@@ -227,10 +290,15 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
                 'temperature': 0.3
             })
 
+            # Use more tokens for multi-subject scenes (they need more description)
+            max_tokens = model_config.get('max_tokens', 150)
+            if is_multi_subject or is_action_scene:
+                max_tokens = max(max_tokens, 200)  # Ensure at least 200 tokens for complex scenes
+
             response = await self.openai_client.chat.completions.create(
                 model=model_config.get('model', 'gpt-4o-mini'),
                 messages=[{'role': 'user', 'content': enhancement_prompt}],
-                max_tokens=model_config.get('max_tokens', 150),
+                max_tokens=max_tokens,
                 temperature=model_config.get('temperature', 0.3)
             )
 

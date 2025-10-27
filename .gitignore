@@ -22,8 +22,8 @@ __pycache__/
 *.db-shm
 *.db-wal
 
-# Database archives (message backups)
-database/archive/
+# Database archives (message backups) - per-server folders
+database/*/archive/
 
 # Server information (may contain sensitive rules/policies)
 Server_Info/*.txt

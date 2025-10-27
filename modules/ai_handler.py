@@ -1353,125 +1353,163 @@ Examples:
                     prompt_lower = clean_prompt.lower()
                     print(f"AI Handler: Looking for users mentioned in prompt: '{prompt_lower}'")
 
-                    # Extract words from the prompt to check against names
-                    # Filter out common words that aren't names
-                    stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-                                  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
-                                  'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those'}
-                    prompt_words = [word for word in prompt_lower.split() if word not in stop_words]
+                    # PRIORITY 0: Check for reflexive pronouns (yourself, you, self)
+                    # These indicate the user wants to draw THE BOT (not themselves)
+                    reflexive_pronouns = ['yourself', 'you', 'self']
+                    is_bot_self_portrait = any(pronoun in prompt_lower for pronoun in reflexive_pronouns)
 
-                    print(f"AI Handler: Filtered prompt words for matching: {prompt_words}")
+                    if is_bot_self_portrait:
+                        print(f"AI Handler: Detected reflexive pronoun - user wants to draw THE BOT")
+                        # Load bot identity from database
+                        bot_traits = db_manager.get_bot_identity('trait')
+                        bot_lore = db_manager.get_bot_identity('lore')
+                        bot_facts = db_manager.get_bot_identity('fact')
 
-                    # PRIORITY 1: Check database nicknames table (most reliable source)
-                    # User ID is ONLY used to connect data - names come from database, not Discord
-                    print(f"AI Handler: Checking database nicknames table for matches...")
-                    try:
-                        import sqlite3
-                        db_path = db_manager.db_path
-                        conn = sqlite3.connect(db_path)
-                        cursor = conn.cursor()
+                        # Combine all bot identity information
+                        bot_identity_parts = []
+                        if bot_traits:
+                            bot_identity_parts.extend(bot_traits)
+                        if bot_lore:
+                            bot_identity_parts.extend(bot_lore)
+                        if bot_facts:
+                            bot_identity_parts.extend(bot_facts)
 
-                        command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
-                        name_words = [w for w in prompt_words if w not in command_words]
+                        if bot_identity_parts:
+                            # Get bot's name from guild member
+                            bot_member = message.guild.me
+                            bot_name = bot_member.display_name if bot_member else "the bot"
 
-                        for word in name_words:
-                            # Check if any nickname contains this word or vice versa (substring matching)
-                            cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
-                            for row in cursor.fetchall():
-                                user_id_str, nickname = row[0], row[1].lower()
-                                if word in nickname or nickname in word:
-                                    print(f"AI Handler: Database nicknames match - '{word}' matches '{nickname}' (user_id: {user_id_str})")
-                                    class PseudoMember:
-                                        def __init__(self, user_id):
-                                            self.id = user_id
-                                            self.display_name = f"User_{user_id}"
-                                    mentioned_users.append(PseudoMember(user_id_str))
-                                    break
-                            if mentioned_users:
-                                break
+                            # Format bot identity into image context
+                            bot_description = ", ".join(bot_identity_parts[:10])  # Limit to first 10 facts
+                            image_context = f"{bot_name}: {bot_description}"
+                            print(f"AI Handler: Using bot identity as image context: {image_context[:200]}")
 
-                        conn.close()
-                    except Exception as e:
-                        print(f"AI Handler: Error checking database nicknames: {e}")
+                            # Skip user matching since we're drawing the bot
+                            mentioned_users = []
+                        else:
+                            print(f"AI Handler: No bot identity found in database, will proceed with normal user matching")
 
-                    # PRIORITY 2: If database nicknames found nothing,
-                    # check long-term memory "also goes by" facts as fallback
-                    if not mentioned_users:
-                        print(f"AI Handler: No database nicknames matched, checking long-term memory 'also goes by' facts...")
+                    # Only perform user matching if we're NOT drawing the bot
+                    if not is_bot_self_portrait:
+                        # Extract words from the prompt to check against names
+                        # Filter out common words that aren't names
+                        stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+                                      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+                                      'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those'}
+                        prompt_words = [word for word in prompt_lower.split() if word not in stop_words]
+
+                        print(f"AI Handler: Filtered prompt words for matching: {prompt_words}")
+
+                        # PRIORITY 1: Check database nicknames table (most reliable source)
+                        # User ID is ONLY used to connect data - names come from database, not Discord
+                        print(f"AI Handler: Checking database nicknames table for matches...")
                         try:
                             import sqlite3
                             db_path = db_manager.db_path
                             conn = sqlite3.connect(db_path)
                             cursor = conn.cursor()
 
-                            # Check long-term memory facts for alternative name patterns
                             command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
                             name_words = [w for w in prompt_words if w not in command_words]
 
-                            if name_words:
-                                cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
-                                all_user_ids = [row[0] for row in cursor.fetchall()]
-
-                                # Check each user's facts for alternative names matching prompt words
-                                for user_id in all_user_ids:
-                                    user_facts = db_manager.get_long_term_memory(user_id)
-                                    if user_facts:
-                                        for fact_tuple in user_facts:
-                                            fact_text = fact_tuple[0].lower()
-                                            # Check for alternative name patterns and verify prompt word appears AFTER the pattern
-                                            # This prevents matching "works with PersonA... known as PersonB"
-                                            for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
-                                                if phrase in fact_text:
-                                                    # Find position of the pattern
-                                                    pattern_pos = fact_text.find(phrase)
-                                                    # Get text AFTER the pattern
-                                                    text_after_pattern = fact_text[pattern_pos + len(phrase):]
-                                                    # Use word boundary matching to avoid "smith" matching "Smithson"
-                                                    import re
-                                                    # Filter out command words (draw, sketch, etc.) to get actual name words
-                                                    command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
-                                                    name_words = [w for w in prompt_words if w not in command_words]
-                                                    # Require ALL name words to match (prevents partial matches - all words must be present)
-                                                    if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
-                                                        print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
-                                                        # Create a pseudo-member object with just the ID
-                                                        class PseudoMember:
-                                                            def __init__(self, user_id):
-                                                                self.id = user_id
-                                                                self.display_name = f"User_{user_id}"
-                                                        mentioned_users.append(PseudoMember(user_id))
-                                                        break
-                                            if mentioned_users:  # If we found a match, break outer loop too
-                                                break
+                            for word in name_words:
+                                # Check if any nickname contains this word or vice versa (substring matching)
+                                cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
+                                for row in cursor.fetchall():
+                                    user_id_str, nickname = row[0], row[1].lower()
+                                    if word in nickname or nickname in word:
+                                        print(f"AI Handler: Database nicknames match - '{word}' matches '{nickname}' (user_id: {user_id_str})")
+                                        class PseudoMember:
+                                            def __init__(self, user_id):
+                                                self.id = user_id
+                                                self.display_name = f"User_{user_id}"
+                                        mentioned_users.append(PseudoMember(user_id_str))
+                                        break
+                                if mentioned_users:
+                                    break
 
                             conn.close()
                         except Exception as e:
-                            print(f"AI Handler: Error searching database for alternative names: {e}")
+                            print(f"AI Handler: Error checking database nicknames: {e}")
 
-                    print(f"AI Handler: Total users found via database lookup: {len(mentioned_users)}")
+                        # PRIORITY 2: If database nicknames found nothing,
+                        # check long-term memory "also goes by" facts as fallback
+                        if not mentioned_users:
+                            print(f"AI Handler: No database nicknames matched, checking long-term memory 'also goes by' facts...")
+                            try:
+                                import sqlite3
+                                db_path = db_manager.db_path
+                                conn = sqlite3.connect(db_path)
+                                cursor = conn.cursor()
 
-                    # CONTEXT SOURCE 3: Check short-term conversation history for descriptive statements
-                    # This allows: "Angel is a rabbit" (message 1) → "draw Angel" (message 2)
-                    conversation_context = []
-                    if not mentioned_users and short_term_memory:
-                        print(f"AI Handler: No users found in database, checking recent conversation for context...")
+                                # Check long-term memory facts for alternative name patterns
+                                command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
+                                name_words = [w for w in prompt_words if w not in command_words]
 
-                        # Search recent messages (last 20) for descriptive statements about the subject
-                        for msg_dict in short_term_memory[-20:]:
-                            msg_content = msg_dict.get('content', '')
-                            msg_content_lower = msg_content.lower()
+                                if name_words:
+                                    cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
+                                    all_user_ids = [row[0] for row in cursor.fetchall()]
 
-                            # Check if any prompt word appears in this message
-                            if any(word in msg_content_lower for word in prompt_words):
-                                # Check if it's a descriptive statement (contains "is", "are", "was", "were")
-                                if any(verb in msg_content_lower for verb in [' is ', ' are ', ' was ', ' were ']):
-                                    # Extract potential description using AI
-                                    print(f"AI Handler: Found potential context in message: {msg_content[:100]}")
-                                    conversation_context.append(msg_content)
+                                    # Check each user's facts for alternative names matching prompt words
+                                    for user_id in all_user_ids:
+                                        user_facts = db_manager.get_long_term_memory(user_id)
+                                        if user_facts:
+                                            for fact_tuple in user_facts:
+                                                fact_text = fact_tuple[0].lower()
+                                                # Check for alternative name patterns and verify prompt word appears AFTER the pattern
+                                                # This prevents matching "works with PersonA... known as PersonB"
+                                                for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
+                                                    if phrase in fact_text:
+                                                        # Find position of the pattern
+                                                        pattern_pos = fact_text.find(phrase)
+                                                        # Get text AFTER the pattern
+                                                        text_after_pattern = fact_text[pattern_pos + len(phrase):]
+                                                        # Use word boundary matching to avoid "smith" matching "Smithson"
+                                                        import re
+                                                        # Filter out command words (draw, sketch, etc.) to get actual name words
+                                                        command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
+                                                        name_words = [w for w in prompt_words if w not in command_words]
+                                                        # Require ALL name words to match (prevents partial matches - all words must be present)
+                                                        if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
+                                                            print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
+                                                            # Create a pseudo-member object with just the ID
+                                                            class PseudoMember:
+                                                                def __init__(self, user_id):
+                                                                    self.id = user_id
+                                                                    self.display_name = f"User_{user_id}"
+                                                            mentioned_users.append(PseudoMember(user_id))
+                                                            break
+                                                if mentioned_users:  # If we found a match, break outer loop too
+                                                    break
 
-                        if conversation_context:
-                            # Use AI to extract the descriptive parts
-                            context_extraction_prompt = f"""
+                                conn.close()
+                            except Exception as e:
+                                print(f"AI Handler: Error searching database for alternative names: {e}")
+
+                        print(f"AI Handler: Total users found via database lookup: {len(mentioned_users)}")
+
+                        # CONTEXT SOURCE 3: Check short-term conversation history for descriptive statements
+                        # This allows: "Angel is a rabbit" (message 1) → "draw Angel" (message 2)
+                        conversation_context = []
+                        if not mentioned_users and short_term_memory:
+                            print(f"AI Handler: No users found in database, checking recent conversation for context...")
+
+                            # Search recent messages (last 20) for descriptive statements about the subject
+                            for msg_dict in short_term_memory[-20:]:
+                                msg_content = msg_dict.get('content', '')
+                                msg_content_lower = msg_content.lower()
+
+                                # Check if any prompt word appears in this message
+                                if any(word in msg_content_lower for word in prompt_words):
+                                    # Check if it's a descriptive statement (contains "is", "are", "was", "were")
+                                    if any(verb in msg_content_lower for verb in [' is ', ' are ', ' was ', ' were ']):
+                                        # Extract potential description using AI
+                                        print(f"AI Handler: Found potential context in message: {msg_content[:100]}")
+                                        conversation_context.append(msg_content)
+
+                            if conversation_context:
+                                # Use AI to extract the descriptive parts
+                                context_extraction_prompt = f"""
 Extract ONLY the descriptive facts from these messages that describe what should be drawn.
 
 Drawing prompt: "{clean_prompt}"
@@ -1485,169 +1523,169 @@ Extract the visual description as a concise statement. Examples:
 Respond with ONLY the extracted visual description, nothing else.
 """
 
-                            try:
-                                extraction_config = self._get_model_config('memory_extraction')
-                                response = await self.client.chat.completions.create(
-                                    model=extraction_config['model'],
-                                    messages=[{'role': 'system', 'content': context_extraction_prompt}],
-                                    max_tokens=60,
-                                    temperature=0.0
-                                )
+                                try:
+                                    extraction_config = self._get_model_config('memory_extraction')
+                                    response = await self.client.chat.completions.create(
+                                        model=extraction_config['model'],
+                                        messages=[{'role': 'system', 'content': context_extraction_prompt}],
+                                        max_tokens=60,
+                                        temperature=0.0
+                                    )
 
-                                extracted_context = response.choices[0].message.content.strip()
-                                if extracted_context and len(extracted_context) > 3:
-                                    image_context = extracted_context
-                                    print(f"AI Handler: Extracted context from conversation: {image_context}")
-                            except Exception as e:
-                                print(f"AI Handler: Error extracting context from conversation: {e}")
+                                    extracted_context = response.choices[0].message.content.strip()
+                                    if extracted_context and len(extracted_context) > 3:
+                                        image_context = extracted_context
+                                        print(f"AI Handler: Extracted context from conversation: {image_context}")
+                                except Exception as e:
+                                    print(f"AI Handler: Error extracting context from conversation: {e}")
 
-                    # If users are mentioned, pull their facts from the database
-                    if mentioned_users:
-                        context_parts = []
-                        for member in mentioned_users:
-                            # Get facts about this user from long-term memory
-                            user_facts = db_manager.get_long_term_memory(str(member.id))
-                            print(f"AI Handler: Retrieved {len(user_facts) if user_facts else 0} facts for {member.display_name}")
+                        # If users are mentioned, pull their facts from the database
+                        if mentioned_users:
+                            context_parts = []
+                            for member in mentioned_users:
+                                # Get facts about this user from long-term memory
+                                user_facts = db_manager.get_long_term_memory(str(member.id))
+                                print(f"AI Handler: Retrieved {len(user_facts) if user_facts else 0} facts for {member.display_name}")
 
-                            # Check relationship metrics to add emotional context to appearance
-                            relationship_metrics = db_manager.get_relationship_metrics(str(member.id))
-                            fear_level = 0
-                            intimidation_level = 0
-                            respect_level = 0
+                                # Check relationship metrics to add emotional context to appearance
+                                relationship_metrics = db_manager.get_relationship_metrics(str(member.id))
+                                fear_level = 0
+                                intimidation_level = 0
+                                respect_level = 0
 
-                            if relationship_metrics:
-                                fear_level = relationship_metrics.get('fear', 0)
-                                intimidation_level = relationship_metrics.get('intimidation', 0)
-                                respect_level = relationship_metrics.get('respect', 0)
-                                print(f"AI Handler: Relationship metrics for {member.display_name} - Fear: {fear_level}, Intimidation: {intimidation_level}, Respect: {respect_level}")
+                                if relationship_metrics:
+                                    fear_level = relationship_metrics.get('fear', 0)
+                                    intimidation_level = relationship_metrics.get('intimidation', 0)
+                                    respect_level = relationship_metrics.get('respect', 0)
+                                    print(f"AI Handler: Relationship metrics for {member.display_name} - Fear: {fear_level}, Intimidation: {intimidation_level}, Respect: {respect_level}")
 
-                            # Build emotional appearance modifiers based on metrics
-                            # Use CONCRETE visual descriptors, not abstract concepts
-                            appearance_modifiers = []
-                            if fear_level >= 7:
-                                appearance_modifiers.append("fierce intense eyes, intimidating scowl, dark menacing expression")
-                            elif fear_level >= 4:
-                                appearance_modifiers.append("stern intense gaze, serious threatening look")
+                                # Build emotional appearance modifiers based on metrics
+                                # Use CONCRETE visual descriptors, not abstract concepts
+                                appearance_modifiers = []
+                                if fear_level >= 7:
+                                    appearance_modifiers.append("fierce intense eyes, intimidating scowl, dark menacing expression")
+                                elif fear_level >= 4:
+                                    appearance_modifiers.append("stern intense gaze, serious threatening look")
 
-                            if intimidation_level >= 7:
-                                appearance_modifiers.append("powerful muscular build, commanding posture, dominant stance")
-                            elif intimidation_level >= 4:
-                                appearance_modifiers.append("strong athletic build, confident stance")
+                                if intimidation_level >= 7:
+                                    appearance_modifiers.append("powerful muscular build, commanding posture, dominant stance")
+                                elif intimidation_level >= 4:
+                                    appearance_modifiers.append("strong athletic build, confident stance")
 
-                            if respect_level >= 7:
-                                appearance_modifiers.append("noble dignified bearing, regal powerful appearance")
-                            elif respect_level >= 4:
-                                appearance_modifiers.append("confident capable demeanor")
+                                if respect_level >= 7:
+                                    appearance_modifiers.append("noble dignified bearing, regal powerful appearance")
+                                elif respect_level >= 4:
+                                    appearance_modifiers.append("confident capable demeanor")
 
-                            if user_facts:
-                                # Filter facts to only include visual/descriptive information
-                                # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
-                                descriptive_facts = []
+                                if user_facts:
+                                    # Filter facts to only include visual/descriptive information
+                                    # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
+                                    descriptive_facts = []
 
-                                # CRITICAL: Detect gender from pronouns in ALL facts
-                                # This ensures image AI knows if person is male/female/other
-                                gender_detected = None
-                                female_pronouns = [' she ', ' her ', ' hers ', ' herself ']
-                                male_pronouns = [' he ', ' him ', ' his ', ' himself ']
+                                    # CRITICAL: Detect gender from pronouns in ALL facts
+                                    # This ensures image AI knows if person is male/female/other
+                                    gender_detected = None
+                                    female_pronouns = [' she ', ' her ', ' hers ', ' herself ']
+                                    male_pronouns = [' he ', ' him ', ' his ', ' himself ']
 
-                                # Scan ALL facts for gender pronouns (not just first 5)
-                                all_facts_text = " ".join([fact_tuple[0].lower() for fact_tuple in user_facts])
+                                    # Scan ALL facts for gender pronouns (not just first 5)
+                                    all_facts_text = " ".join([fact_tuple[0].lower() for fact_tuple in user_facts])
 
-                                female_count = sum(all_facts_text.count(pronoun) for pronoun in female_pronouns)
-                                male_count = sum(all_facts_text.count(pronoun) for pronoun in male_pronouns)
+                                    female_count = sum(all_facts_text.count(pronoun) for pronoun in female_pronouns)
+                                    male_count = sum(all_facts_text.count(pronoun) for pronoun in male_pronouns)
 
-                                if female_count > male_count:
-                                    gender_detected = "woman"
-                                    print(f"AI Handler: Detected gender as FEMALE from pronouns (she/her count: {female_count})")
-                                elif male_count > female_count:
-                                    gender_detected = "man"
-                                    print(f"AI Handler: Detected gender as MALE from pronouns (he/him count: {male_count})")
+                                    if female_count > male_count:
+                                        gender_detected = "woman"
+                                        print(f"AI Handler: Detected gender as FEMALE from pronouns (she/her count: {female_count})")
+                                    elif male_count > female_count:
+                                        gender_detected = "man"
+                                        print(f"AI Handler: Detected gender as MALE from pronouns (he/him count: {male_count})")
 
-                                # Exclude ONLY bot behavior instructions, NOT character descriptions
-                                # Instructions to bot: "Will always obey", "Must refer to", "Cannot talk to"
-                                # Character descriptions: "Is powerful and feared", "rules with iron fist", "Is a tyrant"
-                                exclude_phrases = [
-                                    'will always',  # Bot instructions ("Will always obey")
-                                    'must refer',   # Bot instructions ("Must refer to him as Majesty")
-                                    'must submit',  # Bot instructions ("Must submit to him")
-                                    'must do',      # Bot instructions ("Must do whatever he commands")
-                                    'cannot talk',  # Bot instructions ("Cannot talk to him like equals")
-                                    'cannot be',    # Bot instructions ("Cannot be cocky")
-                                    'cannot call',  # Bot instructions ("Cannot call him that")
-                                    'not allowed',  # Bot instructions ("Not allowed to EVER disrespect")
-                                    'also goes by', 'known as', 'called', 'nicknamed',  # Naming rules
-                                    'do not use any fish puns',  # Specific bot instruction
-                                    'whenever talks about scars',  # Bot emotional instruction
-                                    'begged every day',  # Too specific/behavioral
-                                ]
+                                    # Exclude ONLY bot behavior instructions, NOT character descriptions
+                                    # Instructions to bot: "Will always obey", "Must refer to", "Cannot talk to"
+                                    # Character descriptions: "Is powerful and feared", "rules with iron fist", "Is a tyrant"
+                                    exclude_phrases = [
+                                        'will always',  # Bot instructions ("Will always obey")
+                                        'must refer',   # Bot instructions ("Must refer to him as Majesty")
+                                        'must submit',  # Bot instructions ("Must submit to him")
+                                        'must do',      # Bot instructions ("Must do whatever he commands")
+                                        'cannot talk',  # Bot instructions ("Cannot talk to him like equals")
+                                        'cannot be',    # Bot instructions ("Cannot be cocky")
+                                        'cannot call',  # Bot instructions ("Cannot call him that")
+                                        'not allowed',  # Bot instructions ("Not allowed to EVER disrespect")
+                                        'also goes by', 'known as', 'called', 'nicknamed',  # Naming rules
+                                        'do not use any fish puns',  # Specific bot instruction
+                                        'whenever talks about scars',  # Bot emotional instruction
+                                        'begged every day',  # Too specific/behavioral
+                                    ]
 
-                                # Separate appearance facts from other facts
-                                # Appearance facts (hair, eyes, face, clothing) are prioritized
-                                appearance_facts = []
-                                other_facts = []
+                                    # Separate appearance facts from other facts
+                                    # Appearance facts (hair, eyes, face, clothing) are prioritized
+                                    appearance_facts = []
+                                    other_facts = []
 
-                                # Visual descriptor patterns that indicate appearance facts
-                                # Check if fact describes physical appearance, not just contains appearance words
-                                appearance_patterns = [
-                                    'has hair', ' hair ', 'has eyes', ' eyes ', 'has eye', ' eye ', 'has a face', 'has skin',
-                                    'wears ', 'wearing ',
-                                    'has a slender', 'has a muscular', 'has a', 'has an',
-                                    'hair is', 'eyes are', 'skin is', 'skin on',
-                                    'dressed in', 'outfit', 'clothing',
-                                    'has fringe', 'has bangs', 'has a build',
-                                    'complexion', 'has lips', 'has a mouth', 'has a nose',
-                                    'has fingernails', 'painted', 'has makeup',
-                                    'depicted in', 'drawn in', 'art style',
-                                    'shading', 'highlights', 'giving a', 'making them',
-                                    'shoulders', 'contrasts in light', 'bright areas', 'impression is', 'overall impression',
-                                    'hybrid', 'creature', 'physique', 'body ', 'muscular', 'muscles', 'pose', 'stands in'
-                                ]
+                                    # Visual descriptor patterns that indicate appearance facts
+                                    # Check if fact describes physical appearance, not just contains appearance words
+                                    appearance_patterns = [
+                                        'has hair', ' hair ', 'has eyes', ' eyes ', 'has eye', ' eye ', 'has a face', 'has skin',
+                                        'wears ', 'wearing ',
+                                        'has a slender', 'has a muscular', 'has a', 'has an',
+                                        'hair is', 'eyes are', 'skin is', 'skin on',
+                                        'dressed in', 'outfit', 'clothing',
+                                        'has fringe', 'has bangs', 'has a build',
+                                        'complexion', 'has lips', 'has a mouth', 'has a nose',
+                                        'has fingernails', 'painted', 'has makeup',
+                                        'depicted in', 'drawn in', 'art style',
+                                        'shading', 'highlights', 'giving a', 'making them',
+                                        'shoulders', 'contrasts in light', 'bright areas', 'impression is', 'overall impression',
+                                        'hybrid', 'creature', 'physique', 'body ', 'muscular', 'muscles', 'pose', 'stands in'
+                                    ]
 
-                                for fact_tuple in user_facts:  # Check ALL facts, not just first 20
-                                    fact_text = fact_tuple[0]
-                                    fact_lower = fact_text.lower()
+                                    for fact_tuple in user_facts:  # Check ALL facts, not just first 20
+                                        fact_text = fact_tuple[0]
+                                        fact_lower = fact_text.lower()
 
-                                    # Skip behavioral commands and meta-instructions
-                                    if any(phrase in fact_lower for phrase in exclude_phrases):
-                                        continue
+                                        # Skip behavioral commands and meta-instructions
+                                        if any(phrase in fact_lower for phrase in exclude_phrases):
+                                            continue
 
-                                    # Check if this is an appearance fact by looking for visual descriptor patterns
-                                    is_appearance = any(pattern in fact_lower for pattern in appearance_patterns)
+                                        # Check if this is an appearance fact by looking for visual descriptor patterns
+                                        is_appearance = any(pattern in fact_lower for pattern in appearance_patterns)
 
-                                    if is_appearance:
-                                        appearance_facts.append(fact_text)
-                                    else:
-                                        other_facts.append(fact_text)
+                                        if is_appearance:
+                                            appearance_facts.append(fact_text)
+                                        else:
+                                            other_facts.append(fact_text)
 
-                                # Prioritize appearance facts first, then add other descriptive facts
-                                descriptive_facts = appearance_facts[:10]  # Up to 10 appearance facts
-                                if len(descriptive_facts) < 5:
-                                    # Fill remaining slots with other facts
-                                    descriptive_facts.extend(other_facts[:5 - len(descriptive_facts)])
+                                    # Prioritize appearance facts first, then add other descriptive facts
+                                    descriptive_facts = appearance_facts[:10]  # Up to 10 appearance facts
+                                    if len(descriptive_facts) < 5:
+                                        # Fill remaining slots with other facts
+                                        descriptive_facts.extend(other_facts[:5 - len(descriptive_facts)])
 
-                                if descriptive_facts or appearance_modifiers or gender_detected:
-                                    # Combine appearance modifiers (from metrics) with descriptive facts
-                                    all_descriptors = []
+                                    if descriptive_facts or appearance_modifiers or gender_detected:
+                                        # Combine appearance modifiers (from metrics) with descriptive facts
+                                        all_descriptors = []
 
-                                    # CRITICAL: Add gender FIRST so image AI sees it immediately
-                                    if gender_detected:
-                                        all_descriptors.append(f"a {gender_detected}")
+                                        # CRITICAL: Add gender FIRST so image AI sees it immediately
+                                        if gender_detected:
+                                            all_descriptors.append(f"a {gender_detected}")
 
-                                    if appearance_modifiers:
-                                        all_descriptors.extend(appearance_modifiers)
+                                        if appearance_modifiers:
+                                            all_descriptors.extend(appearance_modifiers)
 
-                                    if descriptive_facts:
-                                        all_descriptors.extend(descriptive_facts)
+                                        if descriptive_facts:
+                                            all_descriptors.extend(descriptive_facts)
 
-                                    facts_text = ", ".join(all_descriptors)
-                                    context_parts.append(facts_text)
-                                    print(f"AI Handler: Sending descriptive facts for {member.display_name}: {facts_text}")
+                                        facts_text = ", ".join(all_descriptors)
+                                        context_parts.append(facts_text)
+                                        print(f"AI Handler: Sending descriptive facts for {member.display_name}: {facts_text}")
 
-                        if context_parts:
-                            image_context = ". ".join(context_parts)
-                            print(f"AI Handler: Adding context to image generation: {image_context}")
-                        else:
-                            print(f"AI Handler: No context parts built (no facts found for mentioned users)")
+                            if context_parts:
+                                image_context = ". ".join(context_parts)
+                                print(f"AI Handler: Adding context to image generation: {image_context}")
+                            else:
+                                print(f"AI Handler: No context parts built (no facts found for mentioned users)")
 
                 # Generate the image with context (enhanced with AI if enabled)
                 print(f"AI Handler: Generating image for prompt: {clean_prompt}")

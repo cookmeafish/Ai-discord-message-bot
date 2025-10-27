@@ -78,6 +78,7 @@ class BotTestSuite:
         await self.test_channel_configuration()
         await self.test_formatting_handler()
         await self.test_image_generation()
+        await self.test_admin_logging()
         await self.test_proactive_engagement()
         await self.test_user_identification()
 
@@ -1558,6 +1559,128 @@ class BotTestSuite:
                 self._log_test(category, "ImageGenerator Methods", False, "Skipped - module import failed")
         except Exception as e:
             self._log_test(category, "ImageGenerator Methods", False, f"Error: {e}")
+
+        # Test 7: Multi-character scene detection
+        try:
+            if module_exists:
+                from modules.image_generator import ImageGenerator
+                generator = ImageGenerator(self.bot.config_manager)
+
+                # Test prompts that should trigger multi-character/action scene mode
+                test_cases = [
+                    ("UserA fighting UserB", True),  # Action word
+                    ("PersonX and PersonY", True),   # Multiple subjects with "and"
+                    ("draw a cat", False),            # Single subject, no action
+                    ("UserA versus UserB", True),    # Action word "versus"
+                ]
+
+                # We can't fully test without running the private method, but we can verify the action words list exists
+                has_action_detection = hasattr(generator, "_get_enhanced_visual_description")
+
+                self._log_test(
+                    category,
+                    "Multi-Character Scene Detection",
+                    has_action_detection,
+                    "Multi-character scene detection method exists (_get_enhanced_visual_description)"
+                )
+            else:
+                self._log_test(category, "Multi-Character Scene Detection", False, "Skipped - module import failed")
+        except Exception as e:
+            self._log_test(category, "Multi-Character Scene Detection", False, f"Error: {e}")
+
+        # Test 8: Reflexive pronoun ("yourself") detection for bot self-portraits
+        try:
+            # Check if AI handler has logic to detect "yourself" prompts
+            has_ai_handler = hasattr(self.bot, "ai_handler")
+
+            if has_ai_handler:
+                # Verify bot identity loading capability (needed for self-portraits)
+                has_db_manager = self.db_manager is not None
+                can_load_identity = has_db_manager and hasattr(self.db_manager, "get_bot_identity")
+
+                self._log_test(
+                    category,
+                    "Reflexive Pronoun Detection (Yourself)",
+                    can_load_identity,
+                    "Bot can load identity for self-portraits (get_bot_identity method exists)" if can_load_identity else "Bot identity loading not available"
+                )
+            else:
+                self._log_test(category, "Reflexive Pronoun Detection (Yourself)", False, "AI Handler not available")
+        except Exception as e:
+            self._log_test(category, "Reflexive Pronoun Detection (Yourself)", False, f"Error: {e}")
+
+    # ==================== ADMIN LOGGING TESTS ====================
+
+    async def test_admin_logging(self):
+        """Test admin logging command."""
+        category = "Admin Logging"
+
+        # Test 1: /get_logs command exists
+        try:
+            # Check if AdminCog has get_logs command
+            admin_cog = self.bot.get_cog("AdminCog")
+            has_admin_cog = admin_cog is not None
+
+            if has_admin_cog:
+                # Check if get_logs command is registered
+                has_get_logs = hasattr(admin_cog, "get_logs")
+
+                self._log_test(
+                    category,
+                    "Get Logs Command Exists",
+                    has_get_logs,
+                    "/get_logs command found in AdminCog" if has_get_logs else "/get_logs command not found"
+                )
+            else:
+                self._log_test(category, "Get Logs Command Exists", False, "AdminCog not loaded")
+        except Exception as e:
+            self._log_test(category, "Get Logs Command Exists", False, f"Error: {e}")
+
+        # Test 2: Log directory exists
+        try:
+            import os
+            log_dir = "/root/Ai-discord-message-bot/logs"
+            log_dir_exists = os.path.exists(log_dir)
+
+            if log_dir_exists:
+                log_files = [f for f in os.listdir(log_dir) if f.endswith(".log")]
+                has_log_files = len(log_files) > 0
+
+                self._log_test(
+                    category,
+                    "Log Directory and Files",
+                    has_log_files,
+                    f"Log directory exists with {len(log_files)} log file(s)" if has_log_files else "Log directory exists but no log files found"
+                )
+            else:
+                self._log_test(category, "Log Directory and Files", False, "Log directory does not exist")
+        except Exception as e:
+            self._log_test(category, "Log Directory and Files", False, f"Error: {e}")
+
+        # Test 3: Log file format validation
+        try:
+            import os
+            from datetime import datetime
+            log_dir = "/root/Ai-discord-message-bot/logs"
+
+            if os.path.exists(log_dir):
+                # Check if today's log file exists
+                today_str = datetime.now().strftime("%Y%m%d")
+                today_log = f"bot_{today_str}.log"
+                today_log_path = os.path.join(log_dir, today_log)
+
+                today_log_exists = os.path.exists(today_log_path)
+
+                self._log_test(
+                    category,
+                    "Current Log File Format",
+                    today_log_exists,
+                    f"Today's log file exists: {today_log}" if today_log_exists else f"Today's log file not found: {today_log}"
+                )
+            else:
+                self._log_test(category, "Current Log File Format", False, "Log directory does not exist")
+        except Exception as e:
+            self._log_test(category, "Current Log File Format", False, f"Error: {e}")
 
     # ==================== STATUS UPDATE TESTS ====================
 

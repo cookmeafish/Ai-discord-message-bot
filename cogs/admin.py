@@ -1671,6 +1671,112 @@ class AdminCog(commands.Cog):
             )
 
 
+    # ==================== LOGGING COMMANDS ====================
+
+    @app_commands.command(name="get_logs", description="Retrieve bot log files (sent via DM)")
+    @app_commands.describe(
+        lines="Number of recent lines to retrieve (default: 100)",
+        date="Log file date in YYYYMMDD format (default: today)"
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def get_logs(self, interaction: discord.Interaction, lines: int = 100, date: str = None):
+        """
+        Retrieve bot log files and send them via DM.
+
+        Args:
+            interaction: Discord interaction object
+            lines: Number of recent lines to retrieve (default: 100, max: 2000)
+            date: Log file date in YYYYMMDD format (default: today)
+        """
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            # Validate lines parameter
+            if lines < 1:
+                await interaction.followup.send("❌ Number of lines must be at least 1.", ephemeral=True)
+                return
+            if lines > 2000:
+                await interaction.followup.send("❌ Maximum 2000 lines allowed. Use date parameter to access older logs.", ephemeral=True)
+                return
+
+            # Determine log file date
+            if date is None:
+                # Use today's date
+                from datetime import datetime
+                date_str = datetime.now().strftime("%Y%m%d")
+            else:
+                # Validate date format
+                try:
+                    from datetime import datetime
+                    datetime.strptime(date, "%Y%m%d")
+                    date_str = date
+                except ValueError:
+                    await interaction.followup.send(
+                        f"❌ Invalid date format: `{date}`\nPlease use YYYYMMDD format (e.g., 20251027).",
+                        ephemeral=True
+                    )
+                    return
+
+            # Construct log file path
+            log_file_path = f"/root/Ai-discord-message-bot/logs/bot_{date_str}.log"
+
+            # Check if log file exists
+            import os
+            if not os.path.exists(log_file_path):
+                await interaction.followup.send(
+                    f"❌ Log file not found: `bot_{date_str}.log`\n"
+                    f"Available log files:\n" +
+                    "\n".join([f"• {f}" for f in os.listdir("/root/Ai-discord-message-bot/logs") if f.endswith(".log")][:10]),
+                    ephemeral=True
+                )
+                return
+
+            # Read the log file (last N lines)
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+                selected_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+            log_content = ''.join(selected_lines)
+
+            # Send log content
+            # If content is small enough, send as message. Otherwise, send as file
+            if len(log_content) <= 1900:  # Leave room for formatting
+                await interaction.user.send(
+                    f"**Log file: `bot_{date_str}.log`** (last {len(selected_lines)} lines)\n```\n{log_content}\n```"
+                )
+                await interaction.followup.send(
+                    f"✅ Sent **{len(selected_lines)} lines** from `bot_{date_str}.log` via DM.",
+                    ephemeral=True
+                )
+            else:
+                # Send as file attachment
+                import io
+                log_file = discord.File(
+                    io.BytesIO(log_content.encode('utf-8')),
+                    filename=f"bot_{date_str}_last_{len(selected_lines)}_lines.log"
+                )
+                await interaction.user.send(
+                    f"**Log file: `bot_{date_str}.log`** (last {len(selected_lines)} lines)",
+                    file=log_file
+                )
+                await interaction.followup.send(
+                    f"✅ Sent **{len(selected_lines)} lines** from `bot_{date_str}.log` via DM as file attachment.",
+                    ephemeral=True
+                )
+
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "❌ Cannot send DM. Please enable DMs from server members in your privacy settings.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Error retrieving logs: {str(e)}\nCheck console for details.",
+                ephemeral=True
+            )
+            print(f"Error in get_logs command: {e}")
+
+
 async def setup(bot):
     """Required setup function to load the cog."""
     await bot.add_cog(AdminCog(bot))

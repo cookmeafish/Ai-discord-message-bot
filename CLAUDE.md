@@ -233,11 +233,23 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 - `gui.py` - Graphical configuration interface with Server Manager
 
-### Image Generation Module (2025-10-15, Updated 2025-10-26)
+### Image Generation Module (2025-10-15, Updated 2025-10-27)
 - `modules/image_generator.py` - Together.ai API integration for AI image generation
 - `modules/ai_handler.py:_strip_bot_name_from_prompt()` - Removes bot name from prompts
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
   - **Style**: User-determined (prompt dictates style - "cute kitten" = cute, "badass dragon" = badass, etc.)
+  - **Multi-Character Scene Handling (2025-10-27)**: Detects and preserves complex scenes with multiple people and actions
+    - **Action Word Detection**: Recognizes 25+ action words (fighting, sitting, running, versus, with, and, etc.)
+    - **Multi-Subject Detection**: Identifies when prompt mentions 2+ people
+    - **Scene-Aware Prompting**: Uses dedicated GPT-4 enhancement prompt for multi-person scenes
+    - **Preserves Interactions**: Maintains the relationship/action between subjects ("fighting", "sitting with", etc.)
+    - **Increased Context**: Allocates 200 tokens (vs 150 for single subject) for complex scene descriptions
+    - **Example**: "draw UserA fighting UserB" → Both people rendered in combat poses, not just one person
+  - **Bot Self-Portrait Detection (2025-10-27)**: Recognizes when user wants to draw THE BOT, not themselves
+    - **Reflexive Pronoun Detection**: Detects "yourself", "you", "self" in drawing prompts
+    - **Bot Identity Loading**: Automatically loads bot traits, lore, and facts from database
+    - **Context Injection**: Formats bot identity as image context for accurate self-depiction
+    - **Example**: "draw yourself" → Loads bot's character description, draws the bot (not a robot, not the user)
   - **Context-Aware**: Automatically pulls facts about mentioned users from the database for accurate depictions
     - **User Matching Priority (2025-10-26)**: Three-tier matching system for finding mentioned users
       1. Discord username/display name (fastest, word boundary matching)
@@ -609,12 +621,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 88 tests across 21 categories (updated 2025-10-18)
+  - Runs 91 tests across 22 categories (updated 2025-10-27)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (6), Status Updates (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5)
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (8), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5)
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):
@@ -624,6 +636,24 @@ Per-channel configuration stored in database (per-server):
 - Duplicate prevention methods verification
 - Server name autocomplete existence
 - **CustomActivity constructor fix** - Verifies correct usage without 'name' parameter bug
+
+### Logging and Diagnostics (2025-10-27)
+- `/get_logs` - Retrieve bot log files (sent via DM, admin only)
+  - **Parameters**:
+    - `lines` (optional, default: 100, max: 2000): Number of recent lines to retrieve
+    - `date` (optional, default: today): Log file date in YYYYMMDD format
+  - **Behavior**:
+    - Sends logs via Discord DM for privacy
+    - Short logs (<1900 chars) sent as Discord message with code block formatting
+    - Long logs sent as `.txt` file attachment
+    - Shows available log files if requested date not found
+    - Validates date format (YYYYMMDD)
+  - **Usage Examples**:
+    - `/get_logs` - Last 100 lines from today
+    - `/get_logs lines:500` - Last 500 lines from today
+    - `/get_logs date:20251026` - Last 100 lines from Oct 26, 2025
+    - `/get_logs lines:1000 date:20251020` - Last 1000 lines from Oct 20, 2025
+  - **Use Cases**: Debugging issues remotely, monitoring bot behavior, troubleshooting without SSH access
 
 ### VPS Headless Deployment Commands (2025-10-17)
 
