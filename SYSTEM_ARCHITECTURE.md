@@ -54,7 +54,7 @@ This component is responsible for processing incoming messages and generating re
 **ARCHITECTURE UPDATE (2025-10-12)**: The system now uses per-server database isolation. Each Discord server has its own SQLite database file to prevent cross-contamination of data.
 
 **Database Architecture**:
-- **Separate Database Per Server**: Each server gets `database/{ServerName}_data.db`
+- **Separate Database Per Server**: Each server gets `database/{ServerName}/{guild_id}_data.db` (nested folder structure with guild ID filename for uniqueness)
 - **Server Name Sanitization**: Filesystem-safe names (invalid chars replaced, 50 char max)
 - **Multi-Database Manager**: `database/multi_db_manager.py` manages all server databases
 - **Automatic Creation**: Databases created on first `/activate` command per server
@@ -204,24 +204,47 @@ All persistent data is stored in and retrieved from server-specific relational d
         
 -   **Short-Term Message Log:** A table containing the full log of up to 500 messages **server-wide across all channels**. **ARCHITECTURE CHANGE (2025-10-12)**: Messages are NOT filtered by channel - this allows the bot to maintain conversational context across all channels within a server. This serves as the high-resolution, rolling buffer for the Core Interaction Handler.
 
--   **Message Archive:** Archived messages are stored as JSON files in `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json` after memory consolidation. These files contain the full message history with metadata (`archived_at`, `message_count`, and complete `messages` array). This serves as the bot's complete historical record per server.
+-   **Message Archive:** Archived messages are stored as JSON files in `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json` after memory consolidation. These files contain the full message history with metadata (`archived_at`, `message_count`, and complete `messages` array). This serves as the bot's complete historical record per server.
     
 
 ### 3.3. Proactive Engagement Subsystem
 
-**STATUS: NOT YET IMPLEMENTED - Planned for future development**
+**STATUS: IMPLEMENTED ✅ (2025-10-16 - AI-Judged Relevance with Multi-Level Control)**
 
-This component allows the bot to initiate conversation, governed by strict rules.
+This component allows the bot to proactively join conversations based on AI-judged relevance, with fine-grained control at global, per-server, and per-channel levels.
 
--   **Scheduled Event:** A task runs every 30 minutes.
-    
--   **Probabilistic Activation:** The task has a 10% chance to activate. If the last message in the channel was from the bot, the activation is automatically skipped.
-    
--   **Behavioral Fork (50/50 Chance):**
-    
-    -   **Contextual Engagement:** The system analyzes the last several messages and generates a relevant, on-topic comment.
-        
-    -   **Status-Based Engagement:** The system retrieves its current dynamic status message and generates a message for the channel that expands on that thought, influenced by the global "Day Mood."
+-   **Scheduled Event:** A background task runs every N minutes (configurable via `check_interval_minutes`, default: 30)
+
+-   **AI-Based Activation:** Instead of probabilistic (random chance), the system uses OpenAI to analyze conversation relevance:
+    - Fetches last 20 messages from each active channel
+    - AI scores conversation interest on a 0.0-1.0 scale
+    - If score ≥ configurable threshold (default: 0.7), bot engages
+    - Higher threshold = more selective engagement
+
+-   **Self-Reply Prevention:** If the last message in a channel was from the bot, engagement is automatically skipped to prevent spam.
+
+-   **Multi-Level Control:**
+    -   **Global Toggle:** `proactive_engagement.enabled` in config.json (default: true)
+    -   **Per-Server Toggle:** `server_proactive_settings` in config.json (per-server override)
+    -   **Per-Channel Toggle:** `allow_proactive_engagement` flag in `channel_settings` database table (default: true)
+    -   All three levels must be enabled for proactive engagement to occur in a channel
+
+-   **Cooldown System:** 30-minute cooldown per channel after successful engagement to prevent over-participation
+
+-   **Neutral Context:** Bot uses `generate_proactive_response()` method that does NOT load any specific user's relationship metrics or memories, preventing user confusion
+
+-   **Use Cases:**
+    - Join conversations about questions it could answer
+    - Participate in topics related to its personality/interests
+    - Contribute to creative or fun discussions
+    - Avoid casual greetings, concluded conversations, and private discussions
+
+-   **Configuration:** `config.json` under `proactive_engagement` section
+    - `enabled`: boolean
+    - `check_interval_minutes`: int (how often to scan channels)
+    - `engagement_threshold`: float 0.0-1.0 (selectivity level)
+
+-   **Per-Channel Disable:** Admins can disable proactive engagement in specific channels (e.g., rules, announcements, formal support) via GUI or Discord commands
         
 
 ### 3.4. Automated Memory Consolidation Process
@@ -244,7 +267,7 @@ An AI-powered background process that converts short-term message data into long
 4.  Extracted facts are added to (or updated in) the server's **Long-Term Memory** table with source attribution.
 
 5.  **Archive & Reset:** After processing, the system:
-    - Archives all short-term messages to `database/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
+    - Archives all short-term messages to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
     - Clears the Short-Term Message Log for that server
     - SQLite auto-vacuum reclaims disk space
 
@@ -257,21 +280,50 @@ An AI-powered background process that converts short-term message data into long
 
 ### 3.5. Dynamic Status Subsystem
 
-**STATUS: NOT YET IMPLEMENTED - Planned for future development**
+**STATUS: IMPLEMENTED ✅ (2025-10-16 - AI-Generated Discord Presence with Duplicate Prevention)**
 
-An automated process that periodically updates the bot's Discord presence to reflect a dynamic, "thoughtful" status.
+An automated process that daily updates the bot's Discord presence (status) to reflect its "thoughts" based on its personality.
 
--   **Scheduled Event:** A task runs at a regular interval (once everyday after converting the short memory to long term.).
-    
+-   **Scheduled Event:** A background task runs once per day at a configurable time (default: 12:00 / noon)
+    - Task starts automatically when bot launches
+    - **Memory Consolidation Trigger:** Automatically triggers memory consolidation for ALL servers 5 minutes after status update
+
 -   **Status Generation:**
-    
-    1.  The system queries the database to retrieve the bot's core identity (`lore`, `facts`, `traits`) and the current global mood integers (e.g., `daily_mood_anger`) from the **Global State Schema**.
-        
-    2.  This context is passed to the AI handler with a specific prompt (e.g., "Generate a short, passive thought or status message for a Discord bot pondering its existence...").
-        
-    3.  The AI generates a random, flavorful status text that aligns with its personality and current mood.
-        
--   **Status Update:** The bot's Discord presence will be updated with the newly generated text that reflects its personality and current mood.
+
+    1.  System selects a source server for personality context:
+        - Configurable via `source_server_name` in config.json
+        - Default: "Most Active Server" (server with most messages)
+        - Server selector has **autocomplete** in Discord slash commands
+
+    2.  The system queries the selected server's database to retrieve the bot's core identity (`traits`, `lore`, `facts`)
+
+    3.  Context is passed to OpenAI with a specific prompt to generate a short (max 50 characters), funny/quirky status that fits the bot's personality
+
+    4.  AI generates a flavorful status text (e.g., "Plotting surgery", "Avoiding patients", "Napping in the ER")
+
+-   **Duplicate Prevention:**
+    - Tracks last 100 statuses in `status_history.json`
+    - Ensures always-unique status messages
+    - Emote/emoji automatically stripped (Discord limitation)
+
+-   **Memory Integration:**
+    - Per-server toggle: Add status to each server's short-term memory (default: enabled)
+    - When enabled, bot can reference its status in conversations ("Why is my status about this? Well...")
+    - Configurable via `/server_set_status_memory` or GUI
+
+-   **Manual Refresh:**
+    - `/status_refresh` command for instant status regeneration (admin only)
+    - "Refresh Now" button in GUI
+
+-   **Configuration:** `config.json` under `status_updates` and `server_status_settings` sections
+    - `enabled`: boolean
+    - `update_time`: string in "HH:MM" 24-hour format
+    - `source_server_name`: string (which server's personality to use)
+
+-   **File Structure:**
+    - Implementation: `modules/status_updater.py`
+    - Background task: `cogs/status_tasks.py`
+    - Admin command: `cogs/admin.py:status_refresh`
     
 
 ### 3.6. Ancillary Functionality Modules
@@ -308,7 +360,7 @@ A configurable system that controls how the bot presents itself and uses languag
 -   **Three Core Settings:**
     -   **Immersive Character Mode** (`immersive_character`): When enabled (default: true), the bot genuinely believes it IS the character defined in its identity, not an AI roleplaying. It will deny being an AI if asked and treat its lore as real experiences.
     -   **Allow Technical Language** (`allow_technical_language`): When disabled (default: false), the bot is forbidden from using robotic/technical terms like "cached", "stored", "database", "info", "data", "system" in its responses.
-    -   **Use Server Information** (`use_server_info`): When enabled (default: false), the bot loads text files from `Server_Info/` directory (located in project root) containing server rules, policies, and formal documentation. Ideal for formal channels like rules, moderation, or support.
+    -   **Use Server Information** (`use_server_info`): When enabled (default: false), the bot loads text files from `Server_Info/{ServerName}/` directory (per-server isolation) containing server rules, policies, and formal documentation. Ideal for formal channels like rules, moderation, or support.
 
 -   **Configuration Hierarchy:**
     1.  **Global Defaults**: Set in `config.json` under `personality_mode` section
@@ -324,7 +376,7 @@ A configurable system that controls how the bot presents itself and uses languag
 
 -   **Server Information System (NEW 2025-10-12):**
     -   **Purpose**: Provide authoritative server documentation for formal channels
-    -   **Implementation**: `_load_server_info()` method in `ai_handler.py` loads all `.txt` files from `Server_Info/` directory in project root
+    -   **Implementation**: `_load_server_info()` method in `ai_handler.py` loads all `.txt` files from `Server_Info/{ServerName}/` directory (per-server isolation)
     -   **Usage**: Enable per-channel via GUI or `/channel_set_personality use_server_info:true`
     -   **Priority**: Bot prioritizes server info over personality when answering questions
     -   **File Format**: UTF-8 encoded `.txt` files with descriptive names (e.g., `server_rules.txt`, `moderation_policy.txt`)
@@ -354,59 +406,70 @@ This section maps the conceptual components defined above to the final, physical
 /
 ├── 📂 cogs/
 │   ├── 📄 __init__.py
-│   ├── 📄 admin.py
-│   ├── 📄 events.py
-│   ├── 📄 memory_tasks.py
-│   ├── 📄 moderation.py
-│   ├── 📄 settings.py
-│   └── 📄 utility.py
+│   ├── 📄 admin.py              # Admin commands (/identity_*, /user_*, /image_*, /get_logs, etc.)
+│   ├── 📄 events.py             # Message handling and AI response triggering
+│   ├── 📄 memory_tasks.py       # Memory consolidation background tasks (commented out)
+│   ├── 📄 moderation.py         # Moderation commands
+│   ├── 📄 proactive_tasks.py    # Proactive engagement background tasks (NEW 2025-10-16)
+│   ├── 📄 settings.py           # Settings management commands
+│   ├── 📄 status_tasks.py       # Daily status update background tasks (NEW 2025-10-16)
+│   └── 📄 utility.py            # Utility commands
 |
 ├── 📂 database/
-│   ├── 📂 archive/
-│   │   └── 📄 short_term_archive_*.json (archived messages)
+│   ├── 📂 {ServerName}/         # Per-server database folders (e.g., "My Server/")
+│   │   ├── 📂 archive/          # Per-server message archives
+│   │   │   └── 📄 short_term_archive_*.json
+│   │   └── 📄 {guild_id}_data.db   # SQLite database (e.g., "1234567890_data.db")
 │   ├── 📄 __init__.py
-│   ├── 📄 {ServerName}_data.db (per-server databases)
-│   ├── 📄 db_manager.py
-│   ├── 📄 multi_db_manager.py
-│   └── 📄 schemas.py
+│   ├── 📄 db_manager.py          # Individual database operations (accepts custom db_path)
+│   ├── 📄 input_validator.py     # SQL injection protection (NEW 2025-10-17)
+│   ├── 📄 multi_db_manager.py    # Central manager for all server databases
+│   └── 📄 schemas.py             # Table definitions
 |
 ├── 📂 Server_Info/
-│   ├── 📄 README.md (usage instructions)
-│   └── 📄 *.txt (server rules, policies, documentation)
+│   ├── 📂 {ServerName}/          # Per-server rules/policies folders (e.g., "My Server/")
+│   │   └── 📄 *.txt              # Server rules, policies, documentation
+│   └── 📄 README.md              # Usage instructions for Server_Info system
 |
 ├── 📂 logs/
-│   └── 📄 bot_YYYYMMDD.log (daily rotating log files)
+│   └── 📄 bot_YYYYMMDD.log       # Daily rotating log files
 |
 ├── 📂 modules/
 │   ├── 📄 __init__.py
-│   ├── 📄 ai_handler.py
-│   ├── 📄 config_manager.py
-│   ├── 📄 emote_orchestrator.py
-│   └── 📄 logging_manager.py
+│   ├── 📄 ai_handler.py          # OpenAI API interface, intent classification, response generation
+│   ├── 📄 config_manager.py      # config.json and .env loading
+│   ├── 📄 emote_orchestrator.py  # Custom emote management
+│   ├── 📄 formatting_handler.py  # Roleplay action detection and italic formatting (NEW 2025-10-15)
+│   ├── 📄 image_generator.py     # Together.ai API for AI image generation (NEW 2025-10-15)
+│   ├── 📄 logging_manager.py     # Structured logging
+│   ├── 📄 proactive_engagement.py # AI-powered conversation analysis (NEW 2025-10-16)
+│   └── 📄 status_updater.py      # AI-generated Discord status updates (NEW 2025-10-16)
 |
 ├── 📂 Notes/
-│   └── 📄 New ideas.txt
+│   └── 📄 New ideas.txt          # Development notes
 |
 ├── 📂 scripts/
-│   └── 📄 populate_bot_identity.py
+│   └── 📄 populate_bot_identity.py  # Bot personality initialization script
 |
 ├── 📂 tests/
 │   ├── 📄 __init__.py
 │   └── 📄 (Unit tests for modules and cogs)
 |
-├── 📜 testing.py
-├── 📜 .env
+├── 📜 testing.py                 # Comprehensive test suite (206 tests across 23 categories)
+├── 📜 .env                       # Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 ├── 📜 .gitignore
-├── 📜 AI_GUIDELINES.md
-├── 📜 config.json
+├── 📜 AI_GUIDELINES.md           # Development standards and code review guidelines
+├── 📜 CLAUDE.md                  # AI assistant guide for future development
+├── 📜 config.json                # Global bot configuration
 ├── 📜 debug.log
-├── 📜 gui.py
-├── 📜 main.py
-├── 📜 PLANNED_FEATURES.md
-├── 📜 README.md
-├── 📜 requirements.txt
-├── 📜 SYSTEM_ARCHITECTURE.md
-├── 📜 TROUBLESHOOTING.md
+├── 📜 gui.py                     # Graphical configuration interface
+├── 📜 main.py                    # Bot initialization and entry point
+├── 📜 PLANNED_FEATURES.md        # Future development roadmap
+├── 📜 README.md                  # User guide and setup instructions
+├── 📜 requirements.txt           # Python dependencies
+├── 📜 status_history.json        # Last 100 status messages (duplicate prevention)
+├── 📜 SYSTEM_ARCHITECTURE.md     # Complete technical specification (this file)
+├── 📜 TROUBLESHOOTING.md         # Common issues and solutions
 └── 📜 test_file.txt
 ```
 
@@ -445,17 +508,23 @@ The central component for all data persistence logic with per-server database is
 
 -   `schemas.py`: Defines the database table structures (e.g., via ORM classes or SQL statements) as described in section 3.2.
 
-### 4.2.1. `Server_Info/` Directory
+### 4.2.1. `Server_Info/{ServerName}/` Directories
 
-**NEW (2025-10-12)**: Contains text files with server rules, policies, and formal documentation that the bot can reference.
+**NEW (2025-10-12, Updated 2025-10-15)**: Contains per-server text files with server rules, policies, and formal documentation that the bot can reference.
 
--   `README.md`: Usage instructions for the Server_Info directory and how to configure channels to use it.
+-   **Structure**: `Server_Info/{ServerName}/` - One folder per Discord server (sanitized server name)
+    -   Example: `Server_Info/My Gaming Server/rules.txt`
+    -   Example: `Server_Info/Tech Support Server/faq.txt`
 
--   `*.txt`: UTF-8 encoded text files with descriptive names (e.g., `server_rules.txt`, `moderation_policy.txt`, `faq.txt`). All `.txt` files in this directory are loaded when `use_server_info` is enabled for a channel.
+-   **Per-Server Isolation**: Each server has its own folder to prevent cross-contamination of server rules and policies
+
+-   `*.txt`: UTF-8 encoded text files with descriptive names (e.g., `server_rules.txt`, `moderation_policy.txt`, `faq.txt`). All `.txt` files in the server's folder are loaded when `use_server_info` is enabled for a channel in that server.
 
 -   **Purpose**: Provide authoritative server documentation for formal channels (rules, moderation, support).
 
 -   **Security**: All `.txt` files are excluded from git by default to protect sensitive information.
+
+-   **README.md**: Usage instructions for the Server_Info system (located in `Server_Info/` root)
 
 ### 4.2.2. `logs/` Directory
 
@@ -475,14 +544,22 @@ Contains utility scripts for database management and initialization.
 Contains core helper classes not directly tied to Discord's API.
 
 -   `__init__.py`: Marks the directory as a Python package so these helper modules can be imported.
-    
--   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text. Implements the Intent Classification System with improved distinction between memory_recall and factual_question (2025-10-12). **NEW**: `_load_server_info()` method loads formal server documentation from text files when enabled per-channel.
+
+-   `ai_handler.py`: Interfaces with the OpenAI API, taking context from other components and returning raw text. Implements the Intent Classification System with improved distinction between memory_recall and factual_question (2025-10-12). `_load_server_info()` method loads formal server documentation from text files when enabled per-channel. Conversation energy matching (2025-10-19) adjusts response length to match user's message energy.
 
 -   `config_manager.py`: Manages the loading of `config.json` and `.env` files.
 
--   `emote_orchestrator.py`: Manages the loading and replacement of custom server emotes.
+-   `emote_orchestrator.py`: Manages the loading and replacement of custom server emotes. Includes randomized emote sampling (2025-10-19) for variety and boost-locked emote filtering.
+
+-   `formatting_handler.py`: **NEW (2025-10-15)** - Detects and formats physical actions using regex patterns. Recognizes 50+ action verbs across 8 categories (movement, gestures, facial expressions, etc.). Only formats short sentences (<15 words) starting with action verbs.
+
+-   `image_generator.py`: **NEW (2025-10-15, Updated 2025-10-27)** - Together.ai API integration for AI image generation using FLUX.1-schnell model. Multi-character scene detection (2025-10-27) and bot self-portrait detection via reflexive pronouns. Smart context handling prevents identity contamination between database users and generic knowledge.
 
 -   `logging_manager.py`: A dedicated module to handle structured logging for debugging and monitoring.
+
+-   `proactive_engagement.py`: **NEW (2025-10-16)** - AI-powered conversation analysis for proactive engagement. Scores conversation relevance (0.0-1.0) and determines when bot should join discussions. Implements cooldown system and multi-level control (global, per-server, per-channel).
+
+-   `status_updater.py`: **NEW (2025-10-16)** - AI-generated Discord status updates. Creates daily status messages based on bot personality, with duplicate prevention (tracks last 100 statuses). Supports per-server personality selection and memory integration.
     
 
 ### 4.4. `tests/` Directory
@@ -522,7 +599,7 @@ A dedicated folder for housing unit tests and integration tests.
     
 -   `test_file.txt`: Temporary test file (can be safely deleted).
 
--   `testing.py`: Comprehensive test suite for validating bot functionality across 64 tests in 17 categories. Accessible via `/run_tests` admin command. Tests database operations, AI integration, per-server isolation, input validation, and all core systems. Results sent via Discord DM and saved to `logs/test_results_*.json`.
+-   `testing.py`: Comprehensive test suite for validating bot functionality across **206 tests in 23 categories**. Accessible via `/run_tests` admin command. Tests database operations, AI integration, per-server isolation, input validation, security measures, image generation, proactive engagement, status updates, admin logging, and all core systems. Results sent via Discord DM and saved to `logs/test_results_*.json`.
 
 ## 5. Implementation Status
 
@@ -561,7 +638,7 @@ Phase 1 has been fully implemented and is production-ready.
 - ✅ **Personality Mode System**: Immersive character mode with natural language enforcement
 - ✅ **Formal Server Information System**: Load text files for rules/policies (2025-10-12)
 - ✅ **GUI Tooltip System**: Hover text for personality mode checkboxes (2025-10-12)
-- ✅ **Comprehensive Testing System**: 64-test suite via `/run_tests` command (2025-10-13)
+- ✅ **Comprehensive Testing System**: 206-test suite via `/run_tests` command (2025-10-13, expanded through 2025-10-27)
 
 ### Phase 2: COMPLETED ✅
 **Memory Consolidation & Per-Server Architecture**

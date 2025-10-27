@@ -64,25 +64,103 @@
 
 **CRITICAL**: When contributing to this project's documentation, code comments, or commit messages, you **MUST** adhere to these standards:
 
--   **No AI Assistant Branding**: Never mention Claude, Claude Code, Anthropic, or any other AI assistant branding in:
-    -   Code comments
-    -   Documentation files (README.md, CLAUDE.md, SYSTEM_ARCHITECTURE.md, etc.)
-    -   Commit messages
-    -   Git co-author attributions
-    -   Configuration files
-    -   User-facing text
+-   **No AI Assistant Branding**: **NEVER** mention Claude, Claude Code, Anthropic, ChatGPT, OpenAI, or any other AI assistant branding in:
+    -   **Code comments** - No mentions of AI assistants in code
+    -   **Documentation files** - README.md, SYSTEM_ARCHITECTURE.md, PLANNED_FEATURES.md, etc.
+    -   **Commit messages** - ⚠️ **CRITICAL**: Git commit messages must NEVER mention Claude, AI assistants, or AI generation
+    -   **Commit notes/descriptions** - Extended commit descriptions must also be AI-agnostic
+    -   **Git co-author attributions** - No "Co-Authored-By: Claude" or similar
+    -   **Configuration files** - config.json and other config files
+    -   **User-facing text** - Error messages, UI text, responses
 
--   **Rationale**: This project is designed to be AI-agnostic. Documentation should focus on the technical implementation, not the tools used to create it. Users should be able to understand and maintain the code without knowing which AI assistant (if any) was involved in development.
+-   **Rationale**: This project is designed to be AI-agnostic. Documentation should focus on the technical implementation, not the tools used to create it. Users should be able to understand and maintain the code without knowing which AI assistant (if any) was involved in development. **Git commit history should be professional and tool-agnostic.**
 
--   **Examples**:
-    -   ❌ BAD: "Generated with Claude Code"
-    -   ❌ BAD: "Co-Authored-By: Claude <noreply@anthropic.com>"
-    -   ❌ BAD: "# This function was written by Claude to handle..."
-    -   ✅ GOOD: "Add SQL injection protection"
-    -   ✅ GOOD: "# Validates user input before database operations"
-    -   ✅ GOOD: "Implemented by: [Developer Name]"
+-   **Git Commit Message Examples**:
+    -   ❌ **FORBIDDEN**: "Generated with Claude Code"
+    -   ❌ **FORBIDDEN**: "Co-Authored-By: Claude <noreply@anthropic.com>"
+    -   ❌ **FORBIDDEN**: "Add feature (written by Claude)"
+    -   ❌ **FORBIDDEN**: "Claude suggested this fix"
+    -   ❌ **FORBIDDEN**: "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+    -   ✅ **CORRECT**: "Add SQL injection protection"
+    -   ✅ **CORRECT**: "Fix multi-character image generation"
+    -   ✅ **CORRECT**: "Update documentation for new features"
+    -   ✅ **CORRECT**: "Refactor database query logic for performance"
 
--   **Exception**: The only acceptable reference is in `CLAUDE.md` header ("This file provides guidance to Claude Code...") as it is explicitly a configuration file for the AI assistant tool itself.
+-   **Code Comment Examples**:
+    -   ❌ **FORBIDDEN**: "# This function was written by Claude to handle..."
+    -   ❌ **FORBIDDEN**: "# AI-generated validation logic"
+    -   ✅ **CORRECT**: "# Validates user input before database operations"
+    -   ✅ **CORRECT**: "# Prevents SQL injection by sanitizing input"
+
+-   **Documentation Examples**:
+    -   ❌ **FORBIDDEN**: "Feature designed with Claude's help"
+    -   ❌ **FORBIDDEN**: "This architecture was suggested by AI"
+    -   ✅ **CORRECT**: "Feature implemented using modular design pattern"
+    -   ✅ **CORRECT**: "Architecture follows dependency injection principles"
+
+-   **Exception**: The **ONLY** acceptable reference is in `CLAUDE.md` header ("This file provides guidance to Claude Code...") as it is explicitly a configuration file for the AI assistant tool itself. All other files must be AI-agnostic.
+
+-   **⚠️ ENFORCEMENT**: When committing to git, you **MUST** review your commit message and ensure it contains **ZERO** references to AI assistants, AI tools, or AI generation. Treat this as a hard requirement equivalent to syntax checking.
+
+### Mandatory Documentation Updates with Code Changes
+
+**CRITICAL**: When making code changes that affect the system architecture, features, or commands, you **MUST** update the relevant documentation files **BEFORE** committing and pushing to git.
+
+-   **When Documentation Updates Are Required**:
+    -   Adding, removing, or significantly modifying a feature
+    -   Adding, removing, or modifying admin commands
+    -   Changing database schemas or table structures
+    -   Modifying file structure (adding/removing files or directories)
+    -   Changing configuration options in `config.json`
+    -   Implementing planned features from `PLANNED_FEATURES.md`
+    -   Changing architectural patterns or design decisions
+
+-   **Which Files Must Be Updated**:
+    -   **`SYSTEM_ARCHITECTURE.md`**: Technical specification - update for architectural changes, database schemas, system flows
+    -   **`README.md`**: User guide - update for new user-facing features, commands, or setup changes
+    -   **`CLAUDE.md`**: AI assistant guide - update for implementation details relevant to future AI development
+    -   **`PLANNED_FEATURES.md`**: Roadmap - mark features as completed, add new planned features
+
+-   **Git Commit/Push Workflow**:
+    1. **Make code changes**
+    2. **Update documentation files** (SYSTEM_ARCHITECTURE.md, README.md, CLAUDE.md as needed)
+    3. **Test changes** (run `/run_tests` if applicable)
+    4. **Stage ALL changes** (code + documentation) together with `git add`
+    5. **Commit with single message** describing both code and documentation updates
+    6. **Push to repository**
+
+-   **Example**:
+    ```bash
+    # CORRECT WORKFLOW:
+    # 1. Made code changes to add /get_logs command
+    # 2. Updated CLAUDE.md with /get_logs documentation
+    # 3. Updated AI_GUIDELINES.md with logging command info
+    git add cogs/admin.py CLAUDE.md AI_GUIDELINES.md
+    git commit -m "Add /get_logs admin command for remote log retrieval
+
+    - Implemented in cogs/admin.py with DM delivery
+    - Updated CLAUDE.md with command documentation
+    - Updated AI_GUIDELINES.md with testing requirements"
+    git push
+
+    # WRONG WORKFLOW:
+    # ❌ Commit code first, documentation later (causes desync)
+    # ❌ Push code without updating docs (leaves documentation outdated)
+    ```
+
+-   **Why This Matters**:
+    -   Prevents documentation from falling out of sync with code
+    -   Ensures future developers (human or AI) understand the current system state
+    -   Makes code reviews easier by showing both implementation and documentation changes together
+    -   Maintains project maintainability and reduces confusion
+
+-   **Consequences of Skipping Documentation Updates**:
+    -   Documentation becomes misleading and untrustworthy
+    -   Future developers waste time implementing features that already exist
+    -   Architectural violations occur because patterns aren't documented
+    -   Users can't find or use new features because they're not documented
+
+**⚠️ IF YOUR CODE CHANGES AFFECT THE SYSTEM, UPDATE THE DOCS IN THE SAME COMMIT ⚠️**
 
 ### Generic Examples in Code and Documentation
 
