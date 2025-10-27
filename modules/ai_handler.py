@@ -1216,7 +1216,7 @@ Examples:
                                 mentioned_user = member
                                 break
 
-                            # Check nicknames table if no direct match (e.g., "zekke" matches "Zekke" or "Zekkekun")
+                            # Check nicknames table if no direct match (e.g., "alice" matches "Alice" or "Alicia")
                             if not mentioned_user:
                                 try:
                                     import sqlite3
@@ -2032,7 +2032,7 @@ Respond with ONLY the fact ID number or "NONE".
             server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
             # Detect mentioned users in the message content (NEW 2025-10-26)
-            # This allows questions like "what do you think about Zekke?" to load Zekke's facts
+            # This allows questions like "what do you think about Alice?" to load Alice's facts
             mentioned_users_info = []
             if message.guild:
                 mentioned_users = []

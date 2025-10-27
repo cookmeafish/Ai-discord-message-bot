@@ -127,7 +127,7 @@ The bot has a configurable personality mode that controls immersion and language
 
 **Mentioned User Detection System (2025-10-26)**:
 - **Purpose**: Load facts about OTHER users mentioned in conversation, not just the message author
-- **Works for**: Casual chat, memory recall, factual questions ("what do you think about Zekke?")
+- **Works for**: Casual chat, memory recall, factual questions ("what do you think about Alice?")
 - **Three-Tier Matching** (same as image generation):
   1. Discord username/display name (word boundary matching)
   2. **Nicknames table** (substring matching) ← Primary source
@@ -137,7 +137,7 @@ The bot has a configurable personality mode that controls immersion and language
   - `=== FACTS ABOUT MENTIONED USERS (people being discussed, NOT the author) ===`
 - **Prevents Confusion**: Explicit warnings to NOT confuse mentioned users with the author
 - **Loads**: Facts AND relationship metrics for each mentioned user
-- **Benefits**: "what do you think about Zekke?" correctly loads Zekke's facts, not just author's facts
+- **Benefits**: "what do you think about Alice?" correctly loads Alice's facts, not just author's facts
 
 **Conversation Energy Matching System (2025-10-19)**:
 - **Purpose**: Bot automatically adjusts response length to match conversation energy
@@ -244,10 +244,10 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
       2. **Nicknames table** (medium speed, substring matching - NEW 2025-10-26)
       3. Long-term memory facts with "also goes by" phrases (slowest, word boundary matching)
     - **Nicknames Table Usage (2025-10-26)**: Stores all historical display names/nicknames for users
-      - Example: User with nicknames "Zekke" and "Zekkekun" → "draw me zekke" matches via substring
-      - Enables flexible matching: "zekke" matches both "Zekke" AND "Zekkekun"
+      - Example: User with nicknames "Alice" and "Alicia" → "draw me alice" matches via substring
+      - Enables flexible matching: "alice" matches both "Alice" AND "Alicia"
       - **Works across ALL bot features**: Image generation, memory storage, AND casual conversation
-      - **Casual Conversation (NEW 2025-10-26)**: "what do you think about Zekke?" loads Zekke's facts
+      - **Casual Conversation (NEW 2025-10-26)**: "what do you think about Alice?" loads Alice's facts
     - Filters stop words (me, you, a, the, etc.) to prevent false matches
     - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
     - **Gender Detection (2025-10-18)**: Automatically detects gender from pronouns in database facts
@@ -256,10 +256,10 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
       - Ensures image AI correctly renders gender even when facts don't explicitly state it
       - Example: Facts with "Loves her" and "she is sweet" → detected as "woman" → draws female character
   - **Smart Context Handling (2025-10-26)**: Dual-mode AI enhancement prevents identity contamination
-    - **Database User Mode**: When drawing database users (e.g., "Zekke"), uses ONLY database facts
+    - **Database User Mode**: When drawing database users (e.g., "Alice"), uses ONLY database facts
       - Detects identity markers: "ruler", "manager", "handsome", "strong", "feared", "man", "woman"
       - Strict prompt prevents GPT-4 from adding generic character knowledge with same name
-      - Example: "draw Zekke" uses DB facts ("handsome, strong, feared man"), NOT generic "Zekke" character
+      - Example: "draw Alice" uses DB facts ("handsome, strong, feared man"), NOT generic "Alice" character
     - **Famous Person Mode**: When drawing people NOT in database (e.g., "Kamala Harris"), uses FULL GPT-4 knowledge
       - Explicit instructions to describe actual appearance of politicians, celebrities, historical figures
       - Allows accurate depictions of real-world people using AI's trained knowledge
@@ -481,9 +481,9 @@ Stores historical display names and nicknames for users to enable flexible user 
 **Purpose and Usage**:
 - **Automatic Population**: Bot automatically records user display names from Discord as they appear
 - **User Matching**: Enables substring matching for image generation and memory storage
-  - Example: User has nicknames "Zekke" and "Zekkekun" stored
-  - "draw me zekke" matches both entries via substring matching
-  - "Zekke is cool" (conversation) also matches for memory storage
+  - Example: User has nicknames "Alice" and "Alicia" stored
+  - "draw me alice" matches both entries via substring matching
+  - "Alice is cool" (conversation) also matches for memory storage
 - **Three-Tier Matching Priority**: (NEW 2025-10-26)
   1. Discord username/display name (fastest)
   2. **Nicknames table** (medium speed, substring matching)
@@ -491,8 +491,8 @@ Stores historical display names and nicknames for users to enable flexible user 
 - **Benefits**:
   - Flexible user identification without requiring exact display name match
   - Historical tracking of name changes
-  - Enables partial name matching ("zekke" finds "Zekkekun")
-  - Works for image generation ("draw me zekke") and normal conversation ("Zekke is powerful")
+  - Enables partial name matching ("alice" finds "Alicia")
+  - Works for image generation ("draw me alice") and normal conversation ("Alice is powerful")
 
 **Implementation**:
 - Checked in `modules/ai_handler.py` during image generation user matching (line ~1350)

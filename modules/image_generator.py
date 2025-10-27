@@ -272,8 +272,8 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
         # Build full prompt with optional context
         if context:
             # Integrate context directly with the subject for better results
-            # Instead of "zekke. Is a handsome man" (AI thinks zekke is separate)
-            # We want "a handsome, strong, feared man (zekke is: Head Event Manager...)"
+            # Instead of "alice. Is a handsome man" (AI thinks alice is separate)
+            # We want "a handsome, strong, feared man (alice is: Head Event Manager...)"
             full_prompt = f"{self.style_prefix}, {context}"
         else:
             full_prompt = f"{self.style_prefix}, {user_prompt}"

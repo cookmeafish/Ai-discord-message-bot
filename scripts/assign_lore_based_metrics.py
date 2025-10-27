@@ -58,7 +58,7 @@ def assign_metrics_based_on_lore():
     Assigns relationship metrics based on bot's lore and existing relationships.
 
     Lore context from PLANNED_FEATURES.md:
-    - Fear metric is for power dynamics (e.g., Zekke - authority figure)
+    - Fear metric is for power dynamics (e.g., User A - authority figure)
     - Respect is professional/personal admiration
     - Affection is emotional warmth (familial/romantic attachment)
     - Familiarity is how well bot knows the user
@@ -93,14 +93,14 @@ def assign_metrics_based_on_lore():
 
     # User ID mapping (you'll need to provide the actual user IDs)
     # Based on bot lore, we know:
-    # - Zekke is a feared authority figure
+    # - User A is a feared authority figure
     # - The bot has various emotional connections
 
     # IMPORTANT: Replace these with actual Discord user IDs
     USER_MAPPINGS = {
         # Example format:
-        # "Zekke": 123456789012345678,  # Replace with actual ID
-        # "User2": 987654321098765432,  # Replace with actual ID
+        # "UserA": 123456789012345678,  # Replace with actual ID
+        # "UserB": 987654321098765432,  # Replace with actual ID
     }
 
     print("\n[INFO] Current users in database:")
@@ -160,24 +160,24 @@ def assign_metrics_based_on_lore():
             intimidation=new_intimidation
         )
 
-    # Special case: Check if Zekke is in the database based on lore
-    # Based on the lore: "Zekke pulled bot from eternal slumber" and "supreme ruler with absolute power"
+    # Special case: Check if authority figure is in the database based on lore
+    # Based on the lore: "Authority figure pulled bot from eternal slumber" and "supreme ruler with absolute power"
     # We should look for the user with the most balanced/unique metrics
 
-    # Look for a user that might be Zekke (owner/admin with special status)
+    # Look for a user that might be authority figure (owner/admin with special status)
     # User 968980122440970252 has anger=10, rapport=1, trust=10 - unusual high trust with high anger
-    # This pattern fits: feared authority but trusted (Zekke saved bot's life)
+    # This pattern fits: feared authority but trusted (authority figure saved bot's life)
 
-    potential_zekke_id = 968980122440970252  # High anger + high trust pattern
+    potential_authority_id = 968980122440970252  # High anger + high trust pattern
 
-    print("\n[SPECIAL] Applying Zekke-specific metrics to user 968980122440970252")
-    print("  (Based on lore: Zekke pulled bot from eternal slumber, supreme ruler)")
+    print("\n[SPECIAL] Applying authority figure-specific metrics to user 968980122440970252")
+    print("  (Based on lore: Authority figure pulled bot from eternal slumber, supreme ruler)")
 
-    update_user_metrics(conn, potential_zekke_id,
+    update_user_metrics(conn, potential_authority_id,
         fear=9,           # VERY high fear - "supreme ruler" who controls bot's fate
         respect=10,       # Maximum respect - saved bot's life, absolute authority
         affection=4,      # Moderate affection - grateful for resurrection but intimidated
-        familiarity=8,    # High familiarity - knows Zekke well (resurrected bot)
+        familiarity=8,    # High familiarity - knows authority figure well (resurrected bot)
         intimidation=10   # Maximum intimidation - "absolute power over everyone"
     )
 

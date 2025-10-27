@@ -32,30 +32,30 @@ def test_new_metrics():
     try:
         db_manager = DBManager(db_path)
 
-        # Test 1: Get metrics for Zekke (should have special values)
-        print("[TEST 1] Retrieving metrics for Zekke (ID: 968980122440970252)")
-        zekke_metrics = db_manager.get_relationship_metrics(968980122440970252)
+        # Test 1: Get metrics for TestUser (should have special values)
+        print("[TEST 1] Retrieving metrics for TestUser (ID: 968980122440970252)")
+        test_user_metrics = db_manager.get_relationship_metrics(968980122440970252)
 
-        print(f"  Rapport: {zekke_metrics['rapport']}/10")
-        print(f"  Trust: {zekke_metrics['trust']}/10")
-        print(f"  Anger: {zekke_metrics['anger']}/10")
-        print(f"  Formality: {zekke_metrics['formality']}")
+        print(f"  Rapport: {test_user_metrics['rapport']}/10")
+        print(f"  Trust: {test_user_metrics['trust']}/10")
+        print(f"  Anger: {test_user_metrics['anger']}/10")
+        print(f"  Formality: {test_user_metrics['formality']}")
 
         # Check new metrics
-        if 'fear' in zekke_metrics:
-            print(f"  Fear: {zekke_metrics['fear']}/10")
-            print(f"  Respect: {zekke_metrics['respect']}/10")
-            print(f"  Affection: {zekke_metrics['affection']}/10")
-            print(f"  Familiarity: {zekke_metrics['familiarity']}/10")
-            print(f"  Intimidation: {zekke_metrics['intimidation']}/10")
+        if 'fear' in test_user_metrics:
+            print(f"  Fear: {test_user_metrics['fear']}/10")
+            print(f"  Respect: {test_user_metrics['respect']}/10")
+            print(f"  Affection: {test_user_metrics['affection']}/10")
+            print(f"  Familiarity: {test_user_metrics['familiarity']}/10")
+            print(f"  Intimidation: {test_user_metrics['intimidation']}/10")
 
-            # Verify Zekke's special values
-            if (zekke_metrics['fear'] == 9 and
-                zekke_metrics['respect'] == 10 and
-                zekke_metrics['intimidation'] == 10):
-                print("  [PASS] Zekke's special metrics are correct!")
+            # Verify TestUser's special values
+            if (test_user_metrics['fear'] == 9 and
+                test_user_metrics['respect'] == 10 and
+                test_user_metrics['intimidation'] == 10):
+                print("  [PASS] TestUser's special metrics are correct!")
             else:
-                print("  [FAIL] Zekke's metrics don't match expected values")
+                print("  [FAIL] TestUser's metrics don't match expected values")
                 return False
         else:
             print("  [FAIL] New metrics not found!")

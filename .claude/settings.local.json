@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit -m \"Add alternative name for Anya Sama to enable database matching\n\nChanges:\n- Manually added ''Also goes by the name Anya Sama'' fact for user 1049532657714855976\n\nIssue:\n- User ''Anya Sama'' (ID: 1049532657714855976) has left the server\n- Guild contains different user ''Anya Forger'' (ID: 1260856973222481961)\n- When drawing ''Anya Sama'', bot matched ''Anya Forger'' (wrong person!)\n- Database facts for old user were ignored\n\nRoot Cause:\n- Guild member search happens BEFORE database search\n- ''Anya'' matches both ''Anya Sama'' and ''Anya Forger''\n- Bot picked the current guild member instead of database entry\n\nTemporary Fix:\n- Added alternative name fact so database search can find Anya Sama\n- Now when guild search fails to find exact match, database will be checked\n- This requires the alternative name fact to exist\n\nKnown Limitation:\n- If a current guild member has a partially matching name, they will be prioritized over database entries\n- Example: ''Anya Forger'' in guild will match before database ''Anya Sama''\n- Proper fix would require multi-word exact matching or database-first search priority\")"
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(sqlite3:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Read(//root/**)",
+      "Read(//proc/11247/fd/**)",
+      "Bash(journalctl:*)",
+      "Bash(python testing.py:*)",
+      "Bash(python3:*)",
+      "Bash(timeout 120 python3:*)"
     ],
     "deny": [],
     "ask": []
