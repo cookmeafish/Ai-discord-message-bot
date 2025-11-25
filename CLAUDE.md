@@ -319,9 +319,13 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - Refinements modify this enhanced prompt, maintaining visual consistency
   - Example: "cute cat girl with green eyes, pink hair" + "eat fish" → same character eating fish
 - **Refinement Detection**: GPT-4o-mini analyzes if user wants to refine previous image
-  - Detects: corrections, additions, modifications, critiques
-  - Ignores: general conversation, new image requests, unrelated messages
-  - **Bot Name Stripping (2025-11-24)**: Strips bot name from user message before analysis to prevent contamination
+  - Detects: corrections, additions, modifications, critiques, "make X do Y with that"
+  - Ignores: general conversation, new image requests, unrelated messages, emotional reactions
+  - **Topic Change Detection (2025-11-24)**: Passes recent conversation context to AI
+    - If user changed topics after image generation, message is NOT a refinement
+    - Example: Image → "what are you doing later?" → bot responds → "yikes aggressive" = NOT refinement
+    - Prevents accidental image generation when user is responding to bot's text
+  - **Bot Name Stripping (2025-11-24)**: Strips bot name from user message before analysis
 - **Prompt Modification**: Makes MINIMAL changes to cached enhanced prompt
   - **Strict Rules**: No new people, no new scenes, no creativity beyond request
   - **Temperature 0.0**: Deterministic output to prevent creative additions

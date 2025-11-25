@@ -839,6 +839,11 @@ All three Phase 5 features fully implemented and integrated into the bot.
   - `generate_image()` returns 3 values: `(image_bytes, error_msg, full_prompt)`
   - Full enhanced prompt cached to maintain visual consistency across refinements
   - Example: "cute cat girl with green eyes" + "eat fish" → same character eating fish
+- **Topic Change Detection (2025-11-24)**:
+  - Refinement detection receives recent conversation context (last 10 messages)
+  - AI checks if conversation topic changed since image was generated
+  - Prevents false positives when user responds to bot's text, not the image
+  - Example: Image → "what are you doing?" → bot responds → "yikes" = NOT a refinement
 - **Configuration** (`config.json`):
   ```json
   "image_refinement": {
