@@ -74,14 +74,22 @@ Indicators of refinement request:
 ✅ References to "that/it/the": "make X do Y with that", "add X to it", "put X on the"
 
 NOT a refinement request:
-❌ General conversation: "that's cool!", "I like it", "thanks"
-❌ Unrelated message: "what's the weather?", "hey how are you"
+❌ General conversation: "that's cool!", "I like it", "thanks", "nice"
+❌ Emotional reactions: "yikes", "wow", "lol", "haha", "omg", "yikes aggressive", "that's funny"
+❌ Unrelated message: "what's the weather?", "hey how are you", "what are you doing"
 ❌ Completely new image request with NO reference to previous: "draw a dog", "draw something else entirely"
+❌ Comments about the bot: "you're weird", "that was aggressive", "ok then"
+❌ Single words or short exclamations without image modification intent
+
+**IMPORTANT**: The message MUST contain an actual IMAGE MODIFICATION REQUEST.
+Casual reactions to the image or conversation are NOT refinements.
 
 **KEY DISTINCTION**:
 - "draw a gorilla" = NEW request (no reference to previous image)
 - "make a gorilla drink that" = REFINEMENT (references "that" = the previous image subject)
 - "add a gorilla to it" = REFINEMENT (references "it")
+- "yikes aggressive" = NOT a refinement (just a reaction, no modification request)
+- "lol nice" = NOT a refinement (just a compliment)
 
 Respond with JSON:
 {{
