@@ -1688,9 +1688,29 @@ Examples:
                     if not skip_user_matching:
                         # Extract words from the prompt to check against names
                         # Filter out common words that aren't names
-                        stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-                                      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
-                                      'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those'}
+                        # EXPANDED: Include common nouns, verbs, and words that shouldn't match usernames
+                        stop_words = {
+                            # Pronouns and articles
+                            'me', 'you', 'i', 'a', 'an', 'the', 'it', 'he', 'she', 'they', 'we',
+                            # Verbs (common)
+                            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+                            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+                            'can', 'may', 'might', 'must', 'shall',
+                            'eat', 'eating', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
+                            'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding',
+                            # Possessives
+                            'my', 'your', 'his', 'her', 'its', 'our', 'their',
+                            # Demonstratives
+                            'this', 'that', 'these', 'those',
+                            # Common nouns (animals, objects) - prevents false nickname matches
+                            'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear',
+                            'food', 'sword', 'gun', 'hat', 'shirt', 'dress', 'car', 'house', 'tree',
+                            'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby',
+                            # Prepositions and conjunctions
+                            'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'and', 'or', 'but',
+                            # Adjectives (common)
+                            'big', 'small', 'cute', 'pretty', 'ugly', 'nice', 'bad', 'good', 'new', 'old'
+                        }
                         prompt_words = [word for word in prompt_lower.split() if word not in stop_words]
 
                         print(f"AI Handler: Filtered prompt words for matching: {prompt_words}")
@@ -1708,12 +1728,20 @@ Examples:
                             name_words = [w for w in prompt_words if w not in command_words]
 
                             for word in name_words:
-                                # Check if any nickname contains this word or vice versa (substring matching)
+                                # Check if any nickname contains this word or vice versa
+                                # IMPROVED: Require minimum 3 characters to avoid false matches
+                                if len(word) < 3:
+                                    continue
+
                                 cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
                                 for row in cursor.fetchall():
                                     user_id_str, nickname = row[0], row[1].lower()
-                                    if word in nickname or nickname in word:
-                                        print(f"AI Handler: Database nicknames match - '{word}' matches '{nickname}' (user_id: {user_id_str})")
+
+                                    # IMPROVED: Use word boundary matching instead of substring
+                                    # This prevents "fish" from matching "mistel fish" unless it's a distinct word
+                                    nickname_words = nickname.split()
+                                    if word in nickname_words or any(word == nw for nw in nickname_words):
+                                        print(f"AI Handler: Database nicknames match - '{word}' matches word in '{nickname}' (user_id: {user_id_str})")
                                         class PseudoMember:
                                             def __init__(self, user_id):
                                                 self.id = user_id
@@ -2396,10 +2424,31 @@ Respond with ONLY the fact ID number or "NONE".
                 message_lower = message.content.lower()
 
                 # Extract words from message (filter stop words)
-                stop_words = {'me', 'you', 'i', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-                              'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
-                              'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
-                              'about', 'think', 'know', 'tell', 'what', 'who', 'when', 'where', 'why', 'how'}
+                # EXPANDED: Include common nouns, verbs, and words that shouldn't match usernames
+                stop_words = {
+                    # Pronouns and articles
+                    'me', 'you', 'i', 'a', 'an', 'the', 'it', 'he', 'she', 'they', 'we',
+                    # Verbs (common)
+                    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+                    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+                    'can', 'may', 'might', 'must', 'shall',
+                    'eat', 'eating', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
+                    'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding',
+                    # Possessives
+                    'my', 'your', 'his', 'her', 'its', 'our', 'their',
+                    # Demonstratives
+                    'this', 'that', 'these', 'those',
+                    # Common nouns (animals, objects) - prevents false nickname matches
+                    'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear',
+                    'food', 'sword', 'gun', 'hat', 'shirt', 'dress', 'car', 'house', 'tree',
+                    'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby',
+                    # Prepositions and conjunctions
+                    'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'and', 'or', 'but',
+                    # Adjectives (common)
+                    'big', 'small', 'cute', 'pretty', 'ugly', 'nice', 'bad', 'good', 'new', 'old',
+                    # Question words and conversation words
+                    'about', 'think', 'know', 'tell', 'what', 'who', 'when', 'where', 'why', 'how'
+                }
                 message_words = [word for word in message_lower.split() if word not in stop_words]
 
                 print(f"AI Handler: Checking for mentioned users in casual chat. Message words: {message_words}")
@@ -2417,7 +2466,7 @@ Respond with ONLY the fact ID number or "NONE".
                     display_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_display_lower) for word in message_words)
                     username_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_name_lower) for word in message_words)
 
-                    # Check nicknames table
+                    # Check nicknames table with word boundary matching
                     nickname_match = False
                     if not (display_match or username_match):
                         try:
@@ -2430,10 +2479,12 @@ Respond with ONLY the fact ID number or "NONE".
 
                             if nicknames:
                                 for nickname in nicknames:
+                                    # IMPROVED: Use word boundary matching instead of substring
+                                    nickname_words = nickname.split()
                                     for word in message_words:
-                                        if word in nickname or nickname in word:
+                                        if len(word) >= 3 and word in nickname_words:
                                             nickname_match = True
-                                            print(f"AI Handler: Casual chat found mentioned user via nicknames: '{word}' matches '{nickname}' for {member.display_name}")
+                                            print(f"AI Handler: Casual chat found mentioned user via nicknames: '{word}' matches word in '{nickname}' for {member.display_name}")
                                             break
                                     if nickname_match:
                                         break
