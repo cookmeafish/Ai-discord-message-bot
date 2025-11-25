@@ -481,7 +481,7 @@ Houses Discord-facing logic, including commands and event listeners.
     
 -   `admin.py`: Implements the **Real-Time Administration Interface (3.7)**.
     
--   `events.py`: Implements the **Core Interaction Handler (3.1)**. Contains the primary `on_message` event listener and the global `on_command_error` listener for centralized error handling.
+-   `events.py`: Implements the **Core Interaction Handler (3.1)**. Contains the primary `on_message` event listener and the global `on_command_error` listener for centralized error handling. **NEW (2025-11-24)**: Implements **Message Batching System** with per-channel queuing. Class variables `_channel_locks`, `_pending_messages`, `_queued_users`, and `_batch_lock` handle concurrent message batching. Methods `_get_channel_lock()`, `_queue_message_for_batching()`, and `_process_batched_response()` combine rapid messages from the same user into a single AI response (max 3 regenerations).
     
 -   `memory_tasks.py`: Implements the **Proactive Engagement Subsystem (3.3)**, the **Automated Memory Consolidation Process (3.4)**, and the **Dynamic Status Subsystem (3.5)** using `tasks.loop`.
     
@@ -864,7 +864,41 @@ All three Phase 5 features fully implemented and integrated into the bot.
   Bot: [generates new image with flaming fur, doesn't count toward limit]
   ```
 
-**3. Conversation Energy Priority Override** ✅
+**3. Message Batching System** ✅ (NEW 2025-11-24)
+- **Purpose**: Combine rapid messages from the same user into a single AI response
+- **Problem**: User sends "dr fish" then "wassup" quickly → bot responds twice instead of once
+- **Implementation**: `cogs/events.py` (new class variables and methods)
+- **Architecture**:
+  - `_channel_locks`: Per-channel `asyncio.Lock` - ensures one response at a time per channel
+  - `_pending_messages`: `{(user_id, channel_id): [messages]}` - batches rapid messages
+  - `_queued_users`: `{channel_id: set(user_ids)}` - tracks which users are queued per channel
+  - `_batch_lock`: Global `asyncio.Lock` for thread-safe dictionary access
+- **Flow**:
+  1. Message arrives → `_queue_message_for_batching()` checks if user already queued
+  2. If queued → Add message to pending batch, return immediately
+  3. If not queued → Add user to queue, call `_process_batched_response()`
+  4. `_process_batched_response()` acquires channel lock (wait for other users)
+  5. Collect all pending messages, combine content with newlines
+  6. Generate AI response via `ai_handler.generate_response(combined_content=...)`
+  7. **Check-before-send**: Check if new messages arrived during generation
+  8. If new messages → Regenerate (loop back to step 5, max 3 times)
+  9. Send response → Clean up user from queue
+- **Configuration** (`config.json`):
+  ```json
+  "message_batching": {
+    "enabled": true,
+    "max_regenerations": 3
+  }
+  ```
+- **Key Features**:
+  - **Per-channel isolation**: Different channels process independently
+  - **Per-user batching**: Same user's rapid messages combined
+  - **Cross-channel independence**: Bot can respond in #general and #random simultaneously
+  - **Per-user regeneration counting**: Only the SAME user's messages count toward their limit (User B talking doesn't affect User A's count)
+  - **Smart counting**: Each new message counts toward limit (2 messages at once = 2 counts, not 1)
+  - **Max 3 regenerations**: Prevents infinite loops if user keeps typing (counts by message count, not loop iterations)
+
+**4. Conversation Energy Priority Override** ✅
 - **Purpose**: Energy constraints override relationship metrics to prevent over-talking
 - **Implementation**: `modules/ai_handler.py:_build_relationship_context()` (lines 385-420)
 - **Problem Solved**: High affection/rapport previously caused verbose responses even when user sent short messages

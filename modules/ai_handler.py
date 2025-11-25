@@ -834,8 +834,16 @@ Be specific and objective. This description will be used by another AI to genera
             print(f"AI Handler: Failed to describe image: {e}")
             return None
 
-    async def _classify_intent(self, message, short_term_memory):
-        """Step 1: Classify the user's intent."""
+    async def _classify_intent(self, message, short_term_memory, content_override=None):
+        """Step 1: Classify the user's intent.
+
+        Args:
+            message: Discord message object
+            short_term_memory: List of recent messages
+            content_override: Optional content to use instead of message.content (for batched messages)
+        """
+        # Use content override if provided (for batched messages)
+        actual_content = content_override if content_override else message.content
 
         # Get configurable value for recent message count
         recent_msg_count = self.response_limits.get('recent_messages_for_intent', 5)
@@ -846,7 +854,7 @@ Be specific and objective. This description will be used by another AI to genera
             [f'{msg.get("author_name", msg["author_id"])} (ID: {msg["author_id"]}): {self._strip_discord_formatting(msg["content"])}'
              for msg in recent_messages]
         )
-        
+
         intent_prompt = f"""
 You are an expert intent classification model. Analyze the last message from the user ({message.author.id}) in the context of the recent conversation history. Your primary goal is to accurately determine the user's intent.
 
@@ -862,7 +870,7 @@ Conversation History:
 {conversation_history}
 
 Last User Message:
-{message.author.id}: {self._strip_discord_formatting(message.content)}
+{message.author.id}: {self._strip_discord_formatting(actual_content)}
 
 Based on the rules and the last user message, what is the user's primary intent? Respond with ONLY the intent category name.
 """
@@ -889,7 +897,7 @@ Based on the rules and the last user message, what is the user's primary intent?
             print(f"AI HANDLER ERROR: Could not classify intent: {e}")
             return "casual_chat"
 
-    async def _analyze_sentiment_and_update_metrics(self, message, ai_response, user_id, db_manager):
+    async def _analyze_sentiment_and_update_metrics(self, message, ai_response, user_id, db_manager, content_override=None):
         """
         Analyzes the interaction and determines if relationship metrics should be updated.
         Uses conservative approach - only updates on major sentiment shifts.
@@ -899,12 +907,15 @@ Based on the rules and the last user message, what is the user's primary intent?
             ai_response: Bot's response text
             user_id: Discord user ID
             db_manager: Server-specific database manager
+            content_override: Optional content to use instead of message.content (for batched messages)
         """
-        
+        # Use content override if provided (for batched messages)
+        actual_content = content_override if content_override else message.content
+
         sentiment_prompt = f"""
 Analyze this interaction between a user and a bot. Determine if the user's message contains MAJOR sentiment that should affect relationship metrics.
 
-User message: "{self._strip_discord_formatting(message.content)}"
+User message: "{self._strip_discord_formatting(actual_content)}"
 Bot response: "{ai_response}"
 
 Should any metrics change? Respond ONLY with a JSON object:
@@ -1244,7 +1255,7 @@ LORE: Worked as a marine biologist before becoming self-aware
             print(f"AI Handler: Failed to generate image response: {e}")
             return "I... don't know what to say about that image."
 
-    async def _extract_and_store_memory_statements(self, message, db_manager):
+    async def _extract_and_store_memory_statements(self, message, db_manager, content_override=None):
         """
         PRE-PROCESSING STEP: Extract and store any memory statements from the message,
         regardless of the primary intent. This allows multi-intent messages like:
@@ -1253,10 +1264,14 @@ LORE: Worked as a marine biologist before becoming self-aware
         Args:
             message: Discord message object
             db_manager: Server-specific database manager
+            content_override: Optional content to use instead of message.content (for batched messages)
 
         Returns:
             List of extracted facts (for logging), or empty list if none found
         """
+        # Use content override if provided (for batched messages)
+        actual_content = content_override if content_override else message.content
+
         detection_prompt = f"""
 Analyze this message and determine if it contains ANY factual statements that should be stored as memories.
 
@@ -1271,7 +1286,7 @@ Analyze this message and determine if it contains ANY factual statements that sh
 - "can you help?" (question)
 - "thanks!" (acknowledgment)
 
-Message: "{self._strip_discord_formatting(message.content)}"
+Message: "{self._strip_discord_formatting(actual_content)}"
 
 Respond with ONLY "YES" if the message contains memory statements, or "NO" if it doesn't.
 """
@@ -1305,7 +1320,7 @@ Extract ALL factual statements from this message as concise facts. If there are 
 - Input: "PersonB is my colleague and they enjoy gaming"
   Output: "PersonB is my colleague | PersonB enjoys gaming"
 
-Message: "{self._strip_discord_formatting(message.content)}"
+Message: "{self._strip_discord_formatting(actual_content)}"
 
 Respond with ONLY the extracted facts (separated by " | " if multiple).
 """
@@ -1422,7 +1437,7 @@ Examples:
             print(f"AI Handler: Error in memory extraction pre-processing: {e}")
             return []
 
-    async def generate_response(self, message, short_term_memory, db_manager):
+    async def generate_response(self, message, short_term_memory, db_manager, combined_content=None):
         """
         Generate a response based on the classified intent.
 
@@ -1430,11 +1445,14 @@ Examples:
             message: Discord message object
             short_term_memory: List of recent messages
             db_manager: Server-specific database manager
+            combined_content: Optional combined content from batched messages (for message batching system)
         """
+        # Use combined content if provided (for batched messages)
+        actual_content = combined_content if combined_content else message.content
 
         # PRE-PROCESSING: Extract and store any memory statements before classifying primary intent
         # This allows messages like "X is a Y. draw me X" to store the fact AND generate the image
-        stored_facts = await self._extract_and_store_memory_statements(message, db_manager)
+        stored_facts = await self._extract_and_store_memory_statements(message, db_manager, content_override=actual_content)
 
         # IMAGE REFINEMENT DETECTION: Check if user wants to refine a recently generated image
         # This happens BEFORE intent classification to bypass normal flow
@@ -1453,7 +1471,7 @@ Examples:
                 print(f"   Time since generation: {minutes_since_generation:.1f} minutes")
 
                 # Strip bot name from user message to prevent it from contaminating refinement detection
-                clean_user_message = self._strip_bot_name_from_prompt(message.content, message.guild)
+                clean_user_message = self._strip_bot_name_from_prompt(actual_content, message.guild)
                 print(f"   Clean user message for refinement: '{clean_user_message}'")
 
                 # Build recent conversation context for topic change detection
@@ -1504,15 +1522,15 @@ Examples:
                 else:
                     print(f"   ❌ Not a refinement (confidence: {refinement_result['confidence']:.2f} < {threshold})")
                     print(f"   Proceeding with normal intent classification\n")
-                    intent = await self._classify_intent(message, short_term_memory)
+                    intent = await self._classify_intent(message, short_term_memory, content_override=actual_content)
             else:
                 print(f"   ℹ️ No cached prompt found")
                 print(f"   Proceeding with normal intent classification\n")
                 # No cached prompt - proceed with normal intent classification
-                intent = await self._classify_intent(message, short_term_memory)
+                intent = await self._classify_intent(message, short_term_memory, content_override=actual_content)
         else:
             # Image refinement disabled - proceed with normal intent classification
-            intent = await self._classify_intent(message, short_term_memory)
+            intent = await self._classify_intent(message, short_term_memory, content_override=actual_content)
 
         channel = message.channel
         author = message.author
@@ -1530,7 +1548,7 @@ Examples:
         available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
 
         # Check if temporal context would improve the response (keyword-based, no API call)
-        needs_temporal = self._needs_temporal_context(message.content, short_term_memory)
+        needs_temporal = self._needs_temporal_context(actual_content, short_term_memory)
         if needs_temporal:
             print(f"AI Handler: Temporal context ENABLED for this message")
 
@@ -1602,9 +1620,9 @@ Examples:
                     print(f"   Using refined prompt: '{clean_prompt}'")
                 else:
                     # Strip bot name and alternative nicknames from the prompt
-                    clean_prompt = self._strip_bot_name_from_prompt(message.content, message.guild)
+                    clean_prompt = self._strip_bot_name_from_prompt(actual_content, message.guild)
                     print(f"\n🆕 NEW IMAGE GENERATION")
-                    print(f"   Original message: '{message.content}'")
+                    print(f"   Original message: '{actual_content}'")
                     print(f"   Clean prompt: '{clean_prompt}'")
 
                 # Check if any users are mentioned in the prompt and get their facts
@@ -2202,7 +2220,7 @@ The user wants you to remember a fact about them or the world. Analyze the user'
 - If the user says 'my cat is named Whiskers', the fact is 'My cat is named Whiskers'.
 - If the user says 'remember that I work as a software engineer', the fact is 'I work as a software engineer'.
 
-User message: "{message.content}"
+User message: "{actual_content}"
 
 Respond with ONLY the extracted fact.
 """
@@ -2328,7 +2346,7 @@ The user is correcting a fact you got wrong. Extract:
 1. What the OLD (incorrect) fact was
 2. What the NEW (correct) fact should be
 
-User message: "{message.content}"
+User message: "{actual_content}"
 
 Respond with ONLY a JSON object:
 {{
@@ -2473,7 +2491,7 @@ Respond with ONLY the fact ID number or "NONE".
             mentioned_users_info = []
             if message.guild:
                 mentioned_users = []
-                message_lower = message.content.lower()
+                message_lower = actual_content.lower()
 
                 # Extract potential names from message
                 # CRITICAL: Only match SPECIFIC NAMES, not generic English words
@@ -2502,7 +2520,7 @@ Respond with ONLY the fact ID number or "NONE".
                 }
 
                 # Get original words to check capitalization
-                original_words = message.content.split()
+                original_words = actual_content.split()
                 potential_names = []
                 for orig_word in original_words:
                     word_lower = orig_word.lower().strip('.,!?"\'-')

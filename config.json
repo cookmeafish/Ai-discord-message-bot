@@ -90,6 +90,10 @@
         "modification_max_tokens": 150,
         "modification_temperature": 0.3
     },
+    "message_batching": {
+        "enabled": true,
+        "max_regenerations": 3
+    },
     "safety": {
         "enable_moderation_api": true,
         "enable_rate_limiting": true,

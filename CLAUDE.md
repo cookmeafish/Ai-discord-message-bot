@@ -118,6 +118,36 @@ The bot has a configurable personality mode that controls immersion and language
    - Metrics only update via: Manual commands (`/user_set_metrics`), GUI User Manager, or memory consolidation
    - Prevents metrics from changing too rapidly during conversations
 
+**Message Batching System (2025-11-24)**:
+- **Problem**: User sends "dr fish" then "wassup" quickly → bot responds twice instead of once
+- **Solution**: Check-before-send approach with per-channel queuing
+- **Implementation** (`cogs/events.py`):
+  - `_channel_locks`: Per-channel `asyncio.Lock` - one response at a time per channel
+  - `_pending_messages`: `{(user_id, channel_id): [messages]}` - batches rapid messages
+  - `_queued_users`: `{channel_id: set(user_ids)}` - tracks who's queued per channel
+  - `_batch_lock`: Global `asyncio.Lock` for thread-safe dictionary access
+- **Flow**:
+  1. Message arrives → Check if user already queued for this channel
+  2. If queued → Add message to pending batch, return early
+  3. If not queued → Add user to queue, process with channel lock
+  4. Generate response → Check for new messages before sending
+  5. If new messages arrived → Regenerate (max 3 times)
+  6. Send response → Clean up user from queue
+- **Key Features**:
+  - **Per-channel isolation**: Different channels process independently
+  - **Per-user batching**: Same user's rapid messages combined into one response
+  - **Per-user regeneration counting**: Only messages from the SAME user count toward the limit (User B talking doesn't affect User A's count)
+  - **Smart counting**: Each new message counts toward limit (2 messages at once = 2 counts, not 1)
+  - **Max 3 regenerations**: Prevents infinite loops (counts by messages, not loop iterations)
+  - **Combined content**: All batched messages joined with newlines and passed to AI
+- **Config** (`config.json`):
+  ```json
+  "message_batching": {
+      "enabled": true,
+      "max_regenerations": 3
+  }
+  ```
+
 **User Identification System (2025-10-18)**:
 - **CRITICAL**: All AI response prompts include explicit user identification to prevent confusing users with each other
 - Format: `🎯 **CURRENT USER IDENTIFICATION** 🎯` section with user's name and ID
