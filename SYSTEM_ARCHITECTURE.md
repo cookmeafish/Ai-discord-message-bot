@@ -828,11 +828,17 @@ All three Phase 5 features fully implemented and integrated into the bot.
 - **Implementation**: `modules/image_refiner.py` integrated in `modules/image_generator.py` (lines 57-60)
 - **AI Model**: GPT-4.1-mini for detection, GPT-4o for prompt modification
 - **How It Works**:
-  1. Caches last generated image prompt for 10 minutes (configurable)
-  2. AI detects refinement requests ("add fire", "make it bigger", "change color")
-  3. GPT-4o intelligently modifies original prompt based on feedback
-  4. Generates refined image using modified prompt
-  5. Refinements don't count toward rate limit (configurable)
+  1. User requests image ("draw a cute cat girl")
+  2. Bot enhances prompt with details ("cute cat girl with green eyes, pink hair, anime style...")
+  3. Caches the FULL enhanced prompt (not just original request) for 10 minutes
+  4. AI detects refinement requests ("make her eat fish", "add a hat")
+  5. GPT-4o modifies the cached enhanced prompt, preserving character details
+  6. Generates refined image with same visual consistency
+  7. Refinements don't count toward rate limit (configurable)
+- **Enhanced Prompt Caching (2025-11-24)**:
+  - `generate_image()` returns 3 values: `(image_bytes, error_msg, full_prompt)`
+  - Full enhanced prompt cached to maintain visual consistency across refinements
+  - Example: "cute cat girl with green eyes" + "eat fish" → same character eating fish
 - **Configuration** (`config.json`):
   ```json
   "image_refinement": {

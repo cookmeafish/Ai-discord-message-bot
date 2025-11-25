@@ -269,7 +269,12 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
       - Enables flexible matching: "alice" matches both "Alice" AND "Alicia"
       - **Works across ALL bot features**: Image generation, memory storage, AND casual conversation
       - **Casual Conversation (NEW 2025-10-26)**: "what do you think about Alice?" loads Alice's facts
-    - Filters stop words (me, you, a, the, etc.) to prevent false matches
+    - **Generic Word Protection (2025-11-24)**: Prevents database lookups for common English words
+      - 200+ common words blocked: fish, cat, dog, apple, house, blue, etc.
+      - Only SPECIFIC names trigger database lookup (capitalized words not in common list)
+      - Example: "draw a fish" → no DB lookup (fish is common word)
+      - Example: "draw Alice" → DB lookup (Alice is capitalized, not common)
+      - Prevents users with generic words in names from being matched incorrectly
     - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
     - **Gender Detection (2025-10-18)**: Automatically detects gender from pronouns in database facts
       - Scans ALL facts for gendered pronouns (she/her/hers vs he/him/his)
@@ -302,23 +307,29 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `modules/image_refiner.py` - Detects and handles image refinement requests
 - **Purpose**: Allows users to iteratively refine generated images without starting over
 - **Flow**:
-  1. User generates image ("draw a cat")
-  2. Bot caches the prompt
-  3. User requests refinement ("make it blue", "add a hat")
-  4. Refiner detects refinement intent and modifies prompt minimally
-  5. New image generated with refined prompt
+  1. User generates image ("draw a cute cat girl")
+  2. Bot enhances prompt ("cute cat girl with green eyes, pink hair, anime style...")
+  3. Bot caches the FULL enhanced prompt (not the original request)
+  4. User requests refinement ("make her eat fish")
+  5. Refiner detects refinement intent and modifies the cached enhanced prompt minimally
+  6. New image generated with same character context preserved
+- **Enhanced Prompt Caching (2025-11-24)**:
+  - `generate_image()` returns 3 values: `(image_bytes, error_msg, full_prompt)`
+  - The full enhanced prompt is cached, preserving all character details
+  - Refinements modify this enhanced prompt, maintaining visual consistency
+  - Example: "cute cat girl with green eyes, pink hair" + "eat fish" → same character eating fish
 - **Refinement Detection**: GPT-4o-mini analyzes if user wants to refine previous image
   - Detects: corrections, additions, modifications, critiques
   - Ignores: general conversation, new image requests, unrelated messages
   - **Bot Name Stripping (2025-11-24)**: Strips bot name from user message before analysis to prevent contamination
-- **Prompt Modification**: Makes MINIMAL changes to original prompt
+- **Prompt Modification**: Makes MINIMAL changes to cached enhanced prompt
   - **Strict Rules**: No new people, no new scenes, no creativity beyond request
   - **Temperature 0.0**: Deterministic output to prevent creative additions
   - **Examples**:
-    - "make it blue" → adds "blue" to original prompt
-    - "add a sword" → adds "with a sword" to original prompt
+    - "make it blue" → adds "blue" to enhanced prompt
+    - "add a sword" → adds "with a sword" to enhanced prompt
 - **Refinement Safeguards (2025-11-24)**:
-  - **Skip AI Enhancement**: Refined prompts bypass GPT-4 enhancement to prevent creative contamination
+  - **Skip AI Enhancement**: Refined prompts bypass GPT-4 enhancement (already enhanced in cache)
   - **Skip User Context**: User facts/names not loaded during refinements to prevent identity leakage
   - **Bot Name Stripped**: "@Dr. Fish add a sword" → "add a sword" before processing
 - **Rate Limiting**: Max 3 refinements per image (configurable)
