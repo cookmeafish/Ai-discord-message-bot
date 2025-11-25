@@ -457,7 +457,7 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
         db_manager=None,
         short_term_memory: List[Dict] = None,
         is_refinement: bool = False
-    ) -> Tuple[Optional[bytes], Optional[str]]:
+    ) -> Tuple[Optional[bytes], Optional[str], Optional[str]]:
         """
         Generate an image based on the user's prompt with optional context.
 
@@ -469,12 +469,13 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
             is_refinement: If True, skip AI enhancement (prompt already refined minimally)
 
         Returns:
-            Tuple of (image_bytes, error_message):
+            Tuple of (image_bytes, error_message, full_prompt):
                 - image_bytes: PNG image data if successful, None if failed
                 - error_message: Error description if failed, None if successful
+                - full_prompt: The complete prompt that was sent to the image API (for caching)
         """
         if not self.is_available():
-            return None, "Image generation is currently unavailable. API key not configured."
+            return None, "Image generation is currently unavailable. API key not configured.", None
 
         try:
             # Try to get enhanced description if enabled and dependencies available
@@ -522,25 +523,26 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
                 if hasattr(image_data, 'b64_json') and image_data.b64_json is not None:
                     import base64
                     image_bytes = base64.b64decode(image_data.b64_json)
-                    return image_bytes, None
+                    # Return image bytes, no error, and the full prompt that was used
+                    return image_bytes, None, full_prompt
                 # Or it might return a URL
                 elif hasattr(image_data, 'url') and image_data.url is not None:
                     import httpx
                     async with httpx.AsyncClient() as client:
                         img_response = await client.get(image_data.url)
                         if img_response.status_code == 200:
-                            return img_response.content, None
+                            return img_response.content, None, full_prompt
                         else:
-                            return None, f"Failed to download image from URL: {img_response.status_code}"
+                            return None, f"Failed to download image from URL: {img_response.status_code}", None
                 else:
-                    return None, "Unexpected response format from Together.ai API"
+                    return None, "Unexpected response format from Together.ai API", None
             else:
-                return None, "No image data in API response"
+                return None, "No image data in API response", None
 
         except Exception as e:
             error_msg = f"Error generating image: {str(e)}"
             print(error_msg)
-            return None, error_msg
+            return None, error_msg, None
 
     def get_rate_limit_info(self) -> dict:
         """

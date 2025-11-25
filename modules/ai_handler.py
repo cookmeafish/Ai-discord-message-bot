@@ -2063,7 +2063,7 @@ Respond with ONLY the extracted visual description, nothing else.
                 print(f"   Context: '{image_context if image_context else 'None'}'")
                 print(f"   Is Refinement: {is_refinement_request}")
 
-                image_bytes, error_msg = await self.image_generator.generate_image(
+                image_bytes, error_msg, full_prompt = await self.image_generator.generate_image(
                     clean_prompt,
                     image_context,
                     db_manager,
@@ -2071,9 +2071,11 @@ Respond with ONLY the extracted visual description, nothing else.
                     is_refinement=is_refinement_request
                 )
 
-                # Cache the prompt for potential refinement (do this even if generation failed)
-                print(f"\n💾 CACHING PROMPT: '{clean_prompt}' for user {author.id}")
-                self.image_generator.cache_prompt(author.id, clean_prompt)
+                # Cache the FULL enhanced prompt for potential refinement (not just the original request)
+                # This ensures refinements use the same detailed context as the original image
+                prompt_to_cache = full_prompt if full_prompt else clean_prompt
+                print(f"\n💾 CACHING ENHANCED PROMPT: '{prompt_to_cache}' for user {author.id}")
+                self.image_generator.cache_prompt(author.id, prompt_to_cache)
 
                 if error_msg:
                     print(f"AI Handler: Image generation failed: {error_msg}")
