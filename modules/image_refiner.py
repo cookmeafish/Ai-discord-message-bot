@@ -63,16 +63,25 @@ USER'S MESSAGE: "{user_message}"
 
 Determine if this message is requesting a REFINEMENT of the previous image.
 
+**CRITICAL**: If the message references "that", "it", "the image", or the original subject, it IS a refinement!
+
 Indicators of refinement request:
 ✅ Corrections: "no, I said...", "you forgot the...", "it's missing..."
 ✅ Additions: "also add...", "can you include...", "with a sword too"
 ✅ Modifications: "make it bigger", "change the color to...", "make it hold..."
 ✅ Critiques: "that's wrong", "not what I wanted", "redo it with..."
+✅ Add subject interacting with image: "make a gorilla drink that", "have a cat eat it", "put a person next to it"
+✅ References to "that/it/the": "make X do Y with that", "add X to it", "put X on the"
 
 NOT a refinement request:
 ❌ General conversation: "that's cool!", "I like it", "thanks"
 ❌ Unrelated message: "what's the weather?", "hey how are you"
-❌ New image request: "now draw a dog", "draw something else"
+❌ Completely new image request with NO reference to previous: "draw a dog", "draw something else entirely"
+
+**KEY DISTINCTION**:
+- "draw a gorilla" = NEW request (no reference to previous image)
+- "make a gorilla drink that" = REFINEMENT (references "that" = the previous image subject)
+- "add a gorilla to it" = REFINEMENT (references "it")
 
 Respond with JSON:
 {{
