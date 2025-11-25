@@ -146,39 +146,44 @@ Return ONLY valid JSON, no explanations."""
             print(f"{'='*80}\n")
             return original_prompt
 
-        system_prompt = f"""You are modifying an image generation prompt based on user feedback.
+        system_prompt = f"""You are making MINIMAL modifications to an image prompt.
 
 ORIGINAL PROMPT: "{original_prompt}"
 
 USER FEEDBACK: "{changes_requested}"
 
-Create a NEW prompt that:
-1. Keeps everything from the original that wasn't criticized
-2. Fixes/changes elements the user mentioned
-3. Adds new elements the user requested
-4. Maintains coherent scene composition
+**YOUR ONLY JOB:** Make the SMALLEST possible change to satisfy the feedback.
 
-Examples:
-- Original: "a cool cat with flaming fur"
-  Feedback: "no flaming fur, and make it hold a sword in its mouth"
-  New Prompt: "a cool cat holding a sword in its mouth"
+**ABSOLUTE RULES - VIOLATIONS WILL BE REJECTED:**
+1. **NO NEW PEOPLE** - Never add humans, chefs, handlers, characters, etc.
+2. **NO NEW SCENES** - Never add kitchens, backgrounds, settings, etc.
+3. **NO CREATIVITY** - Only change exactly what was requested
+4. **LITERAL INTERPRETATION** - "plate it with wings" = put it on a plate with chicken wings, NOT add wing accessories
+
+**Examples:**
+- Original: "a hot sauce bottle"
+  Feedback: "plate it with wings"
+  New Prompt: "a hot sauce bottle on a plate with chicken wings"
+  WRONG: "chefs in a kitchen with hot sauce" ❌
 
 - Original: "a dragon"
-  Feedback: "add fire breath and make it blue"
-  New Prompt: "a blue dragon breathing fire"
+  Feedback: "make it blue"
+  New Prompt: "a blue dragon"
+  WRONG: "a blue dragon in a magical forest with a wizard" ❌
 
-- Original: "a knight"
-  Feedback: "make him hold a sword, add a red cape, and put him on a mountain"
-  New Prompt: "a knight holding a sword, wearing a red cape, standing on a mountain"
+- Original: "an ice turtle"
+  Feedback: "give it a red tail"
+  New Prompt: "an ice turtle with a red tail"
+  WRONG: "an ice turtle with handlers in the arctic" ❌
 
-Return ONLY the new prompt text (no explanations, no quotes, no JSON)."""
+Return ONLY the minimally modified prompt (no explanations)."""
 
         try:
             response = await self.client.chat.completions.create(
                 model=self.config.get('modification_model', 'gpt-4o'),
                 messages=[{'role': 'system', 'content': system_prompt}],
-                max_tokens=self.config.get('modification_max_tokens', 150),
-                temperature=self.config.get('modification_temperature', 0.3)
+                max_tokens=self.config.get('modification_max_tokens', 100),
+                temperature=0.0  # Zero temperature for deterministic, non-creative output
             )
 
             modified_prompt = response.choices[0].message.content.strip()

@@ -357,13 +357,19 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
 2. Any database/conversation facts above (if provided) can supplement your knowledge
 3. Provide specific visual details that would help an image AI draw accurately
 
+**ABSOLUTE RULES - VIOLATIONS WILL BE REJECTED:**
+- **NO PEOPLE** - Never add humans, chefs, handlers, characters unless EXPLICITLY in the subject
+- **NO SCENES** - Never add kitchens, backgrounds, forests, rooms unless EXPLICITLY requested
+- **NO CREATIVITY** - Only describe what's in the subject, nothing more
+- **LITERAL ONLY** - "hot sauce on a plate with wings" = bottle + plate + chicken wings (NOT chefs, NOT kitchens)
+- If subject is "an ice turtle" → describe ONLY the turtle
+- If subject is "a dragon" → describe ONLY the dragon
+- If subject is "hot sauce with wings" → describe ONLY the bottle, plate, and wings
+
 **Requirements:**
 - **If this is a real person you know about** (politician, celebrity, historical figure, etc.): Describe their actual appearance in detail
-  - Examples: "Kamala Harris" → describe her actual features, typical attire
-  - Examples: "Donald Trump" → describe his actual hair, facial features, suits
-  - Examples: "Taylor Swift" → describe her actual appearance, style
 - **If this is a character from media** (anime, game, movie, etc.): Use your knowledge of that character's design
-- **If this is a generic subject** (dragon, house, tree, etc.): Use typical visual characteristics
+- **If this is a generic subject** (dragon, house, tree, animal, etc.): Use typical visual characteristics for THAT SUBJECT ONLY
 - Focus on VISUAL details only (appearance, colors, clothing, style, physical features)
 - Be specific and detailed (not vague)
 - Keep it under 100 words
@@ -396,7 +402,7 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
                 model=model_config.get('model', 'gpt-4o-mini'),
                 messages=[{'role': 'user', 'content': enhancement_prompt}],
                 max_tokens=max_tokens,
-                temperature=model_config.get('temperature', 0.3)
+                temperature=0.1  # Low temperature for minimal creativity
             )
 
             enhanced_description = response.choices[0].message.content.strip()
@@ -449,7 +455,8 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
         user_prompt: str,
         context: str = None,
         db_manager=None,
-        short_term_memory: List[Dict] = None
+        short_term_memory: List[Dict] = None,
+        is_refinement: bool = False
     ) -> Tuple[Optional[bytes], Optional[str]]:
         """
         Generate an image based on the user's prompt with optional context.
@@ -459,6 +466,7 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
             context: Optional context about the subject (e.g., facts about a person)
             db_manager: Database manager for enhanced descriptions (optional)
             short_term_memory: Recent conversation for enhanced descriptions (optional)
+            is_refinement: If True, skip AI enhancement (prompt already refined minimally)
 
         Returns:
             Tuple of (image_bytes, error_message):
@@ -470,8 +478,11 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
 
         try:
             # Try to get enhanced description if enabled and dependencies available
+            # SKIP enhancement for refinements - the prompt has already been carefully modified
             enhanced_context = None
-            if self.enhance_with_ai and db_manager and self.openai_client:
+            if is_refinement:
+                print("Image Generator: SKIPPING AI enhancement (refinement mode - using prompt as-is)")
+            elif self.enhance_with_ai and db_manager and self.openai_client:
                 print("Image Generator: Attempting AI-enhanced description...")
                 enhanced_context = await self._get_enhanced_visual_description(
                     user_prompt,

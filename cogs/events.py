@@ -216,6 +216,14 @@ class EventsCog(commands.Cog):
                 # Check if conversation detection is enabled for this channel
                 conversation_detection_enabled = channel_setting.get('enable_conversation_detection', 0) if channel_setting else 0
 
+                # Debug logging for conversation detection settings
+                self.logger.debug(f"CONV_DETECT: channel_setting exists: {channel_setting is not None}")
+                if channel_setting:
+                    self.logger.debug(f"CONV_DETECT: enable_conversation_detection = {channel_setting.get('enable_conversation_detection', 'KEY_NOT_FOUND')}")
+                    self.logger.debug(f"CONV_DETECT: conversation_detection_threshold = {channel_setting.get('conversation_detection_threshold', 'KEY_NOT_FOUND')}")
+                    self.logger.debug(f"CONV_DETECT: conversation_context_window = {channel_setting.get('conversation_context_window', 'KEY_NOT_FOUND')}")
+                self.logger.debug(f"CONV_DETECT: Final enabled value = {conversation_detection_enabled}")
+
                 if conversation_detection_enabled:
                     # Get configuration
                     threshold = channel_setting.get('conversation_detection_threshold', 0.7)

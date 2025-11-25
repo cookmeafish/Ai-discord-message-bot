@@ -189,19 +189,28 @@ class AdminCog(commands.Cog):
             color=discord.Color.green()
         )
 
+        # Helper function to format metric with lock indicator
+        def format_metric(name, value, max_val=10, show_range=None):
+            lock_key = f"{name.lower()}_locked"
+            is_locked = metrics.get(lock_key, False)
+            lock_icon = " 🔒" if is_locked else ""
+            if show_range:
+                return f"{value} ({show_range}){lock_icon}"
+            return f"{value}/{max_val}{lock_icon}"
+
         # Core metrics
-        embed.add_field(name="Rapport", value=f"{metrics['rapport']}/10", inline=True)
-        embed.add_field(name="Trust", value=f"{metrics['trust']}/10", inline=True)
-        embed.add_field(name="Anger", value=f"{metrics['anger']}/10", inline=True)
-        embed.add_field(name="Formality", value=f"{metrics['formality']} (range: -5 to +5)", inline=False)
+        embed.add_field(name="Rapport", value=format_metric("rapport", metrics['rapport']), inline=True)
+        embed.add_field(name="Trust", value=format_metric("trust", metrics['trust']), inline=True)
+        embed.add_field(name="Anger", value=format_metric("anger", metrics['anger']), inline=True)
+        embed.add_field(name="Formality", value=format_metric("formality", metrics['formality'], show_range="-5 to +5"), inline=False)
 
         # New expanded metrics (2025-10-16)
         if 'fear' in metrics:
-            embed.add_field(name="Fear", value=f"{metrics['fear']}/10", inline=True)
-            embed.add_field(name="Respect", value=f"{metrics['respect']}/10", inline=True)
-            embed.add_field(name="Affection", value=f"{metrics['affection']}/10", inline=True)
-            embed.add_field(name="Familiarity", value=f"{metrics['familiarity']}/10", inline=True)
-            embed.add_field(name="Intimidation", value=f"{metrics['intimidation']}/10", inline=True)
+            embed.add_field(name="Fear", value=format_metric("fear", metrics['fear']), inline=True)
+            embed.add_field(name="Respect", value=format_metric("respect", metrics['respect']), inline=True)
+            embed.add_field(name="Affection", value=format_metric("affection", metrics['affection']), inline=True)
+            embed.add_field(name="Familiarity", value=format_metric("familiarity", metrics['familiarity']), inline=True)
+            embed.add_field(name="Intimidation", value=format_metric("intimidation", metrics['intimidation']), inline=True)
 
         # Add interpretation
         interpretations = []
@@ -225,6 +234,11 @@ class AdminCog(commands.Cog):
 
         if interpretations:
             embed.add_field(name="Current State", value="\n".join(interpretations), inline=False)
+
+        # Check if any metrics are locked and add footer explanation
+        locked_metrics = [k.replace('_locked', '') for k, v in metrics.items() if k.endswith('_locked') and v]
+        if locked_metrics:
+            embed.set_footer(text="🔒 = Locked (won't change from automatic sentiment analysis)")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import datetime
 import openai
+import json
 
 class MemoryTasksCog(commands.Cog):
     """
@@ -13,6 +14,103 @@ class MemoryTasksCog(commands.Cog):
         self.bot = bot
         # Background task is commented out - uncomment when ready for automatic daily runs
         # self.memory_consolidation_loop.start()
+
+    async def _analyze_user_sentiment_batch(self, user_id, messages_list, db_manager, client, model):
+        """
+        Analyzes all messages from a user during consolidation and updates relationship metrics.
+        This is a batch analysis of the entire conversation history, not per-message.
+
+        Args:
+            user_id: Discord user ID
+            messages_list: List of message contents from this user
+            db_manager: Server-specific database manager
+            client: OpenAI client
+            model: AI model to use
+        """
+        if not messages_list:
+            return
+
+        # Combine messages for analysis
+        conversation_text = "\n".join([f"- {msg}" for msg in messages_list[-50:]])  # Last 50 messages max
+
+        sentiment_prompt = f"""Analyze these messages from a Discord user and determine their OVERALL sentiment toward the bot.
+Based on the conversation tone, determine if relationship metrics should change.
+
+User's messages:
+{conversation_text}
+
+Respond with ONLY a JSON object:
+{{
+    "should_update": true/false,
+    "rapport_change": 0,
+    "trust_change": 0,
+    "anger_change": 0,
+    "respect_change": 0,
+    "affection_change": 0,
+    "familiarity_change": 0,
+    "fear_change": 0,
+    "intimidation_change": 0,
+    "reason": "brief explanation"
+}}
+
+Guidelines (changes should be -2 to +2 based on OVERALL tone across all messages):
+- **Rapport**: Friendly/warm messages → +1/+2, Cold/dismissive → -1/-2
+- **Trust**: User shares personal info → +1, User is secretive/suspicious → -1
+- **Anger**: User is hostile/rude → +1/+2, User is patient/kind → -1/-2
+- **Respect**: User acknowledges bot's abilities → +1, User dismisses/mocks bot → -1
+- **Affection**: User expresses care/appreciation → +1, User is indifferent → -1
+- **Familiarity**: Regular positive interaction → +1 (slowly increases over time)
+- **Fear**: User makes threats → +1, User is reassuring/protective → -1
+- **Intimidation**: User displays power/authority → +1, User shows vulnerability/asks for help → -1
+
+IMPORTANT: Only set should_update to true if there's a clear pattern across messages.
+Normal casual conversation should result in no changes (should_update: false).
+"""
+
+        try:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[{'role': 'system', 'content': sentiment_prompt}],
+                max_tokens=150,
+                temperature=0.0
+            )
+
+            result_text = response.choices[0].message.content.strip()
+            result_text = result_text.replace('```json', '').replace('```', '').strip()
+            result = json.loads(result_text)
+
+            if result.get('should_update', False):
+                current_metrics = db_manager.get_relationship_metrics(user_id)
+
+                updates = {}
+                metric_changes = [
+                    ('rapport', 'rapport_change'),
+                    ('trust', 'trust_change'),
+                    ('anger', 'anger_change'),
+                    ('respect', 'respect_change'),
+                    ('affection', 'affection_change'),
+                    ('familiarity', 'familiarity_change'),
+                    ('fear', 'fear_change'),
+                    ('intimidation', 'intimidation_change')
+                ]
+
+                for metric_name, change_key in metric_changes:
+                    change = result.get(change_key, 0)
+                    if change != 0 and metric_name in current_metrics:
+                        new_value = max(0, min(10, current_metrics[metric_name] + change))
+                        updates[metric_name] = new_value
+
+                if updates:
+                    # Update with respect_locks=True to honor locked metrics
+                    db_manager.update_relationship_metrics(user_id, respect_locks=True, **updates)
+                    print(f"  📊 Updated metrics for user {user_id}: {result.get('reason', 'sentiment analysis')}")
+                    for metric_name, new_value in updates.items():
+                        old_value = current_metrics[metric_name]
+                        if old_value != new_value:
+                            print(f"     {metric_name}: {old_value} → {new_value}")
+
+        except Exception as e:
+            print(f"  ⚠️ Sentiment analysis failed for user {user_id}: {e}")
 
     async def consolidate_memories(self, guild_id, db_manager):
         """
@@ -124,19 +222,31 @@ FACT: Favorite food is pizza
                 result = response.choices[0].message.content.strip()
 
                 # Parse extracted facts
+                facts = []
                 if result == "NO_FACTS":
                     print(f"No facts extracted for user {user_id}")
-                    users_processed += 1
-                    continue
+                else:
+                    # Extract facts from response
+                    for line in result.split('\n'):
+                        line = line.strip()
+                        if line.startswith("FACT:"):
+                            fact = line.replace("FACT:", "").strip()
+                            if fact:
+                                facts.append(fact)
 
-                # Extract facts from response
-                facts = []
-                for line in result.split('\n'):
-                    line = line.strip()
-                    if line.startswith("FACT:"):
-                        fact = line.replace("FACT:", "").strip()
-                        if fact:
-                            facts.append(fact)
+                # Only run sentiment analysis if user has enough messages (minimum 3)
+                # This prevents metrics from changing for inactive users or based on just 1-2 messages
+                MIN_MESSAGES_FOR_SENTIMENT = 3
+                if len(messages_list) >= MIN_MESSAGES_FOR_SENTIMENT:
+                    await self._analyze_user_sentiment_batch(user_id, messages_list, db_manager, client, model)
+                else:
+                    print(f"  ⏭️ Skipping sentiment analysis for user {user_id} (only {len(messages_list)} messages, need {MIN_MESSAGES_FOR_SENTIMENT})")
+
+                # If no facts, skip fact processing but still count as processed
+                if not facts:
+                    users_processed += 1
+                    print(f"Processed user {user_id}: 0 facts extracted (sentiment analyzed)")
+                    continue
 
                 # Save each fact to database with contradiction detection
                 for fact in facts:

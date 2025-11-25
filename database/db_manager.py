@@ -1360,7 +1360,16 @@ class DBManager:
                 cursor.close()
                 return None
 
-            cursor.execute("SELECT * FROM channel_settings WHERE channel_id = ?", (channel_id,))
+            # Use explicit column names to avoid issues with column order after migrations
+            # SQLite ALTER TABLE adds columns at the END, not in schema-defined order
+            cursor.execute("""
+                SELECT channel_id, channel_name, guild_id, purpose, random_reply_chance,
+                       immersive_character, allow_technical_language, use_server_info,
+                       enable_roleplay_formatting, allow_proactive_engagement,
+                       enable_conversation_detection, conversation_detection_threshold,
+                       conversation_context_window, formality, formality_locked, activated_at
+                FROM channel_settings WHERE channel_id = ?
+            """, (channel_id,))
             row = cursor.fetchone()
             cursor.close()
 
@@ -1378,9 +1387,12 @@ class DBManager:
                 'use_server_info': bool(row[7]),
                 'enable_roleplay_formatting': bool(row[8]),
                 'allow_proactive_engagement': bool(row[9]),
-                'formality': row[10],
-                'formality_locked': bool(row[11]),
-                'activated_at': row[12]
+                'enable_conversation_detection': bool(row[10]) if row[10] is not None else False,
+                'conversation_detection_threshold': row[11] if row[11] is not None else 0.7,
+                'conversation_context_window': row[12] if row[12] is not None else 10,
+                'formality': row[13],
+                'formality_locked': bool(row[14]),
+                'activated_at': row[15]
             }
         except Exception as e:
             print(f"DATABASE ERROR: Failed to get channel setting for {channel_id}: {e}")
@@ -1408,10 +1420,18 @@ class DBManager:
                 cursor.close()
                 return {}
 
+            # Use explicit column names to avoid issues with column order after migrations
+            # SQLite ALTER TABLE adds columns at the END, not in schema-defined order
+            columns = """channel_id, channel_name, guild_id, purpose, random_reply_chance,
+                        immersive_character, allow_technical_language, use_server_info,
+                        enable_roleplay_formatting, allow_proactive_engagement,
+                        enable_conversation_detection, conversation_detection_threshold,
+                        conversation_context_window, formality, formality_locked, activated_at"""
+
             if guild_id:
-                cursor.execute("SELECT * FROM channel_settings WHERE guild_id = ?", (guild_id,))
+                cursor.execute(f"SELECT {columns} FROM channel_settings WHERE guild_id = ?", (guild_id,))
             else:
-                cursor.execute("SELECT * FROM channel_settings")
+                cursor.execute(f"SELECT {columns} FROM channel_settings")
 
             rows = cursor.fetchall()
             cursor.close()
@@ -1429,9 +1449,12 @@ class DBManager:
                     'use_server_info': bool(row[7]),
                     'enable_roleplay_formatting': bool(row[8]),
                     'allow_proactive_engagement': bool(row[9]),
-                    'formality': row[10],
-                    'formality_locked': bool(row[11]),
-                    'activated_at': row[12]
+                    'enable_conversation_detection': bool(row[10]) if row[10] is not None else False,
+                    'conversation_detection_threshold': row[11] if row[11] is not None else 0.7,
+                    'conversation_context_window': row[12] if row[12] is not None else 10,
+                    'formality': row[13],
+                    'formality_locked': bool(row[14]),
+                    'activated_at': row[15]
                 }
 
             return channels

@@ -298,6 +298,53 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Config**: `config.json` under `image_generation` section
   - **GUI Integration**: Checkbox for enable/disable, fields for period limit and reset hours
 
+### Image Refinement System (2025-11-24)
+- `modules/image_refiner.py` - Detects and handles image refinement requests
+- **Purpose**: Allows users to iteratively refine generated images without starting over
+- **Flow**:
+  1. User generates image ("draw a cat")
+  2. Bot caches the prompt
+  3. User requests refinement ("make it blue", "add a hat")
+  4. Refiner detects refinement intent and modifies prompt minimally
+  5. New image generated with refined prompt
+- **Refinement Detection**: GPT-4o-mini analyzes if user wants to refine previous image
+  - Detects: corrections, additions, modifications, critiques
+  - Ignores: general conversation, new image requests, unrelated messages
+  - **Bot Name Stripping (2025-11-24)**: Strips bot name from user message before analysis to prevent contamination
+- **Prompt Modification**: Makes MINIMAL changes to original prompt
+  - **Strict Rules**: No new people, no new scenes, no creativity beyond request
+  - **Temperature 0.0**: Deterministic output to prevent creative additions
+  - **Examples**:
+    - "make it blue" → adds "blue" to original prompt
+    - "add a sword" → adds "with a sword" to original prompt
+- **Refinement Safeguards (2025-11-24)**:
+  - **Skip AI Enhancement**: Refined prompts bypass GPT-4 enhancement to prevent creative contamination
+  - **Skip User Context**: User facts/names not loaded during refinements to prevent identity leakage
+  - **Bot Name Stripped**: "@Dr. Fish add a sword" → "add a sword" before processing
+- **Rate Limiting**: Max 3 refinements per image (configurable)
+- **Cache Duration**: Prompts cached for refinement window (configurable in config.json)
+
+### Temporal Context System (2025-11-24)
+- **Purpose**: Provides date/time awareness to the bot ONLY when relevant
+- **Implementation**: `modules/ai_handler.py:_needs_temporal_context()`
+- **Keyword-Based Detection**: No extra API call - uses simple keyword matching
+  - **Time Keywords**: "when", "what time", "today", "yesterday", "ago", "how long", etc.
+  - **Memory Keywords**: "remember when", "you said", "I told you", "earlier you", etc.
+- **Conditional Inclusion**:
+  - When relevant: Bot prompt includes current date/time, messages include timestamps
+  - When not relevant: No temporal information included (saves tokens, prevents random time references)
+- **Message Timestamp Format**: `UserName (ID: 123) [2 hours ago]: message`
+- **Date Format**: `📅 Current Date & Time: November 24, 2025 (Sunday) at 03:45 PM`
+- **Applied To**:
+  - Main `generate_response()` - checks current message + recent messages
+  - Proactive engagement - checks recent conversation context
+  - Image responses - never includes temporal (not relevant to images)
+- **Example Triggers**:
+  - "when did I tell you that?" → temporal ON
+  - "you said something earlier" → temporal ON
+  - "what's up?" → temporal OFF
+  - "draw me a cat" → temporal OFF
+
 ### Daily Status Updates Module (2025-10-16, Updated 2025-10-18)
 - `modules/status_updater.py` - AI-generated Discord status updates
 - `cogs/status_tasks.py` - Background task for daily status generation and memory consolidation scheduling
@@ -564,6 +611,11 @@ Per-channel configuration stored in database (per-server):
   - AI determines if new fact contradicts any existing fact
   - If contradiction detected, old fact is **updated** instead of creating duplicate
   - If no contradiction, fact is added as new
+- **Batch Sentiment Analysis (2025-11-24)**: During consolidation, analyzes user sentiment to update relationship metrics
+  - **Minimum Message Threshold**: Only runs for users with 3+ messages in short-term memory
+  - **Metrics Updated**: rapport, trust, anger, respect, affection, familiarity, fear, intimidation
+  - **Respects Locks**: Locked metrics are not modified during sentiment analysis
+  - Prevents inactive users from having metrics changed based on insufficient data
 - Facts are saved to (or updated in) that server's `long_term_memory` with source attribution
 - All short-term messages are then archived to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
 - After archival, short-term table is cleared for that server
@@ -581,9 +633,11 @@ Per-channel configuration stored in database (per-server):
 - `/identity_add_fact` - Add quirk/behavior (for THIS server)
 - `/identity_view` - Display complete personality (for THIS server)
 
-### User Relationship Management (Updated 2025-10-18)
+### User Relationship Management (Updated 2025-11-24)
 - `/user_view_metrics` - View relationship stats (for THIS server)
   - Accepts user mention (`@username`) or user ID (`123456789`)
+  - **Lock Indicators (2025-11-24)**: Shows 🔒 icon next to locked metrics
+  - Footer explains lock status when any metrics are locked
 - `/user_set_metrics` - Manually adjust metrics (for THIS server)
   - Accepts user mention (`@username`) or user ID (`123456789`)
 - `/user_view_memory` - View stored facts (for THIS server)

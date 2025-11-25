@@ -20,6 +20,10 @@ class AIHandler:
         self.formatter = FormattingHandler()
         self.image_generator = ImageGenerator(emote_handler.bot.config_manager, self.client)
 
+        # Storage for image refinement prompts (keyed by author_id)
+        # Used because Discord Message objects don't allow arbitrary attribute assignment
+        self._refinement_prompts = {}
+
         # Load AI model configuration from config
         self.config = emote_handler.bot.config_manager.get_config()
         self.model_config = self.config.get('ai_models', {})
@@ -185,7 +189,7 @@ class AIHandler:
 
         return self.formatter.format_actions(text, enable_formatting)
 
-    def _build_bot_identity_prompt(self, db_manager, channel_config):
+    def _build_bot_identity_prompt(self, db_manager, channel_config, include_temporal=False):
         """
         Builds a comprehensive prompt section about the bot's identity from the database.
         Returns a formatted string with traits, lore, and facts.
@@ -193,6 +197,7 @@ class AIHandler:
         Args:
             db_manager: Server-specific database manager
             channel_config: Channel configuration for personality mode settings
+            include_temporal: Whether to include current date/time (only when relevant)
         """
 
         # Get all bot identity entries from database
@@ -201,6 +206,11 @@ class AIHandler:
         facts = db_manager.get_bot_identity("fact")
 
         identity_prompt = "=== YOUR IDENTITY ===\n"
+
+        # Only add date/time when temporal context is relevant to the conversation
+        if include_temporal:
+            now = datetime.datetime.now()
+            identity_prompt += f"📅 Current Date & Time: {now.strftime('%B %d, %Y')} ({now.strftime('%A')}) at {now.strftime('%I:%M %p')}\n\n"
 
         if traits:
             identity_prompt += "Core Traits:\n"
@@ -285,6 +295,97 @@ class AIHandler:
             'immersive_character': immersive,
             'allow_technical_language': technical
         }
+
+    def _needs_temporal_context(self, message_content, recent_messages=None):
+        """
+        Detects if a message would benefit from temporal context (date/time/timestamps).
+        Uses keyword-based detection to avoid extra API calls.
+
+        Args:
+            message_content: The current message content to analyze
+            recent_messages: Optional list of recent messages to check for temporal references
+
+        Returns:
+            bool: True if temporal context would improve the response
+        """
+        content_lower = message_content.lower()
+
+        # Time-related keywords
+        time_keywords = [
+            'when', 'what time', 'what day', 'today', 'yesterday', 'tomorrow',
+            'earlier', 'before', 'ago', 'last time', 'how long', 'since when',
+            'what date', 'which day', 'this morning', 'tonight', 'last night',
+            'this week', 'last week', 'recently', 'just now', 'a while ago',
+            'minutes ago', 'hours ago', 'days ago'
+        ]
+
+        # Memory/recall keywords that benefit from timestamps
+        memory_keywords = [
+            'remember when', 'you said', 'i said', 'i told you', 'you told me',
+            'mentioned', 'we talked', 'we discussed', 'you asked', 'i asked',
+            'did i tell', 'did you say', 'what did i', 'what did you',
+            'earlier you', 'before you', 'last time you', 'first time'
+        ]
+
+        # Check for time-related keywords
+        for keyword in time_keywords:
+            if keyword in content_lower:
+                return True
+
+        # Check for memory keywords
+        for keyword in memory_keywords:
+            if keyword in content_lower:
+                return True
+
+        # Check recent messages for temporal discussion context
+        if recent_messages:
+            recent_text = ' '.join([
+                msg.get('content', '') if isinstance(msg, dict) else msg.content
+                for msg in recent_messages[-5:]
+            ]).lower()
+
+            # If recent conversation has temporal references, include context
+            for keyword in time_keywords[:10]:  # Check main time keywords
+                if keyword in recent_text:
+                    return True
+
+        return False
+
+    def _format_relative_time(self, timestamp_str):
+        """
+        Converts an ISO timestamp string to a human-readable relative time.
+
+        Args:
+            timestamp_str: ISO format timestamp string
+
+        Returns:
+            String like "just now", "5 minutes ago", "2 hours ago", "yesterday", etc.
+        """
+        try:
+            # Parse the timestamp
+            msg_time = parser.parse(timestamp_str)
+            now = datetime.datetime.now(msg_time.tzinfo) if msg_time.tzinfo else datetime.datetime.now()
+
+            # Calculate difference
+            diff = now - msg_time
+            seconds = diff.total_seconds()
+
+            if seconds < 60:
+                return "just now"
+            elif seconds < 3600:  # Less than 1 hour
+                minutes = int(seconds / 60)
+                return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+            elif seconds < 86400:  # Less than 24 hours
+                hours = int(seconds / 3600)
+                return f"{hours} hour{'s' if hours != 1 else ''} ago"
+            elif seconds < 172800:  # Less than 48 hours
+                return "yesterday"
+            else:
+                days = int(seconds / 86400)
+                return f"{days} days ago"
+        except Exception as e:
+            print(f"AI Handler: Error parsing timestamp '{timestamp_str}': {e}")
+            return ""
 
     def _load_server_info(self, channel_config, guild_id, server_name):
         """
@@ -815,6 +916,8 @@ Should any metrics change? Respond ONLY with a JSON object:
     "respect_change": 0,
     "affection_change": 0,
     "familiarity_change": 0,
+    "fear_change": 0,
+    "intimidation_change": 0,
     "reason": "brief explanation"
 }}
 
@@ -838,7 +941,18 @@ Guidelines for New Metrics (respect, affection, familiarity):
   - Regular positive conversation → familiarity +1 (rare, only for meaningful exchanges)
   - Most interactions → no change
 
-Note: Fear and intimidation are NOT updated through sentiment analysis - they are set manually based on user status/reputation.
+Guidelines for Fear and Intimidation:
+- **Fear**: How scared the bot is of the user. Changes based on threats or reassurance.
+  - User makes threats or acts aggressively → fear +1
+  - User is kind, reassuring, or protective → fear -1
+  - "I'll delete you" → fear +1
+  - "don't worry, I won't hurt you" → fear -1
+- **Intimidation**: How intimidating the user appears to the bot. Changes based on displays of power or vulnerability.
+  - User displays power, authority, or dominance → intimidation +1
+  - User shows vulnerability, asks for help, or is humble → intimidation -1
+  - "I'm the admin here" → intimidation +1
+  - "can you help me? I'm confused" → intimidation -1
+  - Normal conversation → no change (these should change RARELY)
 """
         
         # Get model configuration for sentiment analysis
@@ -887,6 +1001,16 @@ Note: Fear and intimidation are NOT updated through sentiment analysis - they ar
                         updates['affection'] = max(0, min(10, current_metrics['affection'] + affection_change))
                     if familiarity_change != 0:
                         updates['familiarity'] = max(0, min(10, current_metrics['familiarity'] + familiarity_change))
+
+                # Fear and intimidation metrics
+                if 'fear' in current_metrics:
+                    fear_change = result.get('fear_change', 0)
+                    intimidation_change = result.get('intimidation_change', 0)
+
+                    if fear_change != 0:
+                        updates['fear'] = max(0, min(10, current_metrics['fear'] + fear_change))
+                    if intimidation_change != 0:
+                        updates['intimidation'] = max(0, min(10, current_metrics['intimidation'] + intimidation_change))
 
                 # Only update if there are actual changes
                 if updates:
@@ -1328,8 +1452,12 @@ Examples:
                 minutes_since_generation = (datetime.datetime.now() - cached_prompt_data["timestamp"]).total_seconds() / 60
                 print(f"   Time since generation: {minutes_since_generation:.1f} minutes")
 
+                # Strip bot name from user message to prevent it from contaminating refinement detection
+                clean_user_message = self._strip_bot_name_from_prompt(message.content, message.guild)
+                print(f"   Clean user message for refinement: '{clean_user_message}'")
+
                 refinement_result = await self.image_generator.refiner.detect_refinement(
-                    user_message=message.content,
+                    user_message=clean_user_message,
                     original_prompt=cached_prompt_data["prompt"],
                     minutes_since_generation=minutes_since_generation
                 )
@@ -1352,15 +1480,15 @@ Examples:
                         changes_requested=refinement_result["changes_requested"]
                     )
 
-                    print(f"   📝 Setting message._refinement_prompt = '{modified_prompt}'")
+                    print(f"   📝 Storing refinement prompt for author {message.author.id}: '{modified_prompt}'")
 
                     # Increment refinement count
                     new_count = self.image_generator.increment_refinement_count(message.author.id)
                     print(f"   🔢 Incremented refinement count to {new_count}")
 
-                    # Override intent to trigger image generation with modified prompt
-                    # We'll set a flag to bypass intent classification and use the modified prompt
-                    message._refinement_prompt = modified_prompt
+                    # Store refinement prompt in dictionary (keyed by author_id)
+                    # Discord Message objects don't allow arbitrary attribute assignment
+                    self._refinement_prompts[message.author.id] = modified_prompt
                     intent = "image_generation"
                     print(f"   🎯 Forcing intent to 'image_generation' with refined prompt\n")
                 else:
@@ -1391,8 +1519,13 @@ Examples:
         # Get randomized emote sample for variety
         available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
 
-        # Build bot identity from database
-        identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
+        # Check if temporal context would improve the response (keyword-based, no API call)
+        needs_temporal = self._needs_temporal_context(message.content, short_term_memory)
+        if needs_temporal:
+            print(f"AI Handler: Temporal context ENABLED for this message")
+
+        # Build bot identity from database (include date/time only when relevant)
+        identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config, include_temporal=needs_temporal)
 
         # Calculate conversation energy for dynamic response length (MUST be done before building relationship context)
         bot_id = channel.guild.me.id
@@ -1450,9 +1583,11 @@ Examples:
 
             try:
                 # Check if this is a refinement (modified prompt) or a new image request
-                if hasattr(message, '_refinement_prompt'):
+                # Refinement prompts are stored in self._refinement_prompts dictionary by author_id
+                is_refinement_request = message.author.id in self._refinement_prompts
+                if is_refinement_request:
                     # This is a refinement - use the modified prompt directly
-                    clean_prompt = message._refinement_prompt
+                    clean_prompt = self._refinement_prompts.pop(message.author.id)  # Pop to remove after use
                     print(f"\n🔄 IMAGE REFINEMENT MODE ACTIVE")
                     print(f"   Using refined prompt: '{clean_prompt}'")
                 else:
@@ -1465,8 +1600,11 @@ Examples:
                 # Check if any users are mentioned in the prompt and get their facts
                 # CRITICAL: Check DATABASE nicknames table FIRST before checking guild members
                 # This ensures we find the correct user with facts, not random guild members with similar names
+                # SKIP context for refinements - use the refined prompt as-is to prevent contamination
                 image_context = None
-                if message.guild:
+                if is_refinement_request:
+                    print(f"AI Handler: SKIPPING user context search (refinement mode - using prompt as-is)")
+                elif message.guild:
                     mentioned_users = []
                     prompt_lower = clean_prompt.lower()
                     print(f"AI Handler: Looking for users mentioned in prompt: '{prompt_lower}'")
@@ -1495,10 +1633,14 @@ Examples:
 
                     # Check if the prompt starts with reflexive pronouns (is the primary subject)
                     reflexive_pronouns = ['yourself', 'you', 'self']
-                    is_bot_primary_subject = any(subject_prompt.startswith(pronoun) for pronoun in reflexive_pronouns)
+                    is_bot_primary_subject = any(subject_prompt.startswith(pronoun + ' ') or subject_prompt == pronoun for pronoun in reflexive_pronouns)
 
                     # Also check if bot is mentioned alongside other subjects (e.g., "you and alice")
-                    bot_mentioned = any(pronoun in subject_prompt for pronoun in reflexive_pronouns)
+                    # Use word boundary matching to avoid false positives like "your" matching "you"
+                    bot_mentioned = any(
+                        re.search(r'\b' + re.escape(pronoun) + r'\b', subject_prompt)
+                        for pronoun in reflexive_pronouns
+                    )
 
                     # Load bot identity if bot is mentioned at all (primary or secondary)
                     bot_identity_context = None
@@ -1847,15 +1989,18 @@ Respond with ONLY the extracted visual description, nothing else.
                                 print(f"AI Handler: No context parts built (no facts found for mentioned users)")
 
                 # Generate the image with context (enhanced with AI if enabled)
+                # For refinements, skip enhancement to preserve the minimal changes
                 print(f"\n🎨 CALLING IMAGE GENERATOR:")
                 print(f"   Prompt: '{clean_prompt}'")
                 print(f"   Context: '{image_context if image_context else 'None'}'")
+                print(f"   Is Refinement: {is_refinement_request}")
 
                 image_bytes, error_msg = await self.image_generator.generate_image(
                     clean_prompt,
                     image_context,
                     db_manager,
-                    short_term_memory
+                    short_term_memory,
+                    is_refinement=is_refinement_request
                 )
 
                 # Cache the prompt for potential refinement (do this even if generation failed)
@@ -1907,10 +2052,9 @@ Respond naturally as if you tried to draw but messed up or ran into problems.
                 # Success! Image generated, now send it
                 # Increment the image count AFTER successful generation
                 # BUT: Skip increment for refinements if configured to allow refinements after rate limit
-                is_refinement = hasattr(message, '_refinement_prompt')
                 allow_refinement_after_limit = refinement_config.get('allow_refinement_after_rate_limit', True)
 
-                if not is_refinement or not allow_refinement_after_limit:
+                if not is_refinement_request or not allow_refinement_after_limit:
                     # Either this is a new image, or refinements count toward limit
                     db_manager.increment_user_image_count(author.id, reset_period_hours)
                     print(f"AI Handler: Incremented image count for user {author.id}")
@@ -2698,6 +2842,12 @@ Respond with ONLY the fact ID number or "NONE".
             role = "assistant" if msg_data["author_id"] == self.emote_handler.bot.user.id else "user"
             clean_content = self._strip_discord_formatting(msg_data["content"])
 
+            # Only include timestamps when temporal context is relevant
+            time_str = ""
+            if needs_temporal:
+                relative_time = self._format_relative_time(msg_data.get("timestamp", ""))
+                time_str = f" [{relative_time}]" if relative_time else ""
+
             # Only add author name prefix for user messages, not assistant messages
             # This prevents the bot from mimicking "Bot Name:" prefix in its responses
             if role == "user":
@@ -2708,12 +2858,14 @@ Respond with ONLY the fact ID number or "NONE".
                     if member:
                         author_name = member.display_name
 
-                # Include BOTH nickname and user ID to help AI correlate facts with users
-                # Format: "Nickname (ID: 123456789): message"
-                content = f'{author_name} (ID: {msg_data["author_id"]}): {clean_content}'
+                # Include nickname, user ID, and timestamp (if temporal) to help AI with context
+                content = f'{author_name} (ID: {msg_data["author_id"]}){time_str}: {clean_content}'
             else:
-                # Assistant messages don't get a name prefix
-                content = clean_content
+                # Assistant messages include timestamp (if temporal) but no name prefix
+                if needs_temporal and time_str:
+                    content = f'{time_str.strip()} {clean_content}'
+                else:
+                    content = clean_content
 
             messages_for_api.append({'role': role, 'content': content})
 
@@ -2793,8 +2945,15 @@ Respond with ONLY the fact ID number or "NONE".
             else:
                 energy_level = "HIGH"
 
+            # Check if temporal context would be useful for this conversation
+            # For proactive engagement, check the recent messages for temporal keywords
+            recent_text = ' '.join([msg.content for msg in recent_messages[-5:] if hasattr(msg, 'content')])
+            needs_temporal = self._needs_temporal_context(recent_text)
+            if needs_temporal:
+                print(f"AI Handler (Proactive): Temporal context ENABLED")
+
             # Build bot identity from database (personality traits/lore)
-            identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
+            identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config, include_temporal=needs_temporal)
 
             # Get server info if enabled
             personality_mode = self._get_personality_mode(personality_config)
@@ -2806,7 +2965,12 @@ Respond with ONLY the fact ID number or "NONE".
                 author_name = msg.author.display_name if hasattr(msg, 'author') else "Unknown"
                 author_id = msg.author.id if hasattr(msg, 'author') else 0
                 clean_content = self._strip_discord_formatting(msg.content)
-                conversation_history += f"{author_name} (ID: {author_id}): {clean_content}\n"
+                # Only include timestamps when temporal context is relevant
+                time_str = ""
+                if needs_temporal and hasattr(msg, 'created_at'):
+                    relative_time = self._format_relative_time(msg.created_at.isoformat())
+                    time_str = f" [{relative_time}]" if relative_time else ""
+                conversation_history += f"{author_name} (ID: {author_id}){time_str}: {clean_content}\n"
 
             # Build energy override section for proactive responses
             energy_override = ""
