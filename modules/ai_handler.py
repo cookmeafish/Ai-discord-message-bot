@@ -1456,10 +1456,20 @@ Examples:
                 clean_user_message = self._strip_bot_name_from_prompt(message.content, message.guild)
                 print(f"   Clean user message for refinement: '{clean_user_message}'")
 
+                # Build recent conversation context for topic change detection
+                recent_conversation = []
+                if short_term_memory:
+                    for msg in short_term_memory[-10:]:  # Last 10 messages
+                        author_name = msg.get('nickname') or msg.get('author_id', 'Unknown')
+                        content = msg.get('content', '')
+                        if content:
+                            recent_conversation.append(f"{author_name}: {content}")
+
                 refinement_result = await self.image_generator.refiner.detect_refinement(
                     user_message=clean_user_message,
                     original_prompt=cached_prompt_data["prompt"],
-                    minutes_since_generation=minutes_since_generation
+                    minutes_since_generation=minutes_since_generation,
+                    recent_conversation=recent_conversation
                 )
 
                 threshold = refinement_config.get('detection_threshold', 0.7)

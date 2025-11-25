@@ -24,7 +24,7 @@ class ImageRefiner:
         """Set the OpenAI client (called by image generator during initialization)"""
         self.client = client
 
-    async def detect_refinement(self, user_message, original_prompt, minutes_since_generation):
+    async def detect_refinement(self, user_message, original_prompt, minutes_since_generation, recent_conversation=None):
         """
         Analyzes user message to determine if they want to refine the previous image.
 
@@ -32,6 +32,7 @@ class ImageRefiner:
             user_message: The user's current message
             original_prompt: The prompt used to generate the previous image
             minutes_since_generation: How many minutes ago the image was generated
+            recent_conversation: List of recent messages to detect topic changes
 
         Returns:
             dict: {
@@ -46,50 +47,58 @@ class ImageRefiner:
         print(f"User message: '{user_message}'")
         print(f"Original prompt: '{original_prompt}'")
         print(f"Minutes since generation: {minutes_since_generation:.1f}")
+        print(f"Recent conversation provided: {len(recent_conversation) if recent_conversation else 0} messages")
 
         if not self.client:
             print("ImageRefiner: OpenAI client not set, cannot detect refinement")
             print(f"{'='*80}\n")
             return {"is_refinement": False, "confidence": 0.0, "changes_requested": ""}
 
+        # Build conversation context string if provided
+        conversation_context = ""
+        if recent_conversation:
+            conversation_context = "\nRECENT CONVERSATION (to detect topic changes):\n"
+            for msg in recent_conversation[-5:]:  # Last 5 messages
+                conversation_context += f"- {msg}\n"
+
         system_prompt = f"""You are analyzing a Discord message to determine if the user wants to refine/remake a recently generated image.
 
 CONTEXT:
-- The bot just generated an image for this user
+- The bot generated an image for this user
 - Original prompt: "{original_prompt}"
 - Time since generation: {minutes_since_generation} minutes ago
-
-USER'S MESSAGE: "{user_message}"
+{conversation_context}
+USER'S CURRENT MESSAGE: "{user_message}"
 
 Determine if this message is requesting a REFINEMENT of the previous image.
 
-**CRITICAL**: If the message references "that", "it", "the image", or the original subject, it IS a refinement!
+**CRITICAL - CHECK FOR TOPIC CHANGE FIRST**:
+Look at the recent conversation. If the user has:
+- Asked unrelated questions ("what are you doing later?", "how are you?")
+- Had a back-and-forth conversation about a different topic
+- Moved on from the image entirely
+Then the current message is likely responding to THAT conversation, NOT the image!
 
-Indicators of refinement request:
+Example of topic change (NOT a refinement):
+- Bot generates image
+- User: "what are you doing later today?"
+- Bot: "Probably lurking around..."
+- User: "yikes aggressive"  ← This is about the bot's TEXT response, NOT the image!
+
+**Indicators of refinement request** (ONLY if topic hasn't changed):
 ✅ Corrections: "no, I said...", "you forgot the...", "it's missing..."
 ✅ Additions: "also add...", "can you include...", "with a sword too"
 ✅ Modifications: "make it bigger", "change the color to...", "make it hold..."
-✅ Critiques: "that's wrong", "not what I wanted", "redo it with..."
-✅ Add subject interacting with image: "make a gorilla drink that", "have a cat eat it", "put a person next to it"
-✅ References to "that/it/the": "make X do Y with that", "add X to it", "put X on the"
+✅ Add subject interacting with image: "make a gorilla drink that", "have a cat eat it"
+✅ References to "that/it/the" about the IMAGE: "make X do Y with that", "add X to it"
 
-NOT a refinement request:
+**NOT a refinement request**:
+❌ Response to bot's text message (not the image)
+❌ Topic has changed since image was generated
 ❌ General conversation: "that's cool!", "I like it", "thanks", "nice"
-❌ Emotional reactions: "yikes", "wow", "lol", "haha", "omg", "yikes aggressive", "that's funny"
-❌ Unrelated message: "what's the weather?", "hey how are you", "what are you doing"
-❌ Completely new image request with NO reference to previous: "draw a dog", "draw something else entirely"
+❌ Emotional reactions: "yikes", "wow", "lol", "haha", "omg", "yikes aggressive"
 ❌ Comments about the bot: "you're weird", "that was aggressive", "ok then"
-❌ Single words or short exclamations without image modification intent
-
-**IMPORTANT**: The message MUST contain an actual IMAGE MODIFICATION REQUEST.
-Casual reactions to the image or conversation are NOT refinements.
-
-**KEY DISTINCTION**:
-- "draw a gorilla" = NEW request (no reference to previous image)
-- "make a gorilla drink that" = REFINEMENT (references "that" = the previous image subject)
-- "add a gorilla to it" = REFINEMENT (references "it")
-- "yikes aggressive" = NOT a refinement (just a reaction, no modification request)
-- "lol nice" = NOT a refinement (just a compliment)
+❌ Unrelated questions: "what's the weather?", "hey how are you"
 
 Respond with JSON:
 {{
