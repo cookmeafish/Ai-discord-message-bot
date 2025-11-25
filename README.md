@@ -451,11 +451,25 @@ All Phase 3 features have been fully implemented:
   - Status memory toggle: /server_set_status_memory
   - Note: Emote sources remain GUI-only due to UI complexity
 
-## Phase 4 (PROPOSED)
+## Phase 4 (PARTIALLY COMPLETED ✅)
 
-**Server_Info Folder System - Fandom & Lore Management**
+**VPS Headless Deployment - COMPLETED ✅ (2025-11-23)**
 
-The proposed Phase 4 introduces a hierarchical folder system for Server_Info, allowing better organization and selective context loading for fandom and roleplay servers:
+All GUI settings now have Discord command equivalents for remote VPS management:
+- 6 Global configuration commands (`/config_*`)
+- 3 Image generation commands (`/image_config_*`)
+- 4 Status update commands (`/status_config_*`)
+- 5 Per-channel commands (`/channel_*`)
+- 2 Per-server commands (`/server_*`)
+- 2 User metric locking commands (`/user_lock_metrics`, `/user_unlock_metrics`)
+
+**Total: 22 new admin commands** for complete headless VPS deployment support.
+
+---
+
+**Server_Info Folder System - PROPOSED**
+
+The proposed hierarchical folder system for Server_Info would allow better organization and selective context loading for fandom and roleplay servers:
 
 **Current System**: All `.txt` files in `Server_Info/{ServerName}/` are loaded when enabled
 
@@ -485,7 +499,38 @@ Server_Info/{ServerName}/
 
 See `PLANNED_FEATURES.md` for full technical specification and implementation details.
 
-For complete Phase 4 roadmap, see `PLANNED_FEATURES.md`.
+For complete Phase 4 roadmap and hierarchical folder system details, see `PLANNED_FEATURES.md`.
+
+## Phase 5 (COMPLETED ✅)
+
+**All Phase 5 features have been fully implemented as of 2025-10-27:**
+
+### Intelligent Conversation Continuation Detection ✅
+- Bot detects when users are talking to it without explicit @mentions
+- Uses AI to analyze conversation context (GPT-4.1-mini)
+- Configurable threshold and context window
+- Global and per-channel control via Discord commands
+- See `modules/conversation_detector.py`
+
+**Discord Commands (2025-11-23)**:
+- `/channel_conversation_enable enabled:True` - Enable for this channel (optional: threshold, context_window)
+- `/channel_conversation_view` - View settings for this channel
+
+### Iterative Image Refinement ✅
+- Users can refine images naturally: "add fire", "make it bigger", "change color to blue"
+- AI detects refinement requests vs new image requests
+- Refinements don't count toward rate limit (configurable)
+- Max 3 refinements per image (prevents infinite loops)
+- See `modules/image_refiner.py`
+
+### Conversation Energy Priority Override ✅
+- Energy constraints now override relationship metrics
+- High affection/rapport won't cause verbosity during low-energy chats
+- Bot matches user's message length ("lol" → brief response, even with high affection)
+- Implemented as priority override system (like fear/intimidation)
+- See `modules/ai_handler.py` lines 385-420
+
+For complete feature details, see `PLANNED_FEATURES.md`.
 
 ## Documentation
 

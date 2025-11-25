@@ -664,9 +664,9 @@ Per-channel configuration stored in database (per-server):
     - `/get_logs lines:1000 date:20251020` - Last 1000 lines from Oct 20, 2025
   - **Use Cases**: Debugging issues remotely, monitoring bot behavior, troubleshooting without SSH access
 
-### VPS Headless Deployment Commands (2025-10-17)
+### VPS Headless Deployment Commands (2025-11-23)
 
-**CRITICAL FOR VPS**: All GUI settings now have Discord command equivalents for headless VPS deployment. See `AI_GUIDELINES.md` Section 7 for full implementation details.
+**CRITICAL FOR VPS**: All GUI settings now have Discord command equivalents for headless VPS deployment. See `AI_GUIDELINES.md` Section 7 for full implementation details. As of 2025-11-23, Phase 4 is fully completed with 25 commands total (including conversation detection).
 
 #### Global Bot Configuration
 - `/config_set_reply_chance` - Set global random reply chance (0.0-1.0)
@@ -689,6 +689,33 @@ Per-channel configuration stored in database (per-server):
 - `/status_config_set_source_server` - Choose which server's personality to use
 - `/status_config_view` - View current status configuration
 
+#### Conversation Continuation Configuration (NEW 2025-11-23)
+Per-channel conversation continuation - bot responds without @mentions when it detects users talking to it.
+
+- `/channel_conversation_enable` - Configure conversation continuation for this channel
+  - **Parameters:**
+    - `enabled` (required): True/False - enable conversation continuation
+    - `threshold` (optional, default: 0.7): Confidence threshold (0.0-1.0)
+      - Lower = more responsive (may respond when not intended)
+      - Higher = more selective (only responds when very confident)
+    - `context_window` (optional, default: 10): Number of recent messages to analyze (5-20)
+  - **Example**: `/channel_conversation_enable enabled:True threshold:0.6 context_window:12`
+  - **Quick enable**: `/channel_conversation_enable enabled:True` (uses defaults)
+
+- `/channel_conversation_view` - View current settings for this channel
+  - Shows status, threshold, context window, and explanation of how it works
+
+**How it works:**
+1. Bot analyzes last 10 messages (configurable) when you send a message
+2. AI scores message on 0.0-1.0 scale (how likely it's directed at bot)
+3. Bot responds if score ≥ threshold
+4. Example: "what's your favorite color?" → bot responds without @mention
+
+**Use cases:**
+- Natural conversation flow without repeated @mentions
+- Ideal for one-on-one conversations or small group chats
+- Can be disabled in busy channels to prevent unwanted responses
+
 #### Per-Channel Configuration
 - `/channel_set_purpose` - Set channel purpose/instructions
 - `/channel_set_reply_chance` - Set per-channel random reply chance
@@ -699,6 +726,16 @@ Per-channel configuration stored in database (per-server):
 #### Per-Server Configuration
 - `/server_set_emote_sources` - Manage emote sources (list/add/remove/clear)
 - `/server_view_settings` - View all server-specific settings
+
+#### User Metric Locking (NEW 2025-11-23)
+- `/user_lock_metrics` - Lock specific relationship metrics to prevent automatic sentiment-based updates
+  - Accepts user mention (`@username`) or user ID (`123456789`)
+  - Parameters: Select which metrics to lock (rapport, trust, anger, formality, fear, respect, affection, familiarity, intimidation)
+  - Example: `/user_lock_metrics user:@UserName rapport:True affection:True` - Locks rapport and affection for this user
+  - Use case: Manually control specific metrics while allowing others to update automatically
+- `/user_unlock_metrics` - Unlock specific relationship metrics to allow automatic updates
+  - Same parameters as `/user_lock_metrics`
+  - Example: `/user_unlock_metrics user:123456789 rapport:True` - Unlocks rapport metric
 
 **Note**: All commands are administrator-only and validate guild context. Changes take effect immediately without bot restart.
 

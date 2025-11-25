@@ -53,11 +53,66 @@ class DBManager:
                 cursor.execute(table_sql)
             self.conn.commit()
             print("Database initialized and tables verified successfully.")
+            # Run migrations for existing databases
+            self._run_migrations()
         except Exception as e:
             print(f"DATABASE ERROR: Failed to initialize tables: {e}")
             raise
         finally:
             cursor.close()
+
+    def _run_migrations(self):
+        """
+        Runs database migrations to add new columns to existing tables.
+        This is safe to run multiple times - it only adds columns that don't exist.
+        """
+        cursor = self.conn.cursor()
+        try:
+            # Migration: Add conversation detection columns to channel_settings (2025-01-23)
+            self._add_column_if_not_exists(
+                cursor,
+                'channel_settings',
+                'enable_conversation_detection',
+                'INTEGER DEFAULT 0'
+            )
+            self._add_column_if_not_exists(
+                cursor,
+                'channel_settings',
+                'conversation_detection_threshold',
+                'REAL DEFAULT 0.7'
+            )
+            self._add_column_if_not_exists(
+                cursor,
+                'channel_settings',
+                'conversation_context_window',
+                'INTEGER DEFAULT 10'
+            )
+
+            self.conn.commit()
+            print("Database migrations completed successfully.")
+        except Exception as e:
+            print(f"DATABASE WARNING: Migration error (may be safe to ignore): {e}")
+            # Don't raise - migrations are best-effort for backwards compatibility
+        finally:
+            cursor.close()
+
+    def _add_column_if_not_exists(self, cursor, table_name, column_name, column_definition):
+        """
+        Adds a column to a table if it doesn't already exist.
+
+        Args:
+            cursor: Database cursor
+            table_name: Name of the table
+            column_name: Name of the column to add
+            column_definition: SQL definition for the column (e.g., 'INTEGER DEFAULT 0')
+        """
+        # Check if column exists
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns = [row[1] for row in cursor.fetchall()]
+
+        if column_name not in columns:
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
+            print(f"Added column '{column_name}' to table '{table_name}'")
 
     def _ensure_archive_directory(self):
         """
@@ -1163,6 +1218,8 @@ class DBManager:
                            random_reply_chance=None, immersive_character=None,
                            allow_technical_language=None, use_server_info=None,
                            enable_roleplay_formatting=None, allow_proactive_engagement=None,
+                           enable_conversation_detection=None, conversation_detection_threshold=None,
+                           conversation_context_window=None,
                            formality=None, formality_locked=None):
         """
         Adds or updates a channel setting in the database.
@@ -1222,6 +1279,15 @@ class DBManager:
                 if allow_proactive_engagement is not None:
                     update_fields.append("allow_proactive_engagement = ?")
                     update_values.append(1 if allow_proactive_engagement else 0)
+                if enable_conversation_detection is not None:
+                    update_fields.append("enable_conversation_detection = ?")
+                    update_values.append(1 if enable_conversation_detection else 0)
+                if conversation_detection_threshold is not None:
+                    update_fields.append("conversation_detection_threshold = ?")
+                    update_values.append(conversation_detection_threshold)
+                if conversation_context_window is not None:
+                    update_fields.append("conversation_context_window = ?")
+                    update_values.append(conversation_context_window)
                 if formality is not None:
                     update_fields.append("formality = ?")
                     update_values.append(formality)
@@ -1243,8 +1309,10 @@ class DBManager:
                         channel_id, guild_id, channel_name, purpose, random_reply_chance,
                         immersive_character, allow_technical_language, use_server_info,
                         enable_roleplay_formatting, allow_proactive_engagement,
+                        enable_conversation_detection, conversation_detection_threshold,
+                        conversation_context_window,
                         formality, formality_locked, activated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     channel_id, guild_id, channel_name, purpose,
                     random_reply_chance if random_reply_chance is not None else 0.0,
@@ -1253,6 +1321,9 @@ class DBManager:
                     1 if use_server_info is True else (0 if use_server_info is False else 0),
                     1 if enable_roleplay_formatting is True else (0 if enable_roleplay_formatting is False else 1),
                     1 if allow_proactive_engagement is True else (0 if allow_proactive_engagement is False else 1),
+                    1 if enable_conversation_detection is True else (0 if enable_conversation_detection is False else 0),
+                    conversation_detection_threshold if conversation_detection_threshold is not None else 0.7,
+                    conversation_context_window if conversation_context_window is not None else 10,
                     formality if formality is not None else 0,
                     1 if formality_locked is True else (0 if formality_locked is False else 0),
                     now

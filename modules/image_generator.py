@@ -6,6 +6,7 @@ import asyncio
 import re
 from typing import Optional, Tuple, List, Dict
 from together import Together
+from datetime import datetime, timedelta
 
 
 class ImageGenerator:
@@ -48,6 +49,16 @@ class ImageGenerator:
             self.model = img_gen_config.get('model', self.model)
             self.enhance_with_ai = img_gen_config.get('enhance_with_ai_description', True)
 
+        # Prompt cache for image refinement
+        # Format: {user_id: {"prompt": str, "timestamp": datetime, "refinement_count": int}}
+        self.recent_prompts = {}
+
+        # Initialize image refiner
+        from modules.image_refiner import ImageRefiner
+        self.refiner = ImageRefiner(config_manager) if config_manager else None
+        if self.refiner and self.openai_client:
+            self.refiner.set_openai_client(self.openai_client)
+
     def is_available(self) -> bool:
         """
         Check if image generation is available.
@@ -56,6 +67,73 @@ class ImageGenerator:
             bool: True if API key is set and feature is enabled
         """
         return self.client is not None and self.enabled
+
+    # ==================== PROMPT CACHING FOR IMAGE REFINEMENT ====================
+
+    def cache_prompt(self, user_id: int, prompt: str):
+        """
+        Cache the prompt used for image generation to enable refinement.
+
+        Args:
+            user_id: Discord user ID
+            prompt: The prompt that was used to generate the image
+        """
+        self.recent_prompts[user_id] = {
+            "prompt": prompt,
+            "timestamp": datetime.now(),
+            "refinement_count": 0
+        }
+        print(f"ImageGenerator: Cached prompt for user {user_id}: '{prompt[:50]}...'")
+
+    def get_cached_prompt(self, user_id: int) -> Optional[Dict]:
+        """
+        Get the cached prompt for a user if within the cache duration window.
+
+        Args:
+            user_id: Discord user ID
+
+        Returns:
+            dict: {"prompt": str, "timestamp": datetime, "refinement_count": int} or None if expired/not found
+        """
+        if user_id not in self.recent_prompts:
+            return None
+
+        cached = self.recent_prompts[user_id]
+        cache_duration = timedelta(minutes=self.config_manager.get_config().get('image_refinement', {}).get('cache_duration_minutes', 10))
+
+        # Check if cache has expired
+        if datetime.now() - cached["timestamp"] > cache_duration:
+            print(f"ImageGenerator: Cached prompt expired for user {user_id}")
+            del self.recent_prompts[user_id]
+            return None
+
+        return cached
+
+    def increment_refinement_count(self, user_id: int) -> int:
+        """
+        Increment the refinement count for a user's cached prompt.
+
+        Args:
+            user_id: Discord user ID
+
+        Returns:
+            int: New refinement count
+        """
+        if user_id in self.recent_prompts:
+            self.recent_prompts[user_id]["refinement_count"] += 1
+            return self.recent_prompts[user_id]["refinement_count"]
+        return 0
+
+    def clear_cache(self, user_id: int):
+        """
+        Clear the cached prompt for a user.
+
+        Args:
+            user_id: Discord user ID
+        """
+        if user_id in self.recent_prompts:
+            del self.recent_prompts[user_id]
+            print(f"ImageGenerator: Cleared prompt cache for user {user_id}")
 
     async def _get_enhanced_visual_description(
         self,

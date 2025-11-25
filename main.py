@@ -9,6 +9,7 @@ import asyncio
 from modules.config_manager import ConfigManager
 from modules.emote_orchestrator import EmoteOrchestrator
 from modules.ai_handler import AIHandler
+from modules.conversation_detector import ConversationDetector
 from modules.logging_manager import get_logger
 from database.multi_db_manager import MultiDBManager
 
@@ -109,6 +110,11 @@ async def main():
 
     openai_api_key = config_manager.get_secret("OPENAI_API_KEY")
     bot.ai_handler = AIHandler(openai_api_key, bot.emote_handler)
+
+    # Initialize conversation detector
+    bot.conversation_detector = ConversationDetector(config_manager)
+    # Set the OpenAI client from AI handler
+    bot.conversation_detector.set_openai_client(bot.ai_handler.client)
     logger.info("All modules initialized.")
 
     # 6. Load all cogs

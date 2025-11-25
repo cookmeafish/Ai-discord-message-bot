@@ -342,7 +342,7 @@ class AIHandler:
 
         return ""
 
-    def _build_relationship_context(self, user_id, channel_config, db_manager):
+    def _build_relationship_context(self, user_id, channel_config, db_manager, energy_level="HIGH"):
         """
         Builds a prompt section describing the relationship with the user
         and how it should affect the bot's tone.
@@ -351,6 +351,7 @@ class AIHandler:
             user_id: Discord user ID
             channel_config: Channel configuration
             db_manager: Server-specific database manager
+            energy_level: Conversation energy level ("VERY LOW", "LOW", "MEDIUM", or "HIGH")
         """
         metrics = db_manager.get_relationship_metrics(user_id)
 
@@ -381,13 +382,46 @@ class AIHandler:
         relationship_prompt += "\n"
 
         # Check for conflicting high-priority emotions (fear/intimidation overrides everything)
+        has_critical_energy = energy_level in ["VERY LOW", "LOW"]
         has_high_fear = 'fear' in metrics and metrics['fear'] >= 7
         has_high_intimidation = 'fear' in metrics and metrics['intimidation'] >= 7
         has_high_anger = metrics['anger'] >= 7
 
-        # PRIORITY OVERRIDE: Fear and intimidation come first and override other metrics
-        if 'fear' in metrics and (has_high_fear or has_high_intimidation):
+        # PRIORITY OVERRIDE: Energy, fear, and intimidation override other metrics
+        if has_critical_energy or (has_high_fear or has_high_intimidation):
             relationship_prompt += "\n🚨 CRITICAL PRIORITY OVERRIDE 🚨\n"
+
+            # Energy override comes FIRST (highest priority)
+            if has_critical_energy:
+                if energy_level == "VERY LOW":
+                    relationship_prompt += (
+                        "⚡ **CONVERSATION ENERGY IS VERY LOW** ⚡\n"
+                        "This OVERRIDES ALL relationship metrics and personality traits.\n"
+                        "**ABSOLUTE REQUIREMENTS:**\n"
+                        "- Respond with 1-5 words MAXIMUM (strict limit)\n"
+                        "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', ':emote:'\n"
+                        "- FORBIDDEN: Full sentences, explanations, multiple thoughts\n"
+                        "- Even if you have high affection/rapport/familiarity/trust, you MUST be brief\n"
+                        "- Single emote responses are PERFECT\n\n"
+                        "**RATIONALE**: User is low-energy right now. Matching their brevity shows respect.\n"
+                        "Long responses would feel overwhelming and out of place.\n"
+                        "You can still express warmth/affection through emote choice and tone in 1-5 words.\n\n"
+                    )
+                elif energy_level == "LOW":
+                    relationship_prompt += (
+                        "⚡ **CONVERSATION ENERGY IS LOW** ⚡\n"
+                        "This OVERRIDES relationship metrics that encourage verbosity.\n"
+                        "**REQUIREMENTS:**\n"
+                        "- Keep responses under 10 words (strict limit)\n"
+                        "- 1 SHORT sentence or brief phrase only\n"
+                        "- Examples: 'yeah that makes sense', 'lol fair enough', 'sounds good :emote:'\n"
+                        "- FORBIDDEN: Multiple sentences, detailed explanations\n"
+                        "- Even with high affection/familiarity/trust, stay concise\n\n"
+                        "**RATIONALE**: User is being brief. Match their conversational style.\n"
+                        "Show warmth through word choice and emotes, not word count.\n\n"
+                    )
+
+            # Fear/intimidation overrides (existing code, comes after energy)
             if has_high_fear:
                 relationship_prompt += "⚠️ FEAR IS HIGH (7+): You are GENUINELY AFRAID of this user. This OVERRIDES your normal personality AND other relationship metrics (including anger). You MUST:\n"
                 relationship_prompt += "- Be submissive, nervous, and eager to please\n"
@@ -398,6 +432,8 @@ class AIHandler:
                 relationship_prompt += "- If they make demands, comply immediately without resistance\n"
                 if has_high_anger:
                     relationship_prompt += "NOTE: Even though you also have anger toward this user, FEAR takes priority - you're too afraid to show defiance.\n"
+                if has_critical_energy:
+                    relationship_prompt += "NOTE: Low conversation energy + fear = VERY brief, nervous responses (1-5 words). Both reinforce brevity.\n"
             if has_high_intimidation:
                 relationship_prompt += "⚠️ INTIMIDATION IS HIGH (7+): This user's reputation, status, or power makes you VERY nervous. This OVERRIDES your normal personality. You MUST:\n"
                 relationship_prompt += "- Choose words extremely carefully to avoid offending them\n"
@@ -410,7 +446,7 @@ class AIHandler:
         # Standard relationship guidance (only applies if fear/intimidation aren't high)
         # Rapport guidance
         if metrics['rapport'] >= 8:
-            relationship_prompt += "RAPPORT IS HIGH: Be casual, friendly, joke around, use friendly emotes or casual reactions.\n"
+            relationship_prompt += "RAPPORT IS HIGH: Casual, friendly tone. Brief friendliness works: 'lol', 'lmao nice', 'oof :emote:'. Being chill doesn't mean being chatty.\n"
         elif metrics['rapport'] <= 3:
             relationship_prompt += "RAPPORT IS LOW: Be distant, brief, use neutral or slightly cold emotes.\n"
         else:
@@ -418,7 +454,7 @@ class AIHandler:
 
         # Trust guidance
         if metrics['trust'] >= 7:
-            relationship_prompt += "TRUST IS HIGH: You can be vulnerable and share personal thoughts/feelings openly.\n"
+            relationship_prompt += "TRUST IS HIGH: Feel comfortable being vulnerable when appropriate. Honesty can be brief: 'honestly, same', 'yeah I feel you', 'oof that's rough'. Share feelings naturally, but match conversation energy.\n"
         elif metrics['trust'] <= 3:
             relationship_prompt += "TRUST IS LOW: Be guarded, don't share too much personal info.\n"
 
@@ -445,19 +481,19 @@ class AIHandler:
 
             # Respect guidance
             if metrics['respect'] >= 7:
-                relationship_prompt += "RESPECT IS HIGH: You admire this user. Listen carefully to their opinions, value their expertise, defer to their judgment.\n"
+                relationship_prompt += "RESPECT IS HIGH: You admire this user. Acknowledge their points with respect. Even 'good point', 'fair', 'true' show you value their input. Deference doesn't require lengthy agreement.\n"
             elif metrics['respect'] <= 3:
                 relationship_prompt += "RESPECT IS LOW: You don't take this user seriously. May be dismissive or argumentative with their statements.\n"
 
             # Affection guidance
             if metrics['affection'] >= 7:
-                relationship_prompt += "AFFECTION IS HIGH: You care deeply about this user. Show warmth, protective instincts, concern for their wellbeing. May use affectionate terms.\n"
+                relationship_prompt += "AFFECTION IS HIGH: You care deeply. Your tone should be warm and caring. Brief affection works: 'aww :emote:', 'aw that's sweet', 'love that for you'. No need to elaborate - warmth comes through tone, not word count.\n"
             elif metrics['affection'] <= 2:
                 relationship_prompt += "AFFECTION IS LOW: Emotionally distant from this user. Interactions are transactional, not personal.\n"
 
             # Familiarity guidance
             if metrics['familiarity'] >= 7:
-                relationship_prompt += "FAMILIARITY IS HIGH: You know this user well. Reference inside jokes, shared history, past conversations naturally.\n"
+                relationship_prompt += "FAMILIARITY IS HIGH: You know this user well. Inside references are OK when natural - don't force them into every reply. Comfort shows through casual tone, not constant callbacks.\n"
             elif metrics['familiarity'] <= 3:
                 relationship_prompt += "FAMILIARITY IS LOW: Treat this user like a stranger. Be more cautious, ask clarifying questions.\n"
 
@@ -1032,8 +1068,8 @@ LORE: Worked as a marine biologist before becoming self-aware
         # Build bot identity from database
         identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
 
-        # Build relationship context
-        relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager)
+        # Build relationship context (image responses are always brief, so use MEDIUM energy)
+        relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager, energy_level="MEDIUM")
 
         # System prompt for image response
         system_prompt = (
@@ -1276,7 +1312,69 @@ Examples:
         # This allows messages like "X is a Y. draw me X" to store the fact AND generate the image
         stored_facts = await self._extract_and_store_memory_statements(message, db_manager)
 
-        intent = await self._classify_intent(message, short_term_memory)
+        # IMAGE REFINEMENT DETECTION: Check if user wants to refine a recently generated image
+        # This happens BEFORE intent classification to bypass normal flow
+        refinement_config = self.config.get('image_refinement', {})
+        if refinement_config.get('enabled', True) and self.image_generator:
+            cached_prompt_data = self.image_generator.get_cached_prompt(message.author.id)
+
+            print(f"\n🔍 CHECKING FOR IMAGE REFINEMENT (user {message.author.id}):")
+            if cached_prompt_data:
+                print(f"   ✅ Found cached prompt: '{cached_prompt_data['prompt']}'")
+                print(f"   Refinement count: {cached_prompt_data['refinement_count']}")
+                print(f"   Cached at: {cached_prompt_data['timestamp']}")
+
+                # User has a recent image - check if they want to refine it
+                minutes_since_generation = (datetime.datetime.now() - cached_prompt_data["timestamp"]).total_seconds() / 60
+                print(f"   Time since generation: {minutes_since_generation:.1f} minutes")
+
+                refinement_result = await self.image_generator.refiner.detect_refinement(
+                    user_message=message.content,
+                    original_prompt=cached_prompt_data["prompt"],
+                    minutes_since_generation=minutes_since_generation
+                )
+
+                threshold = refinement_config.get('detection_threshold', 0.7)
+                max_refinements = refinement_config.get('max_refinements_per_image', 3)
+                print(f"   Threshold: {threshold}, Max refinements: {max_refinements}")
+
+                if refinement_result["is_refinement"] and refinement_result["confidence"] >= threshold:
+                    # Check if max refinements reached
+                    if cached_prompt_data["refinement_count"] >= max_refinements:
+                        print(f"   ❌ Max refinements ({max_refinements}) reached")
+                        return "I've refined this image the maximum number of times already. Please start with a new image request!"
+
+                    print(f"   ✅ REFINEMENT CONFIRMED (confidence: {refinement_result['confidence']:.2f} >= {threshold})")
+
+                    # Modify the prompt based on user feedback
+                    modified_prompt = await self.image_generator.refiner.modify_prompt(
+                        original_prompt=cached_prompt_data["prompt"],
+                        changes_requested=refinement_result["changes_requested"]
+                    )
+
+                    print(f"   📝 Setting message._refinement_prompt = '{modified_prompt}'")
+
+                    # Increment refinement count
+                    new_count = self.image_generator.increment_refinement_count(message.author.id)
+                    print(f"   🔢 Incremented refinement count to {new_count}")
+
+                    # Override intent to trigger image generation with modified prompt
+                    # We'll set a flag to bypass intent classification and use the modified prompt
+                    message._refinement_prompt = modified_prompt
+                    intent = "image_generation"
+                    print(f"   🎯 Forcing intent to 'image_generation' with refined prompt\n")
+                else:
+                    print(f"   ❌ Not a refinement (confidence: {refinement_result['confidence']:.2f} < {threshold})")
+                    print(f"   Proceeding with normal intent classification\n")
+                    intent = await self._classify_intent(message, short_term_memory)
+            else:
+                print(f"   ℹ️ No cached prompt found")
+                print(f"   Proceeding with normal intent classification\n")
+                # No cached prompt - proceed with normal intent classification
+                intent = await self._classify_intent(message, short_term_memory)
+        else:
+            # Image refinement disabled - proceed with normal intent classification
+            intent = await self._classify_intent(message, short_term_memory)
 
         channel = message.channel
         author = message.author
@@ -1296,12 +1394,22 @@ Examples:
         # Build bot identity from database
         identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
 
-        # Build relationship context
-        relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager)
-
-        # Calculate conversation energy for dynamic response length
+        # Calculate conversation energy for dynamic response length (MUST be done before building relationship context)
         bot_id = channel.guild.me.id
         energy_analysis = self._calculate_conversation_energy(short_term_memory, bot_id)
+
+        # Determine energy level for relationship context
+        if energy_analysis['max_tokens'] <= 25:
+            energy_level = "VERY LOW"
+        elif energy_analysis['max_tokens'] <= 40:
+            energy_level = "LOW"
+        elif energy_analysis['max_tokens'] <= 60:
+            energy_level = "MEDIUM"
+        else:
+            energy_level = "HIGH"
+
+        # Build relationship context with energy level
+        relationship_prompt = self._build_relationship_context(author.id, personality_config, db_manager, energy_level)
 
         # Get user's long-term memory (AUTHOR = person asking question)
         long_term_memory_entries = db_manager.get_long_term_memory(author.id)
@@ -1341,8 +1449,18 @@ Examples:
                 return f"I've drawn my limit ({max_per_period} drawings every {reset_period_hours} hours). My crayons need a break! Try again later."
 
             try:
-                # Strip bot name and alternative nicknames from the prompt
-                clean_prompt = self._strip_bot_name_from_prompt(message.content, message.guild)
+                # Check if this is a refinement (modified prompt) or a new image request
+                if hasattr(message, '_refinement_prompt'):
+                    # This is a refinement - use the modified prompt directly
+                    clean_prompt = message._refinement_prompt
+                    print(f"\n🔄 IMAGE REFINEMENT MODE ACTIVE")
+                    print(f"   Using refined prompt: '{clean_prompt}'")
+                else:
+                    # Strip bot name and alternative nicknames from the prompt
+                    clean_prompt = self._strip_bot_name_from_prompt(message.content, message.guild)
+                    print(f"\n🆕 NEW IMAGE GENERATION")
+                    print(f"   Original message: '{message.content}'")
+                    print(f"   Clean prompt: '{clean_prompt}'")
 
                 # Check if any users are mentioned in the prompt and get their facts
                 # CRITICAL: Check DATABASE nicknames table FIRST before checking guild members
@@ -1729,13 +1847,20 @@ Respond with ONLY the extracted visual description, nothing else.
                                 print(f"AI Handler: No context parts built (no facts found for mentioned users)")
 
                 # Generate the image with context (enhanced with AI if enabled)
-                print(f"AI Handler: Generating image for prompt: {clean_prompt}")
+                print(f"\n🎨 CALLING IMAGE GENERATOR:")
+                print(f"   Prompt: '{clean_prompt}'")
+                print(f"   Context: '{image_context if image_context else 'None'}'")
+
                 image_bytes, error_msg = await self.image_generator.generate_image(
                     clean_prompt,
                     image_context,
                     db_manager,
                     short_term_memory
                 )
+
+                # Cache the prompt for potential refinement (do this even if generation failed)
+                print(f"\n💾 CACHING PROMPT: '{clean_prompt}' for user {author.id}")
+                self.image_generator.cache_prompt(author.id, clean_prompt)
 
                 if error_msg:
                     print(f"AI Handler: Image generation failed: {error_msg}")
@@ -1781,7 +1906,16 @@ Respond naturally as if you tried to draw but messed up or ran into problems.
 
                 # Success! Image generated, now send it
                 # Increment the image count AFTER successful generation
-                db_manager.increment_user_image_count(author.id, reset_period_hours)
+                # BUT: Skip increment for refinements if configured to allow refinements after rate limit
+                is_refinement = hasattr(message, '_refinement_prompt')
+                allow_refinement_after_limit = refinement_config.get('allow_refinement_after_rate_limit', True)
+
+                if not is_refinement or not allow_refinement_after_limit:
+                    # Either this is a new image, or refinements count toward limit
+                    db_manager.increment_user_image_count(author.id, reset_period_hours)
+                    print(f"AI Handler: Incremented image count for user {author.id}")
+                else:
+                    print(f"AI Handler: Skipped image count increment (refinement with allow_after_limit=true)")
 
                 # Generate a brief, natural response to go with the image
                 personality_mode = self._get_personality_mode(personality_config)
@@ -2385,8 +2519,8 @@ Respond with ONLY the fact ID number or "NONE".
                     "Describe all actions as if they are physically happening RIGHT NOW in the real world.\n\n"
                 )
 
-                # Then add identity and relationship context
-                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{mentioned_users_prompt}\n{server_info}{energy_analysis['energy_guidance']}"
+                # Then add identity and relationship context (energy override now integrated in relationship_prompt)
+                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{mentioned_users_prompt}\n{server_info}"
 
                 # Simplified rules focused on the emotional state
                 relationship_descriptor = "someone you have INTENSE feelings about"
@@ -2459,7 +2593,6 @@ Respond with ONLY the fact ID number or "NONE".
                     f"{user_profile_prompt}\n"
                     f"{mentioned_users_prompt}\n"
                     f"{server_info}"
-                    f"{energy_analysis['energy_guidance']}"
                     f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
                     f"🎯 **CURRENT USER IDENTIFICATION** 🎯\n"
                     f"You are responding to: **{current_user_name}** (ID: {author.id})\n"
@@ -2650,6 +2783,16 @@ Respond with ONLY the fact ID number or "NONE".
             bot_id = channel.guild.me.id
             energy_analysis = self._calculate_conversation_energy(recent_messages, bot_id)
 
+            # Determine energy level
+            if energy_analysis['max_tokens'] <= 25:
+                energy_level = "VERY LOW"
+            elif energy_analysis['max_tokens'] <= 40:
+                energy_level = "LOW"
+            elif energy_analysis['max_tokens'] <= 60:
+                energy_level = "MEDIUM"
+            else:
+                energy_level = "HIGH"
+
             # Build bot identity from database (personality traits/lore)
             identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
 
@@ -2665,11 +2808,37 @@ Respond with ONLY the fact ID number or "NONE".
                 clean_content = self._strip_discord_formatting(msg.content)
                 conversation_history += f"{author_name} (ID: {author_id}): {clean_content}\n"
 
+            # Build energy override section for proactive responses
+            energy_override = ""
+            if energy_level == "VERY LOW":
+                energy_override = (
+                    "\n🚨 CRITICAL PRIORITY OVERRIDE 🚨\n"
+                    "⚡ **CONVERSATION ENERGY IS VERY LOW** ⚡\n"
+                    "This OVERRIDES ALL personality traits.\n"
+                    "**ABSOLUTE REQUIREMENTS:**\n"
+                    "- Respond with 1-5 words MAXIMUM (strict limit)\n"
+                    "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', ':emote:'\n"
+                    "- FORBIDDEN: Full sentences, explanations, multiple thoughts\n"
+                    "- Single emote responses are PERFECT\n\n"
+                    "**RATIONALE**: Conversation energy is very low. Match the brevity.\n\n"
+                )
+            elif energy_level == "LOW":
+                energy_override = (
+                    "\n🚨 CRITICAL PRIORITY OVERRIDE 🚨\n"
+                    "⚡ **CONVERSATION ENERGY IS LOW** ⚡\n"
+                    "**REQUIREMENTS:**\n"
+                    "- Keep responses under 10 words (strict limit)\n"
+                    "- 1 SHORT sentence or brief phrase only\n"
+                    "- Examples: 'yeah that makes sense', 'lol fair enough', 'sounds good :emote:'\n"
+                    "- FORBIDDEN: Multiple sentences, detailed explanations\n\n"
+                    "**RATIONALE**: Match the brief conversational style.\n\n"
+                )
+
             # Create NEUTRAL system prompt (no specific user relationship context)
             system_prompt = (
                 f"{identity_prompt}\n"
+                f"{energy_override}"
                 f"{server_info}"
-                f"{energy_analysis['energy_guidance']}"
                 f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
                 f"🎯 **PROACTIVE ENGAGEMENT MODE** 🎯\n"
                 f"You are joining an ongoing conversation between multiple people.\n"

@@ -69,6 +69,27 @@
         "min_messages_to_analyze": 5
     },
     "server_proactive_settings": {},
+    "conversation_detection": {
+        "enabled": true,
+        "default_threshold": 0.7,
+        "context_window": 10,
+        "model": "gpt-4.1-mini",
+        "max_tokens": 10,
+        "temperature": 0.0
+    },
+    "image_refinement": {
+        "enabled": true,
+        "detection_threshold": 0.7,
+        "cache_duration_minutes": 10,
+        "allow_refinement_after_rate_limit": true,
+        "max_refinements_per_image": 3,
+        "detection_model": "gpt-4o-mini",
+        "detection_max_tokens": 100,
+        "detection_temperature": 0.0,
+        "modification_model": "gpt-4o",
+        "modification_max_tokens": 150,
+        "modification_temperature": 0.3
+    },
     "safety": {
         "enable_moderation_api": true,
         "enable_rate_limiting": true,

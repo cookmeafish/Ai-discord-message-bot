@@ -621,10 +621,12 @@ Phase 1 has been fully implemented and is production-ready.
 #### Admin Commands Available:
 - Bot Identity: `/identity_add_trait`, `/identity_add_lore`, `/identity_add_fact`, `/identity_view`
 - User Relationships: `/user_view_metrics`, `/user_set_metrics` (all 9 metrics), `/user_view_memory`, `/user_add_memory`
+- User Metric Locking (NEW 2025-11-23): `/user_lock_metrics`, `/user_unlock_metrics` (lock/unlock individual metrics)
 - Global Mood: `/mood_set`, `/mood_get`
 - Personality Mode: `/channel_set_personality` (configure immersive character, technical language, and server info settings)
 - Server Settings (2025-10-16): `/server_add_nickname`, `/server_remove_nickname`, `/server_list_nicknames`, `/server_set_status_memory`
-- Testing: `/run_tests` (comprehensive system validation with 79 tests)
+- VPS Configuration (NEW 2025-11-23): 22 commands total for headless deployment (see Phase 4 below)
+- Testing: `/run_tests` (comprehensive system validation with 207 tests as of 2025-10-27)
 
 ### Core System Components: COMPLETED ✅
 - ✅ Core Interaction Handler with Intent Classification (improved memory_recall vs factual_question, 2025-10-12)
@@ -719,3 +721,168 @@ A production-ready testing system accessible via `/run_tests` admin command that
   - Alternative nicknames: `/server_add_nickname`, `/server_remove_nickname`, `/server_list_nicknames`
   - Status memory toggle: `/server_set_status_memory`
   - Note: Emote sources remain GUI-only due to complexity of multi-select interface
+
+### Phase 4: COMPLETED ✅ (2025-11-23)
+**VPS Headless Deployment - Full Discord Command Parity**
+
+All GUI settings now have Discord command equivalents for complete headless VPS management. Total of **22 new admin commands** implemented in `cogs/admin.py` (lines 1891-2763).
+
+**Global Bot Configuration (6 commands)**:
+- `/config_set_reply_chance` - Set global random reply chance (0.0-1.0)
+- `/config_set_personality` - Update default personality traits/lore for new servers
+- `/config_add_global_nickname` - Add global alternative nicknames
+- `/config_remove_global_nickname` - Remove global nicknames
+- `/config_list_global_nicknames` - List all global nicknames
+- `/config_view_all` - View all global configuration settings
+
+**Image Generation Configuration (3 commands)**:
+- `/image_config_enable` - Enable/disable image generation globally
+- `/image_config_set_limits` - Configure rate limits (max per period: 1-50, reset hours: 1-168)
+- `/image_config_view` - View current image generation settings
+
+**Status Update Configuration (4 commands)**:
+- `/status_config_enable` - Enable/disable daily status updates
+- `/status_config_set_time` - Set update time (24h format with validation: HH:MM)
+- `/status_config_set_source_server` - Choose which server's personality to use
+- `/status_config_view` - View current status configuration
+
+**Per-Channel Configuration (5 commands)**:
+- `/channel_set_purpose` - Set channel purpose/instructions
+- `/channel_set_reply_chance` - Set per-channel random reply chance (0.0-1.0)
+- `/channel_set_proactive` - Configure proactive engagement (enable/disable)
+- `/channel_view_settings` - View all channel settings
+- `/channel_list_active` - List all active channels in server
+
+**Per-Server Configuration (2 commands)**:
+- `/server_set_emote_sources` - Manage emote sources (list/add/remove/clear actions)
+- `/server_view_settings` - View all server-specific settings
+
+**User Metric Locking (2 commands - NEW, not in original spec)**:
+- `/user_lock_metrics` - Lock specific relationship metrics to prevent automatic sentiment-based updates
+  - Parameters: user (mention or ID), rapport, trust, anger, formality, fear, respect, affection, familiarity, intimidation (all boolean)
+  - Example: `/user_lock_metrics user:@UserName rapport:True affection:True`
+  - Use case: Manually control specific metrics while allowing others to update automatically
+- `/user_unlock_metrics` - Unlock specific relationship metrics to allow automatic updates
+  - Same parameters as `/user_lock_metrics`
+  - Example: `/user_unlock_metrics user:123456789 rapport:True`
+
+**Implementation Details**:
+- All commands are administrator-only (`@app_commands.default_permissions(administrator=True)`)
+- Guild context validation (rejects DM usage)
+- ConfigManager integration for config.json modifications
+- Database operations for per-channel/per-server settings
+- Clear success/error feedback with emoji indicators (✅ ❌ ℹ️)
+- Parameter validation using `app_commands.Range` for numeric inputs
+- Changes take effect immediately without bot restart
+
+**Benefits**:
+- ✅ Bot fully manageable from Discord without GUI access
+- ✅ Perfect for headless VPS deployment
+- ✅ Remote configuration via SSH + Discord (no X11 forwarding needed)
+- ✅ All settings accessible via commands with same functionality as GUI
+- ✅ Administrators can manage bot entirely through Discord interface
+
+**Hierarchical Server_Info Folder System - PROPOSED**:
+Remains as a future enhancement for selective context loading in fandom/roleplay servers. See `PLANNED_FEATURES.md` for details.
+
+### Phase 5: COMPLETED ✅ (2025-10-27)
+**Intelligent Conversation Features & Energy Management**
+
+All three Phase 5 features fully implemented and integrated into the bot.
+
+**1. Intelligent Conversation Continuation Detection** ✅
+- **Purpose**: Bot detects when users are talking to it without explicit @mentions
+- **Implementation**: `modules/conversation_detector.py` integrated in `cogs/events.py` (lines 228-240)
+- **AI Model**: GPT-4.1-mini for classification (configurable via `conversation_detection.model`)
+- **Discord Commands (NEW 2025-11-23)**:
+  - `/channel_conversation_enable` - Configure per-channel (enabled, threshold, context_window)
+  - `/channel_conversation_view` - View per-channel settings
+- **How It Works**:
+  1. Optimization check: Only runs if bot was recently active in last N messages
+  2. Fetches last 10 messages for context analysis
+  3. AI scores message on 0.0-1.0 scale (how likely it's directed at bot)
+  4. Responds if score ≥ threshold (default: 0.7)
+- **Configuration** (`config.json` or Discord commands):
+  ```json
+  "conversation_detection": {
+    "enabled": false,  // Currently disabled by default
+    "default_threshold": 0.7,
+    "context_window": 10,
+    "model": "gpt-4.1-mini",
+    "max_tokens": 10,
+    "temperature": 0.0
+  }
+  ```
+- **Cost**: ~$0.015 per 1,000 messages (GPT-4.1-mini)
+- **Use Cases**: Natural conversation flow without repeated @mentions
+- **Example**:
+  ```
+  User: @Bot, what's your favorite color?
+  Bot: I love blue!
+  User: why blue?  ← Bot responds without mention
+  Bot: Because it reminds me of the ocean.
+  ```
+
+**2. Iterative Image Refinement** ✅
+- **Purpose**: Users can refine images naturally without re-typing full prompts
+- **Implementation**: `modules/image_refiner.py` integrated in `modules/image_generator.py` (lines 57-60)
+- **AI Model**: GPT-4.1-mini for detection, GPT-4o for prompt modification
+- **How It Works**:
+  1. Caches last generated image prompt for 10 minutes (configurable)
+  2. AI detects refinement requests ("add fire", "make it bigger", "change color")
+  3. GPT-4o intelligently modifies original prompt based on feedback
+  4. Generates refined image using modified prompt
+  5. Refinements don't count toward rate limit (configurable)
+- **Configuration** (`config.json`):
+  ```json
+  "image_refinement": {
+    "enabled": true,
+    "detection_threshold": 0.7,
+    "cache_duration_minutes": 10,
+    "allow_refinement_after_rate_limit": true,
+    "max_refinements_per_image": 3,
+    "detection_model": "gpt-4.1-mini",
+    "modification_model": "gpt-4o"
+  }
+  ```
+- **Example**:
+  ```
+  User: draw a cool cat with flaming fur
+  Bot: [generates image of cat with normal fur]
+  User: add fire to the fur  ← Refinement detected
+  Bot: [generates new image with flaming fur, doesn't count toward limit]
+  ```
+
+**3. Conversation Energy Priority Override** ✅
+- **Purpose**: Energy constraints override relationship metrics to prevent over-talking
+- **Implementation**: `modules/ai_handler.py:_build_relationship_context()` (lines 385-420)
+- **Problem Solved**: High affection/rapport previously caused verbose responses even when user sent short messages
+- **How It Works**:
+  1. Analyzes last 5 user messages from last 30 messages
+  2. Calculates average message length
+  3. Determines energy level (VERY LOW/LOW/MEDIUM/HIGH)
+  4. Energy override is **FIRST PRIORITY** in relationship prompt (before all other metrics)
+  5. Strict token limits enforced:
+     - VERY LOW (1-3 words avg): max_tokens=25, forces 1-5 word responses
+     - LOW (4-8 words avg): max_tokens=40, brief responses under 10 words
+     - MEDIUM (9-20 words avg): max_tokens=60, natural 1-2 sentences
+     - HIGH (20+ words avg): max_tokens=80, full responses
+- **Prompt Structure**:
+  ```
+  🚨 CRITICAL PRIORITY OVERRIDE 🚨
+  ⚡ CONVERSATION ENERGY IS VERY LOW ⚡
+  This OVERRIDES ALL relationship metrics and personality traits.
+  **ABSOLUTE REQUIREMENTS:**
+  - Respond with 1-5 words MAXIMUM (strict limit)
+  - Examples: "lol", "yeah", "fair enough", "nice"
+  ```
+- **Benefits**:
+  - Bot matches user's conversation energy naturally
+  - Prevents verbose responses to "lol", "ok", "yeah"
+  - Works even with high affection/rapport/familiarity metrics
+- **Example**:
+  ```
+  [User has high affection=9, familiarity=8]
+  User: lol  ← Energy is VERY LOW
+  Bot: haha  ← Brief response despite high metrics
+  ```

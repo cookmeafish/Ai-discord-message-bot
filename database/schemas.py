@@ -136,6 +136,9 @@ CREATE TABLE IF NOT EXISTS channel_settings (
     use_server_info INTEGER DEFAULT 0,
     enable_roleplay_formatting INTEGER DEFAULT 1,
     allow_proactive_engagement INTEGER DEFAULT 1,
+    enable_conversation_detection INTEGER DEFAULT 0,
+    conversation_detection_threshold REAL DEFAULT 0.7,
+    conversation_context_window INTEGER DEFAULT 10,
     formality INTEGER DEFAULT 0,
     formality_locked INTEGER DEFAULT 0,
     activated_at TEXT NOT NULL

@@ -210,7 +210,42 @@ class EventsCog(commands.Cog):
             # Check if message has images/attachments
             has_images = len(message.attachments) > 0
 
-            # Respond ONLY if directed at bot (mentioned, replied to, or name mentioned)
+            # CONVERSATION CONTINUATION DETECTION
+            # If message wasn't explicitly directed at bot, check if it's a conversation continuation
+            if not was_directed_at_bot:
+                # Check if conversation detection is enabled for this channel
+                conversation_detection_enabled = channel_setting.get('enable_conversation_detection', 0) if channel_setting else 0
+
+                if conversation_detection_enabled:
+                    # Get configuration
+                    threshold = channel_setting.get('conversation_detection_threshold', 0.7)
+                    context_window = channel_setting.get('conversation_context_window', 10)
+
+                    # Get recent messages from short-term memory
+                    recent_messages = db_manager.get_short_term_memory()
+                    recent_messages = recent_messages[-context_window:] if len(recent_messages) > context_window else recent_messages
+
+                    # Check if bot was recently active (optimization)
+                    if self.bot.conversation_detector.is_bot_recently_active(recent_messages, self.bot.user.id, max_messages=context_window):
+                        # Run AI detection
+                        bot_name = message.guild.me.display_name
+                        should_respond = await self.bot.conversation_detector.should_respond(
+                            recent_messages=recent_messages,
+                            current_message=message,
+                            bot_id=self.bot.user.id,
+                            bot_name=bot_name,
+                            threshold=threshold
+                        )
+
+                        if should_respond:
+                            self.logger.info(f"Conversation detection: Message from {message.author.name} detected as conversation continuation")
+                            was_directed_at_bot = True
+                        else:
+                            self.logger.debug(f"Conversation detection: Message from {message.author.name} NOT detected as conversation continuation")
+                    else:
+                        self.logger.debug(f"Conversation detection: Bot not recently active, skipping detection")
+
+            # Respond ONLY if directed at bot (mentioned, replied to, name mentioned, or detected as continuation)
             if was_directed_at_bot:
                 # Check if bot is currently overwhelmed (too many concurrent responses)
                 if EventsCog._active_responses >= EventsCog._max_concurrent_responses:
