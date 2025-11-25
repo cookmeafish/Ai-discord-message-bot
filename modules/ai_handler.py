@@ -1687,77 +1687,128 @@ Examples:
                     # Perform user matching if bot is NOT the sole subject
                     if not skip_user_matching:
                         # Extract words from the prompt to check against names
-                        # Filter out common words that aren't names
-                        # EXPANDED: Include common nouns, verbs, and words that shouldn't match usernames
-                        stop_words = {
-                            # Pronouns and articles
-                            'me', 'you', 'i', 'a', 'an', 'the', 'it', 'he', 'she', 'they', 'we',
-                            # Verbs (common)
-                            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
-                            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
-                            'can', 'may', 'might', 'must', 'shall',
-                            'eat', 'eating', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
-                            'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding',
-                            # Possessives
-                            'my', 'your', 'his', 'her', 'its', 'our', 'their',
-                            # Demonstratives
-                            'this', 'that', 'these', 'those',
-                            # Common nouns (animals, objects) - prevents false nickname matches
-                            'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear',
-                            'food', 'sword', 'gun', 'hat', 'shirt', 'dress', 'car', 'house', 'tree',
-                            'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby',
-                            # Prepositions and conjunctions
-                            'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'and', 'or', 'but',
-                            # Adjectives (common)
-                            'big', 'small', 'cute', 'pretty', 'ugly', 'nice', 'bad', 'good', 'new', 'old'
-                        }
-                        prompt_words = [word for word in prompt_lower.split() if word not in stop_words]
+                        # CRITICAL: Only match SPECIFIC NAMES, not generic English words
+                        # A word is considered a potential name if:
+                        # 1. It was CAPITALIZED in the original message (proper noun)
+                        # 2. It's NOT a common English word
+                        # 3. It's at least 3 characters long
 
-                        print(f"AI Handler: Filtered prompt words for matching: {prompt_words}")
+                        # Common English words that should NEVER match usernames
+                        # This includes: articles, pronouns, verbs, common nouns, adjectives, prepositions
+                        common_english_words = {
+                            # Articles, pronouns, determiners
+                            'a', 'an', 'the', 'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'hers',
+                            'it', 'its', 'we', 'us', 'our', 'they', 'them', 'their', 'this', 'that', 'these', 'those',
+                            'who', 'what', 'which', 'whose', 'whom', 'where', 'when', 'why', 'how',
+                            # Common verbs
+                            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am', 'have', 'has', 'had',
+                            'do', 'does', 'did', 'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must',
+                            'eat', 'eating', 'drink', 'drinking', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
+                            'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding', 'go', 'going',
+                            'come', 'coming', 'see', 'seeing', 'look', 'looking', 'want', 'wanting', 'need', 'needing',
+                            'like', 'liking', 'love', 'loving', 'hate', 'hating', 'think', 'thinking', 'know', 'knowing',
+                            'say', 'saying', 'tell', 'telling', 'ask', 'asking', 'use', 'using', 'find', 'finding',
+                            'draw', 'drawing', 'sketch', 'sketching', 'paint', 'painting', 'create', 'creating',
+                            # Common nouns (animals, objects, people, places, things)
+                            'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear', 'wolf', 'fox',
+                            'rabbit', 'mouse', 'rat', 'snake', 'frog', 'turtle', 'shark', 'whale', 'dolphin', 'octopus',
+                            'food', 'water', 'fire', 'earth', 'air', 'sword', 'gun', 'knife', 'weapon', 'shield',
+                            'hat', 'shirt', 'dress', 'pants', 'shoes', 'clothes', 'armor', 'helmet',
+                            'car', 'house', 'tree', 'flower', 'rock', 'mountain', 'river', 'ocean', 'sky', 'sun', 'moon',
+                            'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby', 'adult', 'human',
+                            'king', 'queen', 'prince', 'princess', 'knight', 'warrior', 'wizard', 'witch', 'demon', 'angel',
+                            'head', 'face', 'eye', 'eyes', 'nose', 'mouth', 'ear', 'hair', 'hand', 'hands', 'arm', 'leg',
+                            'body', 'tail', 'wing', 'wings', 'paw', 'claw', 'horn', 'horns', 'fur', 'skin', 'scale',
+                            # Prepositions and conjunctions
+                            'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'of', 'about', 'into', 'through',
+                            'during', 'before', 'after', 'above', 'below', 'between', 'under', 'over',
+                            'and', 'or', 'but', 'so', 'yet', 'nor', 'if', 'then', 'because', 'although', 'while',
+                            # Common adjectives
+                            'big', 'small', 'large', 'tiny', 'huge', 'little', 'cute', 'pretty', 'beautiful', 'ugly',
+                            'nice', 'bad', 'good', 'great', 'best', 'worst', 'new', 'old', 'young', 'ancient',
+                            'hot', 'cold', 'warm', 'cool', 'fast', 'slow', 'quick', 'strong', 'weak', 'hard', 'soft',
+                            'dark', 'light', 'bright', 'black', 'white', 'red', 'blue', 'green', 'yellow', 'purple', 'pink',
+                            'happy', 'sad', 'angry', 'scared', 'brave', 'smart', 'dumb', 'crazy', 'funny', 'serious',
+                            # Numbers and quantifiers
+                            'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+                            'first', 'second', 'third', 'last', 'next', 'some', 'any', 'all', 'every', 'each', 'many', 'few',
+                            # Other common words
+                            'just', 'only', 'also', 'too', 'very', 'really', 'now', 'here', 'there', 'please', 'thanks',
+                            'yes', 'no', 'not', 'never', 'always', 'maybe', 'probably', 'definitely', 'actually'
+                        }
+
+                        # Get original words (before lowercasing) to check capitalization
+                        original_words = clean_prompt.split()
+
+                        # Only consider words that:
+                        # 1. Were CAPITALIZED in the original (indicating a proper noun/name)
+                        # 2. Are NOT common English words
+                        # 3. Are at least 3 characters
+                        potential_names = []
+                        for orig_word in original_words:
+                            word_lower = orig_word.lower().strip('.,!?"\'-')
+
+                            # Skip if too short
+                            if len(word_lower) < 3:
+                                continue
+
+                            # Skip if it's a common English word
+                            if word_lower in common_english_words:
+                                continue
+
+                            # Check if it looks like a name (capitalized OR not a dictionary word)
+                            # Names are typically: Capitalized, unique, not common words
+                            is_capitalized = orig_word[0].isupper() if orig_word else False
+
+                            # If capitalized and not a common word, it's likely a name
+                            if is_capitalized:
+                                potential_names.append(word_lower)
+                                print(f"AI Handler: '{orig_word}' is capitalized and not common - treating as potential name")
+                            # If not capitalized but also not in common words, might still be a name (some users type lowercase)
+                            elif word_lower not in common_english_words:
+                                # Extra check: only include if it doesn't look like a regular word
+                                # This catches usernames like "csama" that aren't capitalized
+                                potential_names.append(word_lower)
+
+                        print(f"AI Handler: Potential names for user matching: {potential_names}")
 
                         # PRIORITY 1: Check database nicknames table (most reliable source)
-                        # User ID is ONLY used to connect data - names come from database, not Discord
-                        print(f"AI Handler: Checking database nicknames table for matches...")
-                        try:
-                            import sqlite3
-                            db_path = db_manager.db_path
-                            conn = sqlite3.connect(db_path)
-                            cursor = conn.cursor()
+                        # Only search if we have potential names to match
+                        if potential_names:
+                            print(f"AI Handler: Checking database nicknames table for matches...")
+                            try:
+                                import sqlite3
+                                db_path = db_manager.db_path
+                                conn = sqlite3.connect(db_path)
+                                cursor = conn.cursor()
 
-                            command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
-                            name_words = [w for w in prompt_words if w not in command_words]
+                                for name in potential_names:
+                                    cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
+                                    for row in cursor.fetchall():
+                                        user_id_str, nickname = row[0], row[1].lower()
 
-                            for word in name_words:
-                                # Check if any nickname contains this word or vice versa
-                                # IMPROVED: Require minimum 3 characters to avoid false matches
-                                if len(word) < 3:
-                                    continue
-
-                                cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
-                                for row in cursor.fetchall():
-                                    user_id_str, nickname = row[0], row[1].lower()
-
-                                    # IMPROVED: Use word boundary matching instead of substring
-                                    # This prevents "fish" from matching "mistel fish" unless it's a distinct word
-                                    nickname_words = nickname.split()
-                                    if word in nickname_words or any(word == nw for nw in nickname_words):
-                                        print(f"AI Handler: Database nicknames match - '{word}' matches word in '{nickname}' (user_id: {user_id_str})")
-                                        class PseudoMember:
-                                            def __init__(self, user_id):
-                                                self.id = user_id
-                                                self.display_name = f"User_{user_id}"
-                                        mentioned_users.append(PseudoMember(user_id_str))
+                                        # Match if name equals a word in the nickname (exact word match only)
+                                        nickname_words = nickname.split()
+                                        if name in nickname_words:
+                                            print(f"AI Handler: Database nicknames match - '{name}' matches word in '{nickname}' (user_id: {user_id_str})")
+                                            class PseudoMember:
+                                                def __init__(self, user_id):
+                                                    self.id = user_id
+                                                    self.display_name = f"User_{user_id}"
+                                            mentioned_users.append(PseudoMember(user_id_str))
+                                            break
+                                    if mentioned_users:
                                         break
-                                if mentioned_users:
-                                    break
 
-                            conn.close()
-                        except Exception as e:
-                            print(f"AI Handler: Error checking database nicknames: {e}")
+                                conn.close()
+                            except Exception as e:
+                                print(f"AI Handler: Error checking database nicknames: {e}")
+                        else:
+                            print(f"AI Handler: No potential names found in prompt - skipping database lookup")
 
                         # PRIORITY 2: If database nicknames found nothing,
                         # check long-term memory "also goes by" facts as fallback
-                        if not mentioned_users:
+                        if not mentioned_users and potential_names:
                             print(f"AI Handler: No database nicknames matched, checking long-term memory 'also goes by' facts...")
                             try:
                                 import sqlite3
@@ -1765,45 +1816,34 @@ Examples:
                                 conn = sqlite3.connect(db_path)
                                 cursor = conn.cursor()
 
-                                # Check long-term memory facts for alternative name patterns
-                                command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
-                                name_words = [w for w in prompt_words if w not in command_words]
+                                cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
+                                all_user_ids = [row[0] for row in cursor.fetchall()]
 
-                                if name_words:
-                                    cursor.execute("SELECT DISTINCT user_id FROM long_term_memory")
-                                    all_user_ids = [row[0] for row in cursor.fetchall()]
-
-                                    # Check each user's facts for alternative names matching prompt words
-                                    for user_id in all_user_ids:
-                                        user_facts = db_manager.get_long_term_memory(user_id)
-                                        if user_facts:
-                                            for fact_tuple in user_facts:
-                                                fact_text = fact_tuple[0].lower()
-                                                # Check for alternative name patterns and verify prompt word appears AFTER the pattern
-                                                # This prevents matching "works with PersonA... known as PersonB"
-                                                for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
-                                                    if phrase in fact_text:
-                                                        # Find position of the pattern
-                                                        pattern_pos = fact_text.find(phrase)
-                                                        # Get text AFTER the pattern
-                                                        text_after_pattern = fact_text[pattern_pos + len(phrase):]
-                                                        # Use word boundary matching to avoid "smith" matching "Smithson"
-                                                        import re
-                                                        # Filter out command words (draw, sketch, etc.) to get actual name words
-                                                        command_words = {'draw', 'sketch', 'create', 'make', 'show', 'generate', 'paint'}
-                                                        name_words = [w for w in prompt_words if w not in command_words]
-                                                        # Require ALL name words to match (prevents partial matches - all words must be present)
-                                                        if name_words and all(re.search(r'\b' + re.escape(word) + r'\b', text_after_pattern) for word in name_words):
-                                                            print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
-                                                            # Create a pseudo-member object with just the ID
-                                                            class PseudoMember:
-                                                                def __init__(self, user_id):
-                                                                    self.id = user_id
-                                                                    self.display_name = f"User_{user_id}"
-                                                            mentioned_users.append(PseudoMember(user_id))
-                                                            break
-                                                if mentioned_users:  # If we found a match, break outer loop too
-                                                    break
+                                # Check each user's facts for alternative names matching potential_names
+                                for user_id in all_user_ids:
+                                    user_facts = db_manager.get_long_term_memory(user_id)
+                                    if user_facts:
+                                        for fact_tuple in user_facts:
+                                            fact_text = fact_tuple[0].lower()
+                                            # Check for alternative name patterns
+                                            for phrase in ['also goes by', 'known as', 'called', 'nicknamed']:
+                                                if phrase in fact_text:
+                                                    pattern_pos = fact_text.find(phrase)
+                                                    text_after_pattern = fact_text[pattern_pos + len(phrase):]
+                                                    import re
+                                                    # Check if any potential name appears after the pattern
+                                                    if any(re.search(r'\b' + re.escape(name) + r'\b', text_after_pattern) for name in potential_names):
+                                                        print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
+                                                        class PseudoMember:
+                                                            def __init__(self, user_id):
+                                                                self.id = user_id
+                                                                self.display_name = f"User_{user_id}"
+                                                        mentioned_users.append(PseudoMember(user_id))
+                                                        break
+                                            if mentioned_users:
+                                                break
+                                    if mentioned_users:
+                                        break
 
                                 conn.close()
                             except Exception as e:
@@ -1814,7 +1854,7 @@ Examples:
                         # CONTEXT SOURCE 3: Check short-term conversation history for descriptive statements
                         # This allows: "Angel is a rabbit" (message 1) → "draw Angel" (message 2)
                         conversation_context = []
-                        if not mentioned_users and short_term_memory:
+                        if not mentioned_users and short_term_memory and potential_names:
                             print(f"AI Handler: No users found in database, checking recent conversation for context...")
 
                             # Search recent messages (last 20) for descriptive statements about the subject
@@ -1822,8 +1862,8 @@ Examples:
                                 msg_content = msg_dict.get('content', '')
                                 msg_content_lower = msg_content.lower()
 
-                                # Check if any prompt word appears in this message
-                                if any(word in msg_content_lower for word in prompt_words):
+                                # Check if any potential name appears in this message
+                                if any(name in msg_content_lower for name in potential_names):
                                     # Check if it's a descriptive statement (contains "is", "are", "was", "were")
                                     if any(verb in msg_content_lower for verb in [' is ', ' are ', ' was ', ' were ']):
                                         # Extract potential description using AI
@@ -2423,73 +2463,86 @@ Respond with ONLY the fact ID number or "NONE".
                 mentioned_users = []
                 message_lower = message.content.lower()
 
-                # Extract words from message (filter stop words)
-                # EXPANDED: Include common nouns, verbs, and words that shouldn't match usernames
-                stop_words = {
-                    # Pronouns and articles
-                    'me', 'you', 'i', 'a', 'an', 'the', 'it', 'he', 'she', 'they', 'we',
-                    # Verbs (common)
-                    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
-                    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
-                    'can', 'may', 'might', 'must', 'shall',
-                    'eat', 'eating', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
-                    'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding',
-                    # Possessives
-                    'my', 'your', 'his', 'her', 'its', 'our', 'their',
-                    # Demonstratives
-                    'this', 'that', 'these', 'those',
-                    # Common nouns (animals, objects) - prevents false nickname matches
-                    'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear',
-                    'food', 'sword', 'gun', 'hat', 'shirt', 'dress', 'car', 'house', 'tree',
-                    'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby',
+                # Extract potential names from message
+                # CRITICAL: Only match SPECIFIC NAMES, not generic English words
+                # Common English words that should NEVER match usernames
+                common_english_words = {
+                    # Articles, pronouns, determiners
+                    'a', 'an', 'the', 'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'hers',
+                    'it', 'its', 'we', 'us', 'our', 'they', 'them', 'their', 'this', 'that', 'these', 'those',
+                    'who', 'what', 'which', 'whose', 'whom', 'where', 'when', 'why', 'how',
+                    # Common verbs
+                    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am', 'have', 'has', 'had',
+                    'do', 'does', 'did', 'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must',
+                    'eat', 'eating', 'drink', 'drinking', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
+                    'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding', 'go', 'going',
+                    'think', 'thinking', 'know', 'knowing', 'say', 'saying', 'tell', 'telling',
+                    # Common nouns (animals, objects, people, places, things)
+                    'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear', 'wolf', 'fox',
+                    'food', 'water', 'fire', 'sword', 'gun', 'hat', 'shirt', 'dress', 'car', 'house', 'tree',
+                    'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby', 'adult', 'human',
                     # Prepositions and conjunctions
-                    'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'and', 'or', 'but',
-                    # Adjectives (common)
+                    'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'of', 'about', 'and', 'or', 'but',
+                    # Common adjectives
                     'big', 'small', 'cute', 'pretty', 'ugly', 'nice', 'bad', 'good', 'new', 'old',
                     # Question words and conversation words
                     'about', 'think', 'know', 'tell', 'what', 'who', 'when', 'where', 'why', 'how'
                 }
-                message_words = [word for word in message_lower.split() if word not in stop_words]
 
-                print(f"AI Handler: Checking for mentioned users in casual chat. Message words: {message_words}")
-
-                # Check guild members for matches
-                for member in message.guild.members:
-                    if member.bot:
+                # Get original words to check capitalization
+                original_words = message.content.split()
+                potential_names = []
+                for orig_word in original_words:
+                    word_lower = orig_word.lower().strip('.,!?"\'-')
+                    if len(word_lower) < 3:
                         continue
+                    if word_lower in common_english_words:
+                        continue
+                    # Check if capitalized (proper noun) or unique word
+                    is_capitalized = orig_word[0].isupper() if orig_word else False
+                    if is_capitalized or word_lower not in common_english_words:
+                        potential_names.append(word_lower)
 
-                    member_display_lower = member.display_name.lower()
-                    member_name_lower = member.name.lower()
+                print(f"AI Handler: Checking for mentioned users in casual chat. Potential names: {potential_names}")
 
-                    # Check display name and username
-                    import re
-                    display_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_display_lower) for word in message_words)
-                    username_match = any(re.search(r'\b' + re.escape(word) + r'\b', member_name_lower) for word in message_words)
+                # Only search if we have potential names
+                if potential_names:
+                    # Check guild members for matches
+                    for member in message.guild.members:
+                        if member.bot:
+                            continue
 
-                    # Check nicknames table with word boundary matching
-                    nickname_match = False
-                    if not (display_match or username_match):
-                        try:
-                            import sqlite3
-                            conn = sqlite3.connect(db_manager.db_path)
-                            cursor = conn.cursor()
-                            cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ?", (str(member.id),))
-                            nicknames = [row[0].lower() for row in cursor.fetchall()]
-                            conn.close()
+                        member_display_lower = member.display_name.lower()
+                        member_name_lower = member.name.lower()
 
-                            if nicknames:
-                                for nickname in nicknames:
-                                    # IMPROVED: Use word boundary matching instead of substring
-                                    nickname_words = nickname.split()
-                                    for word in message_words:
-                                        if len(word) >= 3 and word in nickname_words:
-                                            nickname_match = True
-                                            print(f"AI Handler: Casual chat found mentioned user via nicknames: '{word}' matches word in '{nickname}' for {member.display_name}")
+                        # Check display name and username (exact word match)
+                        import re
+                        display_match = any(re.search(r'\b' + re.escape(name) + r'\b', member_display_lower) for name in potential_names)
+                        username_match = any(re.search(r'\b' + re.escape(name) + r'\b', member_name_lower) for name in potential_names)
+
+                        # Check nicknames table with word boundary matching
+                        nickname_match = False
+                        if not (display_match or username_match):
+                            try:
+                                import sqlite3
+                                conn = sqlite3.connect(db_manager.db_path)
+                                cursor = conn.cursor()
+                                cursor.execute("SELECT nickname FROM nicknames WHERE user_id = ?", (str(member.id),))
+                                nicknames = [row[0].lower() for row in cursor.fetchall()]
+                                conn.close()
+
+                                if nicknames:
+                                    for nickname in nicknames:
+                                        nickname_words = nickname.split()
+                                        for name in potential_names:
+                                            if name in nickname_words:
+                                                nickname_match = True
+                                                print(f"AI Handler: Casual chat found mentioned user via nicknames: '{name}' matches word in '{nickname}' for {member.display_name}")
+                                                break
+                                        if nickname_match:
                                             break
-                                    if nickname_match:
-                                        break
-                        except Exception as e:
-                            print(f"AI Handler: Error checking nicknames for casual chat: {e}")
+                            except Exception as e:
+                                print(f"AI Handler: Error checking nicknames for casual chat: {e}")
 
                     if display_match or username_match or nickname_match:
                         # Don't add the author to mentioned users list (they're already loaded separately)
