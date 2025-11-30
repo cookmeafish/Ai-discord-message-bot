@@ -864,7 +864,7 @@ All three Phase 5 features fully implemented and integrated into the bot.
   Bot: [generates new image with flaming fur, doesn't count toward limit]
   ```
 
-**3. Message Batching System** ✅ (NEW 2025-11-24)
+**3. Message Batching System** ✅ (NEW 2025-11-24, Updated 2025-11-30)
 - **Purpose**: Combine rapid messages from the same user into a single AI response
 - **Problem**: User sends "dr fish" then "wassup" quickly → bot responds twice instead of once
 - **Implementation**: `cogs/events.py` (new class variables and methods)
@@ -882,7 +882,11 @@ All three Phase 5 features fully implemented and integrated into the bot.
   6. Generate AI response via `ai_handler.generate_response(combined_content=...)`
   7. **Check-before-send**: Check if new messages arrived during generation
   8. If new messages → Regenerate (loop back to step 5, max 3 times)
-  9. Send response → Clean up user from queue
+  9. **Atomic send (2025-11-30)**: Acquire `batch_lock` → final check → send → cleanup → release lock
+- **Race Condition Fix (2025-11-30)**:
+  - Previously: Gap between final check and send allowed messages to be added to pending but never processed
+  - Now: Send happens inside `_process_batched_response()` while holding `batch_lock`
+  - Messages arriving during send are blocked until cleanup, then trigger their own processing cycle
 - **Configuration** (`config.json`):
   ```json
   "message_batching": {
@@ -897,6 +901,7 @@ All three Phase 5 features fully implemented and integrated into the bot.
   - **Per-user regeneration counting**: Only the SAME user's messages count toward their limit (User B talking doesn't affect User A's count)
   - **Smart counting**: Each new message counts toward limit (2 messages at once = 2 counts, not 1)
   - **Max 3 regenerations**: Prevents infinite loops if user keeps typing (counts by message count, not loop iterations)
+  - **Atomic send**: Eliminates race condition between final check and Discord send
 
 **4. Conversation Energy Priority Override** ✅
 - **Purpose**: Energy constraints override relationship metrics to prevent over-talking

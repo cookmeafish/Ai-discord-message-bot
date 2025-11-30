@@ -128,16 +128,17 @@ class EventsCog(commands.Cog):
             self.logger.info(f"BATCHING: New batch started for {message.author.name} in channel {channel_id}")
             return True  # Caller should process
 
-    async def _process_batched_response(self, initial_message, db_manager, has_images=False):
+    async def _process_batched_response(self, initial_message, db_manager, has_images=False, emote_handler=None):
         """
         Process response with message batching and per-channel queuing.
         Checks for new messages before sending and regenerates if needed.
+        SENDS the response internally to eliminate race condition between check and send.
 
         Regeneration counting: Each new message counts toward the max limit.
         If 2 messages arrive at once, it counts as 2 regenerations, not 1.
 
         Returns:
-            tuple: (ai_response, primary_message) or (None, None) if nothing to process
+            tuple: (sent_message_or_none, cleanup_info) - sent_message is Discord message if sent
         """
         channel_id = initial_message.channel.id
         user_id = initial_message.author.id
@@ -155,6 +156,7 @@ class EventsCog(commands.Cog):
                     ai_response = None
                     primary_message = initial_message
                     force_send_after_next = False  # Flag to force send after next generation
+                    first_iteration = True  # Track first iteration to avoid duplicate initial_message
 
                     while True:
                         # Step 1: Collect all pending messages for this user+channel
@@ -162,8 +164,11 @@ class EventsCog(commands.Cog):
                             messages = EventsCog._pending_messages.get(key, [])
                             EventsCog._pending_messages[key] = []  # Clear for next batch
 
-                        if not messages:
-                            messages = [initial_message]
+                        if first_iteration:
+                            # First iteration: always include initial_message + any messages queued during startup
+                            messages = [initial_message] + messages
+                            first_iteration = False
+                        # else: messages from pending already include initial_message from regeneration loop
 
                         # Step 2: Combine message contents
                         combined_content = "\n".join(m.content for m in messages if m.content)
@@ -222,19 +227,64 @@ class EventsCog(commands.Cog):
                                 # Continue to regenerate (either under limit or doing final generation)
                                 continue
 
-                        # No new messages - send immediately
-                        self.logger.info(f"BATCHING: Complete, total regenerations: {regeneration_count}")
-                        break
+                        # No new messages detected - do a final check and SEND immediately
+                        # This eliminates race condition between check and send
+                        await asyncio.sleep(0.1)  # 100ms window for late messages
 
-                    return ai_response, primary_message
+                        # ATOMIC FINAL CHECK + SEND: Check for messages, if none then send immediately
+                        async with EventsCog._batch_lock:
+                            final_check_messages = EventsCog._pending_messages.get(key, [])
+                            if final_check_messages and regeneration_count < EventsCog._MAX_REGENERATIONS:
+                                # Last-second messages arrived! Regenerate
+                                regeneration_count += len(final_check_messages)
+                                EventsCog._pending_messages[key] = messages + final_check_messages
+                                self.logger.info(f"BATCHING: Final check caught {len(final_check_messages)} late message(s) from {initial_message.author.name}, regenerating")
+                                continue
 
-        finally:
-            # Cleanup: Remove user from queued set
+                            # No new messages - SEND NOW while still holding batch_lock
+                            # This prevents messages from being added to pending during send
+                            self.logger.info(f"BATCHING: Complete for {initial_message.author.name}, total regenerations: {regeneration_count}")
+
+                            sent_message = None
+                            if ai_response:
+                                try:
+                                    # Check if response is a tuple (text + image bytes)
+                                    if isinstance(ai_response, tuple) and len(ai_response) == 2:
+                                        text_response, image_bytes = ai_response
+                                        if emote_handler:
+                                            final_response = emote_handler.replace_emote_tags(text_response, initial_message.guild.id)
+                                        else:
+                                            final_response = text_response
+                                        import io
+                                        image_file = discord.File(io.BytesIO(image_bytes), filename="drawing.png")
+                                        sent_message = await primary_message.reply(content=final_response, file=image_file)
+                                        self.logger.info(f"Sent image response: {final_response[:50]}...")
+                                    else:
+                                        if emote_handler:
+                                            final_response = emote_handler.replace_emote_tags(ai_response, initial_message.guild.id)
+                                        else:
+                                            final_response = ai_response
+                                        sent_message = await primary_message.reply(final_response)
+                                        self.logger.info(f"Sent response: {final_response[:50]}...")
+                                except Exception as e:
+                                    self.logger.error(f"Failed to send response: {e}")
+
+                            # CLEANUP while still holding lock - remove user from queue
+                            if channel_id in EventsCog._queued_users:
+                                EventsCog._queued_users[channel_id].discard(user_id)
+                            EventsCog._pending_messages.pop(key, None)
+                            self.logger.debug(f"BATCHING: Cleanup complete for {initial_message.author.name}")
+
+                            return sent_message, (user_id, channel_id, key)
+
+        except Exception as e:
+            # On error, still need to cleanup
             async with EventsCog._batch_lock:
                 if channel_id in EventsCog._queued_users:
                     EventsCog._queued_users[channel_id].discard(user_id)
                 EventsCog._pending_messages.pop(key, None)
-                self.logger.debug(f"BATCHING: Cleanup complete for {initial_message.author.name}")
+                self.logger.debug(f"BATCHING: Cleanup on error for {initial_message.author.name}")
+            raise
 
     @commands.Cog.listener("on_ready")
     async def on_cog_ready(self):
@@ -428,36 +478,19 @@ class EventsCog(commands.Cog):
                 self.logger.debug(f"Active responses: {EventsCog._active_responses}/{EventsCog._max_concurrent_responses}")
 
                 try:
-                    # Use batched response processor (handles combining messages + check-before-send)
-                    ai_response_text, primary_message = await self._process_batched_response(
+                    # Use batched response processor (handles combining messages + check-before-send + SENDING)
+                    # Send happens inside _process_batched_response to eliminate race condition
+                    sent_message, cleanup_info = await self._process_batched_response(
                         initial_message=message,
                         db_manager=db_manager,
-                        has_images=has_images
+                        has_images=has_images,
+                        emote_handler=self.bot.emote_handler
                     )
 
-                    self.logger.debug(f"AI generated response: {ai_response_text[:50] if ai_response_text and isinstance(ai_response_text, str) else 'None/Image'}...")
-
-                    # Replace emote tags and send response
-                    if ai_response_text:
-                        # Check if response is a tuple (text + image bytes from image_generation intent)
-                        if isinstance(ai_response_text, tuple) and len(ai_response_text) == 2:
-                            text_response, image_bytes = ai_response_text
-                            final_response = self.bot.emote_handler.replace_emote_tags(text_response, message.guild.id)
-
-                            # Send image with caption
-                            import io
-                            image_file = discord.File(io.BytesIO(image_bytes), filename="drawing.png")
-                            sent_message = await primary_message.reply(content=final_response, file=image_file)
-                            self.logger.info(f"Sent image response with caption: {final_response[:50]}...")
-                        else:
-                            # Normal text response
-                            final_response = self.bot.emote_handler.replace_emote_tags(ai_response_text, message.guild.id)
-                            sent_message = await primary_message.reply(final_response)
-                            self.logger.info(f"Sent response: {final_response[:50]}...")
-
-                        # Note: The bot's message will be logged when it triggers on_message
-                    else:
-                        self.logger.warning(f"AI handler returned empty response for message {message.id}")
+                    if not sent_message:
+                        self.logger.warning(f"No response sent for message {message.id}")
+                    # Note: The bot's message will be logged when it triggers on_message
+                    # Cleanup already happened inside _process_batched_response
 
                 except Exception as e:
                     self.logger.error(f"Failed to generate AI response: {e}", exc_info=True)

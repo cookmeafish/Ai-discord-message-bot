@@ -294,9 +294,10 @@ Create a detailed, visual description of the COMPLETE SCENE:
 - Be specific about poses, expressions, and spatial relationships
 - Keep it under 150 words
 - Don't mention "database" or "context" - just provide the scene description naturally
+- **CONTENT SAFETY**: Avoid words like "muscular", "bare", "naked", "revealing" - keep descriptions PG-rated and focused on clothed appearances
 
 **Example output for "UserA fighting UserB":**
-"A fierce confrontation between two figures: UserA (a powerful woman with long dark hair, intense eyes, wearing combat gear) engaged in dynamic combat with UserB (a muscular man with short blonde hair, determined expression, athletic build), both in aggressive fighting stances, fists raised, facing each other with tension and energy"
+"A fierce confrontation between two figures: UserA (a powerful woman with long dark hair, intense eyes, wearing combat gear) engaged in dynamic combat with UserB (a tall man with short blonde hair, determined expression, athletic build), both in aggressive fighting stances, fists raised, facing each other with tension and energy"
 
 **Example output for "PersonX sitting with PersonY":**
 "Two figures seated side by side: PersonX (elderly person with distinctive features, formal attire) sitting beside PersonY (middle-aged person with professional appearance, warm expression), both positioned at a table in conversation"
@@ -334,9 +335,10 @@ Create a detailed, visual description using ONLY the database facts provided:
 - Focus ONLY on translating abstract traits ("powerful", "feared", "YouTuber") into concrete visual details (posture, expression, clothing style)
 - Keep it under 100 words
 - Don't mention "database" - just provide the description naturally
+- **CONTENT SAFETY**: Avoid words like "muscular", "bare", "naked", "revealing" - keep descriptions PG-rated and focused on clothed appearances
 
 **Example output (with visual facts):**
-"A handsome, strong man with a commanding presence that inspires fear, intelligent eyes showing wisdom, wearing regal dark clothing befitting a ruler, powerful muscular build, stern facial features"
+"A handsome, strong man with a commanding presence that inspires fear, intelligent eyes showing wisdom, wearing regal dark clothing befitting a ruler, powerful build, stern facial features"
 
 **Example output (NO visual facts, only personality/behavior):**
 "A person with a confident posture and an intimidating presence, dressed casually, with an expression that commands respect"
@@ -374,6 +376,7 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
 - Be specific and detailed (not vague)
 - Keep it under 100 words
 - Don't mention "database", "conversation", or "knowledge" - just provide the description naturally
+- **CONTENT SAFETY**: Avoid words like "muscular", "bare", "naked", "revealing", "body" - keep descriptions PG-rated and focused on clothed appearances, fur, or natural features
 
 **Example output for famous person:**
 "A woman in her late 50s with shoulder-length dark brown hair, warm brown eyes, professional attire typically consisting of tailored pantsuits in navy or black, pearl necklace, confident smile"

@@ -102,11 +102,12 @@ The bot has a configurable personality mode that controls immersion and language
 1. `cogs/events.py:on_message()` - Receives message
 2. Guild validation and server-specific database retrieval via `bot.get_server_db(guild.id, guild.name)`
 3. Message logged to server database via `db_manager.log_message()`
-4. Intent classified via `ai_handler._classify_intent()` (6 categories: image_generation, memory_storage, memory_correction, factual_question, memory_recall, casual_chat)
+4. Intent classified via `ai_handler._classify_intent()` (7 categories: image_generation, memory_storage, memory_correction, factual_question, memory_recall, memory_challenge, casual_chat)
    - **image_generation**: User requesting bot to draw/sketch/create an image ("draw me a cat", "can you sketch a house")
-   - **memory_recall**: Personal questions about user or recent conversation ("what's my favorite food?", "do you remember what I said?")
+   - **memory_recall**: Specific fact questions about user ("what's my favorite food?", "do you remember my dog's name?")
+   - **memory_challenge**: Broad "prove you know me" questions ("what do you remember about me?", "what do you know about me?") - responds naturally with 2-3 highlights, not a database dump
    - **factual_question**: General knowledge questions ("what's the capital of France?")
-   - Improved classification distinguishes between image generation, personal memory recall, and general factual queries
+   - Improved classification distinguishes between image generation, specific memory recall, broad memory challenges, and general factual queries
 5. Response generated via `ai_handler.generate_response(message, short_term_memory, db_manager)` with:
    - Bot identity from server database (`_build_bot_identity_prompt(db_manager)`)
    - Relationship metrics (`_build_relationship_context(user_id, channel_config, db_manager)`)
@@ -118,9 +119,9 @@ The bot has a configurable personality mode that controls immersion and language
    - Metrics only update via: Manual commands (`/user_set_metrics`), GUI User Manager, or memory consolidation
    - Prevents metrics from changing too rapidly during conversations
 
-**Message Batching System (2025-11-24)**:
+**Message Batching System (2025-11-24, Updated 2025-11-30)**:
 - **Problem**: User sends "dr fish" then "wassup" quickly → bot responds twice instead of once
-- **Solution**: Check-before-send approach with per-channel queuing
+- **Solution**: Atomic check-and-send approach with per-channel queuing
 - **Implementation** (`cogs/events.py`):
   - `_channel_locks`: Per-channel `asyncio.Lock` - one response at a time per channel
   - `_pending_messages`: `{(user_id, channel_id): [messages]}` - batches rapid messages
@@ -132,7 +133,7 @@ The bot has a configurable personality mode that controls immersion and language
   3. If not queued → Add user to queue, process with channel lock
   4. Generate response → Check for new messages before sending
   5. If new messages arrived → Regenerate (max 3 times)
-  6. Send response → Clean up user from queue
+  6. **Atomic send**: Acquire batch_lock → final check → send → cleanup → release lock
 - **Key Features**:
   - **Per-channel isolation**: Different channels process independently
   - **Per-user batching**: Same user's rapid messages combined into one response
@@ -140,6 +141,7 @@ The bot has a configurable personality mode that controls immersion and language
   - **Smart counting**: Each new message counts toward limit (2 messages at once = 2 counts, not 1)
   - **Max 3 regenerations**: Prevents infinite loops (counts by messages, not loop iterations)
   - **Combined content**: All batched messages joined with newlines and passed to AI
+  - **Race condition fix (2025-11-30)**: Send happens inside `_process_batched_response` while holding `batch_lock`, eliminating gap between final check and send where messages could be lost
 - **Config** (`config.json`):
   ```json
   "message_batching": {
@@ -656,11 +658,18 @@ Per-channel configuration stored in database (per-server):
   - AI determines if new fact contradicts any existing fact
   - If contradiction detected, old fact is **updated** instead of creating duplicate
   - If no contradiction, fact is added as new
-- **Batch Sentiment Analysis (2025-11-24)**: During consolidation, analyzes user sentiment to update relationship metrics
-  - **Minimum Message Threshold**: Only runs for users with 3+ messages in short-term memory
+- **Batch Sentiment Analysis (2025-11-25)**: During consolidation, analyzes user sentiment to update relationship metrics
+  - **ONLY runs during memory consolidation** - never at startup or per-message
+  - **Analyzes SHORT-TERM memory only** - not influenced by long-term stored facts
   - **Metrics Updated**: rapport, trust, anger, respect, affection, familiarity, fear, intimidation
-  - **Respects Locks**: Locked metrics are not modified during sentiment analysis
-  - Prevents inactive users from having metrics changed based on insufficient data
+  - **Natural Decay for Negative Emotions**: If no hostility detected AND anger/fear/intimidation > 3, they decrease by 1
+  - **Anger Rules**:
+    - Hostile/rude/insulting → +1/+2
+    - Neutral conversation AND anger > 3 → -1 (natural decay)
+    - Patient/kind/friendly → -1/-2
+    - Playful teasing/jokes are NOT hostile
+  - **Respects Locks**: Locked metrics are not modified
+  - **Conservative increases, generous decreases**: +1 max for mild cases, -1/-2 for positive interactions
 - Facts are saved to (or updated in) that server's `long_term_memory` with source attribution
 - All short-term messages are then archived to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
 - After archival, short-term table is cleared for that server

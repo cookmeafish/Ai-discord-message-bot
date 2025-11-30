@@ -634,7 +634,9 @@ class AIHandler:
         for msg in messages[-30:]:
             # Check if it's a dict (from short_term_memory) or Discord Message object
             if isinstance(msg, dict):
-                if msg.get('author_id') != str(bot_id) and msg.get('role') == 'user':
+                # short_term_memory messages don't have 'role' field, just check author_id
+                author_id = msg.get('author_id')
+                if author_id and str(author_id) != str(bot_id):
                     user_messages.append(msg.get('content', ''))
             else:
                 # Discord Message object
@@ -862,7 +864,8 @@ Follow these strict rules for classification:
 - **image_generation**: The user is requesting the bot to draw, sketch, or create an image (e.g., "draw me a cat", "can you sketch a house", "make me a picture of a dragon"). This includes any variation of asking for visual artwork.
 - **memory_storage**: The user is stating a fact and wants the bot to remember it for later (e.g., "my favorite color is blue", "just so you know, my cat is named Whiskers").
 - **memory_correction**: ONLY classify as this if the user's message DIRECTLY CONTRADICTS a statement made by the bot in the provided conversation history. If there is no bot statement to correct, this is the wrong category.
-- **memory_recall**: Use when the user is asking the bot to recall something ABOUT THEM personally or from recent conversation (e.g., "what's my favorite food?", "do you remember what I said earlier?", "what did I tell you about my cat?"). This includes questions about personal preferences, facts about the user, or things mentioned in the conversation.
+- **memory_recall**: Use when the user is asking the bot to recall a SPECIFIC fact about them (e.g., "what's my favorite food?", "what did I tell you about my cat?", "do you remember my dog's name?"). This is for targeted questions about one particular thing.
+- **memory_challenge**: Use when the user is broadly challenging/testing the bot's memory of them (e.g., "what do you remember about me?", "what do you know about me?", "tell me what you know", "do you even remember me?"). This is NOT for specific fact questions - it's for open-ended "prove you know me" challenges.
 - **factual_question**: Use for questions about general knowledge, external facts, or real-world information NOT about the user personally (e.g., "what's the capital of France?", "how does photosynthesis work?").
 - **casual_chat**: This is the default. Use for small talk, reactions, or any general conversation that doesn't fit the other categories.
 
@@ -887,7 +890,7 @@ Based on the rules and the last user message, what is the user's primary intent?
             )
             intent = response.choices[0].message.content.strip().lower()
 
-            if intent in ["casual_chat", "memory_recall", "memory_correction", "factual_question", "memory_storage", "image_generation"]:
+            if intent in ["casual_chat", "memory_recall", "memory_challenge", "memory_correction", "factual_question", "memory_storage", "image_generation"]:
                 print(f"AI Handler: Classified intent as '{intent}' using {config['model']}")
                 return intent
             else:
@@ -1052,24 +1055,46 @@ Guidelines for Fear and Intimidation:
             return
 
         lore_extraction_prompt = f"""
-Analyze this bot response and extract ANY new lore, facts, or character details the bot revealed about itself.
+Analyze this bot response and extract ONLY SUBSTANTIVE new lore or facts the bot revealed about itself.
 
 Bot response: "{ai_response}"
 
-Rules:
-- Extract facts ONLY about the bot itself (not about users or other topics)
-- Look for new revelations: preferences, memories, experiences, opinions, personality traits
-- If the bot mentions something from its past, that's lore
-- If the bot reveals a preference or opinion, that's a fact
-- Format each as a short, clear sentence
-- If NO new self-lore detected, respond with "NO_LORE"
-- Maximum 3 most important items
-- Each item on a new line, prefixed with "LORE:" or "FACT:"
+**STRICT RULES - MOST RESPONSES SHOULD RETURN NO_LORE:**
 
-Examples:
-LORE: Has a fear of sharks due to childhood trauma
-FACT: Loves eating pizza
-LORE: Worked as a marine biologist before becoming self-aware
+✅ EXTRACT (rare, meaningful revelations):
+- Backstory: "I used to work at...", "When I was young...", "I grew up..."
+- Traumatic/formative experiences: "I'm scared of X because...", "I lost my..."
+- Strong preferences with WHY: "I hate X because it reminds me of..."
+- Relationships: "My brother...", "My old friend..."
+- Secrets or confessions: "I've never told anyone but..."
+
+❌ DO NOT EXTRACT (these are NOT lore):
+- Emote/emoji usage ("uses :fishwhat:")
+- Communication style ("speaks casually", "uses the phrase...")
+- Generic opinions without depth ("prefers quiet", "likes to lurk")
+- Observations about tone or mood
+- Anything about HOW the bot communicates
+- Vague statements ("sometimes stays low", "watches from shadows")
+- Single-word preferences without context
+
+**QUALITY THRESHOLD:**
+If the revelation wouldn't be interesting in a character bio, it's NOT lore.
+"Worked as a marine biologist" = interesting bio material ✅
+"Uses fish emotes" = not bio material ❌
+"Prefers to lurk" = too vague, not bio material ❌
+
+If NO substantive lore detected, respond with "NO_LORE"
+Maximum 2 items, only if TRULY meaningful.
+Each item on a new line, prefixed with "LORE:" or "FACT:"
+
+Examples of GOOD extraction:
+LORE: Lost a close friend in a fishing accident years ago
+FACT: Has a severe allergy to shellfish that almost killed them once
+
+Examples that should be NO_LORE:
+- "Just lurking" → NO_LORE (too vague)
+- "Better keep it cool" → NO_LORE (just a phrase)
+- "*uses emote*" → NO_LORE (communication style)
 """
 
         extraction_config = self._get_model_config('memory_extraction')
@@ -1110,6 +1135,60 @@ LORE: Worked as a marine biologist before becoming self-aware
 
         except Exception as e:
             print(f"AI Handler: Failed to extract bot self-lore (non-critical): {e}")
+
+    async def _verify_user_reference(self, message_content: str, matched_name: str, user_display_name: str) -> bool:
+        """
+        Uses AI to verify if a matched username is actually being referenced as a person,
+        or if the word is being used in another context (e.g., "hat" the object vs "Hat" the user).
+
+        Args:
+            message_content: The full message content
+            matched_name: The word/name that matched a username
+            user_display_name: The user's display name
+
+        Returns:
+            True if the message is likely referring to the user, False otherwise
+        """
+        verification_prompt = f"""
+Determine if this message is referring to a PERSON named "{user_display_name}" or using the word "{matched_name}" in another context.
+
+Message: "{message_content}"
+Matched word: "{matched_name}"
+User's name: "{user_display_name}"
+
+**Decision criteria:**
+- Is "{matched_name}" being used as a person's name (someone being talked TO or ABOUT)?
+- Or is it being used as a common noun, verb, adjective, or object?
+
+**Examples:**
+- "hat looks cool today" + user named "Hat" → YES (talking about the person Hat)
+- "I like your hat" + user named "Hat" → NO (talking about a hat object)
+- "tell hat I said hi" + user named "Hat" → YES (referring to person)
+- "put on a hat" + user named "Hat" → NO (the clothing item)
+- "fish is being weird" + user named "Fish" → YES (talking about person)
+- "I caught a fish" + user named "Fish" → NO (the animal)
+
+Respond with ONLY "YES" or "NO".
+- YES = message is referring to the person
+- NO = message is using the word in another context
+"""
+
+        try:
+            config = self._get_model_config('intent_classification')
+            response = await self.client.chat.completions.create(
+                model=config['model'],
+                messages=[{'role': 'user', 'content': verification_prompt}],
+                max_tokens=5,
+                temperature=0.0
+            )
+            result = response.choices[0].message.content.strip().upper()
+            is_user_reference = result == "YES"
+            print(f"AI Handler: User reference check for '{matched_name}' → {result} (referring to user: {is_user_reference})")
+            return is_user_reference
+        except Exception as e:
+            print(f"AI Handler: Error verifying user reference: {e}")
+            # Default to True to avoid missing legitimate references
+            return True
 
     async def process_image(self, message, image_url, image_filename, db_manager):
         """
@@ -1576,15 +1655,12 @@ Examples:
         long_term_memory_entries = db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
         if long_term_memory_entries:
-            facts_str_list = []
-            for fact, source_id, source_name in long_term_memory_entries:
-                source_info = f" (Source: {source_name})" if source_name else ""
-                facts_str_list.append(f"Fact: '{fact}'{source_info}")
-
+            # Format facts naturally without database-like prefixes
+            facts_str_list = [fact for fact, source_id, source_name in long_term_memory_entries]
             facts_str = "\n- ".join(facts_str_list)
             # CRITICAL: Identify this as the AUTHOR (person asking the question)
             author_name = author.display_name if hasattr(author, 'display_name') else author.name
-            user_profile_prompt = f"=== KNOWN FACTS ABOUT THE AUTHOR (person asking you the question) ===\n"
+            user_profile_prompt = f"=== THINGS YOU KNOW ABOUT THE AUTHOR ===\n"
             user_profile_prompt += f"Author: **{author_name}** (ID: {author.id})\n- {facts_str}\n\n"
 
         # Build mentioned users prompt (will be populated for casual_chat/memory_recall/factual_question)
@@ -1721,49 +1797,30 @@ Examples:
                         # 2. It's NOT a common English word
                         # 3. It's at least 3 characters long
 
-                        # Common English words that should NEVER match usernames
-                        # This includes: articles, pronouns, verbs, common nouns, adjectives, prepositions
+                        # MINIMAL filter - only words that could NEVER be usernames
+                        # Everything else goes through AI verification if it matches a database user
                         common_english_words = {
-                            # Articles, pronouns, determiners
-                            'a', 'an', 'the', 'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'hers',
-                            'it', 'its', 'we', 'us', 'our', 'they', 'them', 'their', 'this', 'that', 'these', 'those',
+                            # Articles and determiners (too short/common to be names)
+                            'a', 'an', 'the', 'this', 'that', 'these', 'those',
+                            # Pronouns (referring to self/others, not names)
+                            'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'hers',
+                            'it', 'its', 'we', 'us', 'our', 'they', 'them', 'their',
+                            # Question words
                             'who', 'what', 'which', 'whose', 'whom', 'where', 'when', 'why', 'how',
-                            # Common verbs
-                            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am', 'have', 'has', 'had',
-                            'do', 'does', 'did', 'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must',
-                            'eat', 'eating', 'drink', 'drinking', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
-                            'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding', 'go', 'going',
-                            'come', 'coming', 'see', 'seeing', 'look', 'looking', 'want', 'wanting', 'need', 'needing',
-                            'like', 'liking', 'love', 'loving', 'hate', 'hating', 'think', 'thinking', 'know', 'knowing',
-                            'say', 'saying', 'tell', 'telling', 'ask', 'asking', 'use', 'using', 'find', 'finding',
-                            'draw', 'drawing', 'sketch', 'sketching', 'paint', 'painting', 'create', 'creating',
-                            # Common nouns (animals, objects, people, places, things)
-                            'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear', 'wolf', 'fox',
-                            'rabbit', 'mouse', 'rat', 'snake', 'frog', 'turtle', 'shark', 'whale', 'dolphin', 'octopus',
-                            'food', 'water', 'fire', 'earth', 'air', 'sword', 'gun', 'knife', 'weapon', 'shield',
-                            'hat', 'shirt', 'dress', 'pants', 'shoes', 'clothes', 'armor', 'helmet',
-                            'car', 'house', 'tree', 'flower', 'rock', 'mountain', 'river', 'ocean', 'sky', 'sun', 'moon',
-                            'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby', 'adult', 'human',
-                            'king', 'queen', 'prince', 'princess', 'knight', 'warrior', 'wizard', 'witch', 'demon', 'angel',
-                            'head', 'face', 'eye', 'eyes', 'nose', 'mouth', 'ear', 'hair', 'hand', 'hands', 'arm', 'leg',
-                            'body', 'tail', 'wing', 'wings', 'paw', 'claw', 'horn', 'horns', 'fur', 'skin', 'scale',
+                            # Basic verbs (too common)
+                            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+                            'have', 'has', 'had', 'do', 'does', 'did',
                             # Prepositions and conjunctions
-                            'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'of', 'about', 'into', 'through',
-                            'during', 'before', 'after', 'above', 'below', 'between', 'under', 'over',
-                            'and', 'or', 'but', 'so', 'yet', 'nor', 'if', 'then', 'because', 'although', 'while',
-                            # Common adjectives
-                            'big', 'small', 'large', 'tiny', 'huge', 'little', 'cute', 'pretty', 'beautiful', 'ugly',
-                            'nice', 'bad', 'good', 'great', 'best', 'worst', 'new', 'old', 'young', 'ancient',
-                            'hot', 'cold', 'warm', 'cool', 'fast', 'slow', 'quick', 'strong', 'weak', 'hard', 'soft',
-                            'dark', 'light', 'bright', 'black', 'white', 'red', 'blue', 'green', 'yellow', 'purple', 'pink',
-                            'happy', 'sad', 'angry', 'scared', 'brave', 'smart', 'dumb', 'crazy', 'funny', 'serious',
-                            # Numbers and quantifiers
-                            'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-                            'first', 'second', 'third', 'last', 'next', 'some', 'any', 'all', 'every', 'each', 'many', 'few',
-                            # Other common words
-                            'just', 'only', 'also', 'too', 'very', 'really', 'now', 'here', 'there', 'please', 'thanks',
-                            'yes', 'no', 'not', 'never', 'always', 'maybe', 'probably', 'definitely', 'actually'
+                            'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'of', 'about',
+                            'and', 'or', 'but', 'so', 'if', 'than', 'then',
+                            # Modal verbs
+                            'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must',
+                            # Drawing command words (always skip these)
+                            'draw', 'drawing', 'sketch', 'paint', 'create', 'make', 'picture'
                         }
+                        # NOTE: Nouns like "fish", "cat", "dragon" are NOT filtered
+                        # If someone is named "Fish", AI verification will decide
+                        # if "draw a fish" means the animal or the user
 
                         # Get original words (before lowercasing) to check capitalization
                         original_words = clean_prompt.split()
@@ -1819,11 +1876,21 @@ Examples:
                                         nickname_words = nickname.split()
                                         if name in nickname_words:
                                             print(f"AI Handler: Database nicknames match - '{name}' matches word in '{nickname}' (user_id: {user_id_str})")
-                                            class PseudoMember:
-                                                def __init__(self, user_id):
-                                                    self.id = user_id
-                                                    self.display_name = f"User_{user_id}"
-                                            mentioned_users.append(PseudoMember(user_id_str))
+
+                                            # Verify this is actually a reference to the user, not just the word
+                                            is_actual_reference = await self._verify_user_reference(
+                                                clean_prompt, name, nickname
+                                            )
+
+                                            if is_actual_reference:
+                                                class PseudoMember:
+                                                    def __init__(self, user_id, display_name):
+                                                        self.id = user_id
+                                                        self.display_name = display_name
+                                                mentioned_users.append(PseudoMember(user_id_str, nickname))
+                                                print(f"AI Handler: Verified - drawing prompt refers to user '{nickname}'")
+                                            else:
+                                                print(f"AI Handler: Skipped '{nickname}' - word used as object/noun, not referring to user")
                                             break
                                     if mentioned_users:
                                         break
@@ -1860,13 +1927,29 @@ Examples:
                                                     text_after_pattern = fact_text[pattern_pos + len(phrase):]
                                                     import re
                                                     # Check if any potential name appears after the pattern
-                                                    if any(re.search(r'\b' + re.escape(name) + r'\b', text_after_pattern) for name in potential_names):
+                                                    matched_name = None
+                                                    for name in potential_names:
+                                                        if re.search(r'\b' + re.escape(name) + r'\b', text_after_pattern):
+                                                            matched_name = name
+                                                            break
+
+                                                    if matched_name:
                                                         print(f"AI Handler: Database match found for user {user_id} in fact: {fact_tuple[0]}")
-                                                        class PseudoMember:
-                                                            def __init__(self, user_id):
-                                                                self.id = user_id
-                                                                self.display_name = f"User_{user_id}"
-                                                        mentioned_users.append(PseudoMember(user_id))
+
+                                                        # Verify this is actually a reference to the user
+                                                        is_actual_reference = await self._verify_user_reference(
+                                                            clean_prompt, matched_name, f"User_{user_id}"
+                                                        )
+
+                                                        if is_actual_reference:
+                                                            class PseudoMember:
+                                                                def __init__(self, user_id):
+                                                                    self.id = user_id
+                                                                    self.display_name = f"User_{user_id}"
+                                                            mentioned_users.append(PseudoMember(user_id))
+                                                            print(f"AI Handler: Verified - drawing prompt refers to user '{user_id}'")
+                                                        else:
+                                                            print(f"AI Handler: Skipped user {user_id} - word used as object/noun, not referring to user")
                                                         break
                                             if mentioned_users:
                                                 break
@@ -2099,12 +2182,6 @@ Respond with ONLY the extracted visual description, nothing else.
                     is_refinement=is_refinement_request
                 )
 
-                # Cache the FULL enhanced prompt for potential refinement (not just the original request)
-                # This ensures refinements use the same detailed context as the original image
-                prompt_to_cache = full_prompt if full_prompt else clean_prompt
-                print(f"\n💾 CACHING ENHANCED PROMPT: '{prompt_to_cache}' for user {author.id}")
-                self.image_generator.cache_prompt(author.id, prompt_to_cache)
-
                 if error_msg:
                     print(f"AI Handler: Image generation failed: {error_msg}")
                     personality_mode = self._get_personality_mode(personality_config)
@@ -2112,7 +2189,7 @@ Respond with ONLY the extracted visual description, nothing else.
                     # Get the current user's display name
                     current_user_name = author.display_name
 
-                    # Generate a natural failure response
+                    # Generate a natural failure response for non-NSFW errors
                     failure_prompt = f"""
 {identity_prompt}
 {relationship_prompt}
@@ -2148,6 +2225,11 @@ Respond naturally as if you tried to draw but messed up or ran into problems.
                     return response.choices[0].message.content.strip()
 
                 # Success! Image generated, now send it
+                # Cache the FULL enhanced prompt for potential refinement (only on success!)
+                prompt_to_cache = full_prompt if full_prompt else clean_prompt
+                print(f"\n💾 CACHING ENHANCED PROMPT: '{prompt_to_cache[:50]}...' for user {author.id}")
+                self.image_generator.cache_prompt(author.id, prompt_to_cache)
+
                 # Increment the image count AFTER successful generation
                 # BUT: Skip increment for refinements if configured to allow refinements after rate limit
                 allow_refinement_after_limit = refinement_config.get('allow_refinement_after_rate_limit', True)
@@ -2482,7 +2564,7 @@ Respond with ONLY the fact ID number or "NONE".
                 print(f"AI Handler: Failed to process memory correction: {e}")
                 return "Sorry, I had trouble updating that."
         
-        else:  # Covers "casual_chat" and "memory_recall"
+        else:  # Covers "casual_chat", "memory_recall", and "memory_challenge"
             personality_mode = self._get_personality_mode(personality_config)
             server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
@@ -2496,28 +2578,28 @@ Respond with ONLY the fact ID number or "NONE".
                 # Extract potential names from message
                 # CRITICAL: Only match SPECIFIC NAMES, not generic English words
                 # Common English words that should NEVER match usernames
+                # MINIMAL filter - only words that could NEVER be usernames
+                # Everything else goes through AI verification if it matches a database user
                 common_english_words = {
-                    # Articles, pronouns, determiners
-                    'a', 'an', 'the', 'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'hers',
-                    'it', 'its', 'we', 'us', 'our', 'they', 'them', 'their', 'this', 'that', 'these', 'those',
+                    # Articles and determiners (too short/common to be names)
+                    'a', 'an', 'the', 'this', 'that', 'these', 'those',
+                    # Pronouns (referring to self/others, not names)
+                    'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'hers',
+                    'it', 'its', 'we', 'us', 'our', 'they', 'them', 'their',
+                    # Question words
                     'who', 'what', 'which', 'whose', 'whom', 'where', 'when', 'why', 'how',
-                    # Common verbs
-                    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am', 'have', 'has', 'had',
-                    'do', 'does', 'did', 'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must',
-                    'eat', 'eating', 'drink', 'drinking', 'hold', 'holding', 'give', 'giving', 'take', 'taking',
-                    'make', 'making', 'get', 'getting', 'put', 'putting', 'add', 'adding', 'go', 'going',
-                    'think', 'thinking', 'know', 'knowing', 'say', 'saying', 'tell', 'telling',
-                    # Common nouns (animals, objects, people, places, things)
-                    'fish', 'cat', 'dog', 'bird', 'horse', 'dragon', 'lion', 'tiger', 'bear', 'wolf', 'fox',
-                    'food', 'water', 'fire', 'sword', 'gun', 'hat', 'shirt', 'dress', 'car', 'house', 'tree',
-                    'man', 'woman', 'girl', 'boy', 'person', 'people', 'child', 'baby', 'adult', 'human',
+                    # Basic verbs (too common)
+                    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+                    'have', 'has', 'had', 'do', 'does', 'did',
                     # Prepositions and conjunctions
-                    'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'of', 'about', 'and', 'or', 'but',
-                    # Common adjectives
-                    'big', 'small', 'cute', 'pretty', 'ugly', 'nice', 'bad', 'good', 'new', 'old',
-                    # Question words and conversation words
-                    'about', 'think', 'know', 'tell', 'what', 'who', 'when', 'where', 'why', 'how'
+                    'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'of', 'about',
+                    'and', 'or', 'but', 'so', 'if', 'than', 'then',
+                    # Modal verbs
+                    'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must'
                 }
+                # NOTE: Nouns, adjectives, slang etc. are NOT filtered here
+                # If someone is named "Fish" or "Weird", AI verification will decide
+                # if the message refers to them or uses the word normally
 
                 # Get original words to check capitalization
                 original_words = actual_content.split()
@@ -2577,8 +2659,26 @@ Respond with ONLY the fact ID number or "NONE".
                     if display_match or username_match or nickname_match:
                         # Don't add the author to mentioned users list (they're already loaded separately)
                         if member.id != author.id:
-                            mentioned_users.append(member)
-                            print(f"AI Handler: Found mentioned user (not author): {member.display_name} (ID: {member.id})")
+                            # Determine which name matched for verification
+                            matched_name = None
+                            if display_match:
+                                matched_name = member.display_name.lower()
+                            elif username_match:
+                                matched_name = member.name.lower()
+                            else:  # nickname_match
+                                matched_name = member.display_name.lower()  # Use display name as reference
+
+                            # Verify this is actually a reference to the user, not just the word
+                            # (e.g., "hat" the object vs "Hat" the user)
+                            is_actual_reference = await self._verify_user_reference(
+                                actual_content, matched_name, member.display_name
+                            )
+
+                            if is_actual_reference:
+                                mentioned_users.append(member)
+                                print(f"AI Handler: Verified mentioned user (not author): {member.display_name} (ID: {member.id})")
+                            else:
+                                print(f"AI Handler: Skipped '{member.display_name}' - word used in different context, not referring to user")
 
                 # Load facts for each mentioned user
                 for member in mentioned_users:
@@ -2597,7 +2697,7 @@ Respond with ONLY the fact ID number or "NONE".
 
             # Build mentioned users prompt from collected info
             if mentioned_users_info:
-                mentioned_users_prompt = "=== FACTS ABOUT MENTIONED USERS (people being discussed, NOT the author) ===\n"
+                mentioned_users_prompt = "=== THINGS YOU KNOW ABOUT MENTIONED USERS (people being discussed, NOT the author) ===\n"
                 mentioned_users_prompt += "⚠️ CRITICAL: These are OTHER PEOPLE being mentioned in the conversation.\n"
                 mentioned_users_prompt += "DO NOT confuse them with the AUTHOR (person asking the question).\n\n"
 
@@ -2879,6 +2979,27 @@ Respond with ONLY the fact ID number or "NONE".
                     f"**NEVER address this user by someone else's name.**\n\n"
                     f"You're having a casual conversation with **{current_user_name}**.\n\n"
                     f"Channel Purpose: {personality_config.get('purpose', 'General chat')}\n\n"
+                )
+
+                # Add specific guidance for memory challenge questions ("what do you remember about me?")
+                if intent == "memory_challenge":
+                    system_prompt += (
+                        "--- MEMORY CHALLENGE RESPONSE ---\n"
+                        "🎯 The user is challenging you to prove you know them. This is NOT a database query!\n\n"
+                        "**HOW A REAL PERSON RECALLS SOMEONE:**\n"
+                        "- Pick 2-3 STANDOUT things that come to mind first (interesting, unique, memorable)\n"
+                        "- Be casual and uncertain - 'if I remember right', 'pretty sure you mentioned'\n"
+                        "- React to what you remember - 'oh yeah, you're the teacher!' not 'you are a teacher'\n"
+                        "- Trail off naturally - 'that's the main stuff I got' or 'something like that'\n"
+                        "- DON'T try to list everything - that's robotic\n\n"
+                        "❌ ROBOTIC (never do this):\n"
+                        "'You're Crowy, retired, juggling responsibilities, got a couple of jobs including teaching physics and language, maybe biology soon. You prefer English in chats, find calling seniors senpai a bit awkward, but you're solid and trustworthy.'\n\n"
+                        "✅ NATURAL (do this):\n"
+                        "'Oh you're the retired teacher right? Physics and language if I remember. Pretty sure you mentioned not being a fan of the whole senpai thing lol'\n\n"
+                        "**KEY**: You have facts listed above but DON'T read them off like a list. Pick highlights, be casual, sound like you're actually remembering - not reciting.\n\n"
+                    )
+
+                system_prompt += (
                     "--- CRITICAL RULES ---\n"
                     "1. **BE BRIEF AND NATURAL**: Sound like a real person. Match your relationship tone.\n"
                     "2. **CONVERSATION FLOW**: Questions are OK when natural, but NEVER use customer service language.\n"
