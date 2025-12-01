@@ -181,26 +181,26 @@ USER FEEDBACK: "{changes_requested}"
 **YOUR ONLY JOB:** Make the SMALLEST possible change to satisfy the feedback.
 
 **ABSOLUTE RULES - VIOLATIONS WILL BE REJECTED:**
-1. **NO NEW PEOPLE** - Never add humans, chefs, handlers, characters, etc.
-2. **NO NEW SCENES** - Never add kitchens, backgrounds, settings, etc.
-3. **NO CREATIVITY** - Only change exactly what was requested
+1. **ONLY ADD WHAT'S REQUESTED** - If user asks to add a person/character by name, add them. But never add people the user didn't ask for.
+2. **NO UNREQUESTED SCENES** - Never add backgrounds/settings unless explicitly asked.
+3. **NO CREATIVITY BEYOND REQUEST** - Only change exactly what was requested.
 4. **LITERAL INTERPRETATION** - "plate it with wings" = put it on a plate with chicken wings, NOT add wing accessories
 
 **Examples:**
 - Original: "a hot sauce bottle"
   Feedback: "plate it with wings"
   New Prompt: "a hot sauce bottle on a plate with chicken wings"
-  WRONG: "chefs in a kitchen with hot sauce" ❌
+  WRONG: "chefs in a kitchen with hot sauce" ❌ (user didn't ask for chefs)
 
 - Original: "a dragon"
   Feedback: "make it blue"
   New Prompt: "a blue dragon"
-  WRONG: "a blue dragon in a magical forest with a wizard" ❌
+  WRONG: "a blue dragon in a magical forest with a wizard" ❌ (user didn't ask for forest/wizard)
 
-- Original: "an ice turtle"
-  Feedback: "give it a red tail"
-  New Prompt: "an ice turtle with a red tail"
-  WRONG: "an ice turtle with handlers in the arctic" ❌
+- Original: "a manbearpig standing on two legs"
+  Feedback: "add Alice hugging it"
+  New Prompt: "a manbearpig standing on two legs with Alice hugging it"
+  ✅ (user explicitly asked to add Alice)
 
 Return ONLY the minimally modified prompt (no explanations)."""
 
@@ -208,7 +208,7 @@ Return ONLY the minimally modified prompt (no explanations)."""
             response = await self.client.chat.completions.create(
                 model=self.config.get('modification_model', 'gpt-4o'),
                 messages=[{'role': 'system', 'content': system_prompt}],
-                max_tokens=self.config.get('modification_max_tokens', 100),
+                max_tokens=self.config.get('modification_max_tokens', 300),  # Higher limit to avoid truncating long prompts
                 temperature=0.0  # Zero temperature for deterministic, non-creative output
             )
 

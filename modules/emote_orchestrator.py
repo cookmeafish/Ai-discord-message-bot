@@ -50,6 +50,11 @@ class EmoteOrchestrator:
         """
         return ", ".join(f":{name}:" for name in self.emotes.keys()) if self.emotes else "No emotes loaded"
 
+    def get_emote_count(self, guild_id=None):
+        """Returns the number of emotes available for a guild."""
+        emotes_to_use = self.get_emotes_for_guild(guild_id) if guild_id else self.emotes
+        return len(emotes_to_use)
+
     def get_random_emote_sample(self, guild_id=None, sample_size=50):
         """
         Returns a randomized sample of emotes for better variety in AI responses.
@@ -81,6 +86,113 @@ class EmoteOrchestrator:
 
         # Return as comma-separated string with colons
         return ", ".join(f":{name}:" for name in sampled_names)
+
+    def get_emotes_with_context(self, guild_id=None):
+        """
+        Returns emotes with contextual hints about when to use them based on their names.
+        This helps the AI choose appropriate emotes for different situations.
+
+        Returns:
+            str: Formatted string with emotes and usage hints
+        """
+        emotes_to_use = self.get_emotes_for_guild(guild_id) if guild_id else self.emotes
+
+        if not emotes_to_use:
+            return "No emotes loaded"
+
+        # Keywords that suggest emotional context
+        emotion_keywords = {
+            # Positive emotions
+            'happy': 'happy/cheerful moments',
+            'smile': 'friendly/pleasant reactions',
+            'laugh': 'funny moments, jokes',
+            'lol': 'funny moments, jokes',
+            'lmao': 'very funny moments',
+            'love': 'affection, appreciation',
+            'heart': 'affection, love, appreciation',
+            'hug': 'comfort, affection',
+            'yay': 'excitement, celebration',
+            'excited': 'excitement, anticipation',
+            'party': 'celebration, excitement',
+            'cool': 'approval, impressed',
+            'nice': 'approval, agreement',
+            'strong': 'confidence, power, determination',
+            'flex': 'confidence, showing off',
+            'proud': 'pride, accomplishment',
+            'blush': 'embarrassment, flattery, shy',
+            'shy': 'embarrassment, bashful',
+            'cute': 'endearing moments',
+
+            # Neutral/reactions
+            'think': 'pondering, considering',
+            'hmm': 'thinking, skeptical',
+            'read': 'focused, studying, paying attention',
+            'wait': 'patience, anticipation',
+            'shrug': 'uncertainty, indifference',
+            'meh': 'indifference, unimpressed',
+            'what': 'confusion, surprise, disbelief',
+            'huh': 'confusion, curiosity',
+            'sus': 'suspicion, doubt',
+            'eye': 'watching, skeptical, side-eye',
+            'stare': 'intense focus, disbelief',
+            'look': 'attention, interest',
+
+            # Negative emotions
+            'sad': 'sadness, disappointment',
+            'cry': 'sadness, overwhelming emotion',
+            'angry': 'anger, frustration',
+            'mad': 'anger, frustration',
+            'rage': 'intense anger',
+            'annoyed': 'mild frustration',
+            'tired': 'exhaustion, boredom',
+            'sleep': 'tiredness, bored',
+            'dead': 'exhaustion, giving up',
+            'rip': 'sympathy, failure',
+            'pain': 'suffering, cringe',
+            'cringe': 'secondhand embarrassment',
+            'scared': 'fear, anxiety',
+            'fear': 'fear, worry',
+            'nervous': 'anxiety, worry',
+            'sweat': 'nervous, anxious',
+            'worry': 'concern, anxiety',
+
+            # Actions/misc
+            'wave': 'greeting, goodbye',
+            'hi': 'greeting',
+            'bye': 'farewell',
+            'nod': 'agreement, acknowledgment',
+            'no': 'disagreement, refusal',
+            'yes': 'agreement, approval',
+            'thumbs': 'approval or disapproval',
+            'clap': 'applause, appreciation',
+            'pat': 'comfort, reassurance',
+            'poke': 'playful, attention-getting',
+            'bonk': 'playful punishment',
+            'eat': 'hungry, enjoying',
+            'drink': 'thirsty, cheers',
+            'coffee': 'tired, need energy',
+            'sip': 'watching drama, judging',
+        }
+
+        emote_hints = []
+        for name in emotes_to_use.keys():
+            name_lower = name.lower()
+            hints = []
+
+            # Check for keyword matches in the emote name
+            for keyword, context in emotion_keywords.items():
+                if keyword in name_lower:
+                    hints.append(context)
+
+            if hints:
+                # Deduplicate hints
+                unique_hints = list(dict.fromkeys(hints))
+                emote_hints.append(f":{name}: → {', '.join(unique_hints[:2])}")  # Max 2 hints per emote
+            else:
+                # No keyword match - just list the emote
+                emote_hints.append(f":{name}: → general use")
+
+        return "\n".join(emote_hints)
 
     def get_emotes_for_guild(self, guild_id):
         """

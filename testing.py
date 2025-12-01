@@ -1666,7 +1666,8 @@ class BotTestSuite:
         # Test 2: Log directory exists
         try:
             import os
-            log_dir = "/root/Ai-discord-message-bot/logs"
+            # Use relative path from project root (OS-agnostic)
+            log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
             log_dir_exists = os.path.exists(log_dir)
 
             if log_dir_exists:
@@ -1688,7 +1689,8 @@ class BotTestSuite:
         try:
             import os
             from datetime import datetime
-            log_dir = "/root/Ai-discord-message-bot/logs"
+            # Use relative path from project root (OS-agnostic)
+            log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 
             if os.path.exists(log_dir):
                 # Check if today's log file exists

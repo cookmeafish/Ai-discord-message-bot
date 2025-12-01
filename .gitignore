@@ -5,6 +5,7 @@
 # IDE and editor files
 .vs
 .vscode/
+.claude/settings.local.json
 *.swp
 *.swo
 *~
@@ -24,6 +25,7 @@ __pycache__/
 
 # Database archives (message backups) - per-server folders
 database/*/archive/
+database/archive/
 
 # Server information (may contain sensitive rules/policies)
 Server_Info/*.txt
@@ -41,6 +43,7 @@ status_history.json
 .DS_Store
 Thumbs.db
 desktop.ini
+nul
 
 # Temporary files
 *.tmp

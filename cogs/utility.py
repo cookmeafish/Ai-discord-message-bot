@@ -17,20 +17,33 @@ class UtilityCog(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     async def reload_emotes(self, interaction: discord.Interaction):
         """Manually reload all emotes from all servers the bot is in."""
-        await interaction.response.defer(ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
 
-        # Reload emotes
-        self.bot.emote_handler.load_emotes()
+            # Reload emotes
+            self.bot.emote_handler.load_emotes()
 
-        # Get list of available emotes
-        emote_list = self.bot.emote_handler.get_available_emote_names()
-        emote_count = len(self.bot.emote_handler.emotes)
+            # Get emote count and list
+            emote_count = len(self.bot.emote_handler.emotes)
+            emote_names = list(self.bot.emote_handler.emotes.keys())
 
-        await interaction.followup.send(
-            f"✅ Reloaded {emote_count} custom emotes!\n\n"
-            f"**Available emotes:** {emote_list}",
-            ephemeral=True
-        )
+            # Truncate list if too long for Discord message
+            if len(emote_names) > 50:
+                emote_display = ", ".join(f":{name}:" for name in emote_names[:50])
+                emote_display += f"\n... and {len(emote_names) - 50} more"
+            else:
+                emote_display = ", ".join(f":{name}:" for name in emote_names) if emote_names else "None"
+
+            await interaction.followup.send(
+                f"✅ Reloaded **{emote_count}** custom emotes!\n\n"
+                f"**Available emotes:** {emote_display}",
+                ephemeral=True
+            )
+        except Exception as e:
+            try:
+                await interaction.followup.send(f"❌ Error reloading emotes: {e}", ephemeral=True)
+            except:
+                print(f"Error in reload_emotes command: {e}")
 
 async def setup(bot):
     await bot.add_cog(UtilityCog(bot))

@@ -17,12 +17,14 @@ class MemoryTasksCog(commands.Cog):
 
     async def _analyze_user_sentiment_batch(self, user_id, messages_list, db_manager, client, model):
         """
-        Analyzes all messages from a user during consolidation and updates relationship metrics.
-        This is a batch analysis of the entire conversation history, not per-message.
+        Analyzes all messages from a user during memory consolidation and updates relationship metrics.
+        This is a batch analysis of SHORT-TERM memory only, not influenced by long-term memory.
+
+        IMPORTANT: This ONLY runs during memory consolidation, never at startup or per-message.
 
         Args:
             user_id: Discord user ID
-            messages_list: List of message contents from this user
+            messages_list: List of message contents from this user (from short-term memory ONLY)
             db_manager: Server-specific database manager
             client: OpenAI client
             model: AI model to use
@@ -30,14 +32,22 @@ class MemoryTasksCog(commands.Cog):
         if not messages_list:
             return
 
-        # Combine messages for analysis
+        # Get current metrics to inform decay decisions
+        current_metrics = db_manager.get_relationship_metrics(user_id)
+
+        # Combine messages for analysis (SHORT-TERM MEMORY ONLY)
         conversation_text = "\n".join([f"- {msg}" for msg in messages_list[-50:]])  # Last 50 messages max
 
-        sentiment_prompt = f"""Analyze these messages from a Discord user and determine their OVERALL sentiment toward the bot.
-Based on the conversation tone, determine if relationship metrics should change.
+        sentiment_prompt = f"""Analyze these recent messages from a Discord user and determine how relationship metrics should change.
+This analysis is based ONLY on these recent messages (short-term memory), not any stored facts about the user.
 
-User's messages:
+User's recent messages:
 {conversation_text}
+
+Current metric levels (for context on decay):
+- Anger: {current_metrics.get('anger', 5)}/10
+- Fear: {current_metrics.get('fear', 5)}/10
+- Intimidation: {current_metrics.get('intimidation', 5)}/10
 
 Respond with ONLY a JSON object:
 {{
@@ -53,18 +63,35 @@ Respond with ONLY a JSON object:
     "reason": "brief explanation"
 }}
 
-Guidelines (changes should be -2 to +2 based on OVERALL tone across all messages):
-- **Rapport**: Friendly/warm messages → +1/+2, Cold/dismissive → -1/-2
-- **Trust**: User shares personal info → +1, User is secretive/suspicious → -1
-- **Anger**: User is hostile/rude → +1/+2, User is patient/kind → -1/-2
-- **Respect**: User acknowledges bot's abilities → +1, User dismisses/mocks bot → -1
-- **Affection**: User expresses care/appreciation → +1, User is indifferent → -1
-- **Familiarity**: Regular positive interaction → +1 (slowly increases over time)
-- **Fear**: User makes threats → +1, User is reassuring/protective → -1
-- **Intimidation**: User displays power/authority → +1, User shows vulnerability/asks for help → -1
+Guidelines (changes should be -2 to +2 based on OVERALL tone across ALL messages):
 
-IMPORTANT: Only set should_update to true if there's a clear pattern across messages.
-Normal casual conversation should result in no changes (should_update: false).
+**NEGATIVE EMOTIONS SHOULD DECAY:**
+- **Anger**:
+  - User is hostile/rude/insulting → +1/+2
+  - User is neutral (normal conversation) AND current anger > 3 → -1 (natural decay)
+  - User is patient/kind/friendly → -1/-2
+- **Fear**:
+  - User makes threats → +1
+  - User is neutral AND current fear > 3 → -1 (natural decay)
+  - User is reassuring/protective → -1/-2
+- **Intimidation**:
+  - User displays power/authority aggressively → +1
+  - User is neutral AND current intimidation > 3 → -1 (natural decay)
+  - User shows vulnerability/asks for help → -1/-2
+
+**POSITIVE EMOTIONS:**
+- **Rapport**: Friendly/warm → +1/+2, Cold/dismissive → -1/-2
+- **Trust**: User shares personal info → +1, User is secretive/suspicious → -1
+- **Respect**: User acknowledges bot's abilities → +1, User dismisses/mocks bot → -1
+- **Affection**: User expresses care/appreciation → +1/+2, User is cold/indifferent → -1
+- **Familiarity**: Regular interaction → +1 (slowly increases over time)
+
+IMPORTANT RULES:
+1. Normal casual conversation with NO hostility should DECREASE anger if anger is currently high (>3)
+2. Only INCREASE anger if there are CLEARLY hostile/rude messages (insults, aggression, rudeness)
+3. Playful teasing or jokes are NOT hostile - do not increase anger for humor
+4. If the conversation is neutral/positive, set should_update to true and apply natural decay to negative emotions
+5. Be conservative with increases (+1 max for mild cases), generous with decreases (-1/-2 for positive interactions)
 """
 
         try:
@@ -80,7 +107,7 @@ Normal casual conversation should result in no changes (should_update: false).
             result = json.loads(result_text)
 
             if result.get('should_update', False):
-                current_metrics = db_manager.get_relationship_metrics(user_id)
+                # current_metrics already fetched above for the prompt
 
                 updates = {}
                 metric_changes = [

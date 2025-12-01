@@ -202,10 +202,42 @@ class EventsCog(commands.Cog):
                                 combined_content=combined_content
                             )
 
-                        # If we were flagged to send after this generation, do it now
+                        # If we were flagged to send after this generation, send and exit
                         if force_send_after_next:
                             self.logger.info(f"BATCHING: Sending after final generation (hit max regenerations)")
-                            break
+                            # Send response immediately after max regenerations
+                            async with EventsCog._batch_lock:
+                                sent_message = None
+                                if ai_response:
+                                    try:
+                                        # Check if response is a tuple (text + image bytes)
+                                        if isinstance(ai_response, tuple) and len(ai_response) == 2:
+                                            text_response, image_bytes = ai_response
+                                            if emote_handler:
+                                                final_response = emote_handler.replace_emote_tags(text_response, initial_message.guild.id)
+                                            else:
+                                                final_response = text_response
+                                            import io
+                                            image_file = discord.File(io.BytesIO(image_bytes), filename="drawing.png")
+                                            sent_message = await primary_message.reply(content=final_response, file=image_file)
+                                            self.logger.info(f"Sent image response (max regen): {final_response[:50]}...")
+                                        else:
+                                            if emote_handler:
+                                                final_response = emote_handler.replace_emote_tags(ai_response, initial_message.guild.id)
+                                            else:
+                                                final_response = ai_response
+                                            sent_message = await primary_message.reply(final_response)
+                                            self.logger.info(f"Sent response (max regen): {final_response[:50]}...")
+                                    except Exception as e:
+                                        self.logger.error(f"Failed to send response: {e}")
+
+                                # CLEANUP while holding lock
+                                if channel_id in EventsCog._queued_users:
+                                    EventsCog._queued_users[channel_id].discard(user_id)
+                                EventsCog._pending_messages.pop(key, None)
+                                self.logger.debug(f"BATCHING: Cleanup complete (max regen) for {initial_message.author.name}")
+
+                                return sent_message, (user_id, channel_id, key)
 
                         # Step 4: CHECK BEFORE SEND - any new messages?
                         async with EventsCog._batch_lock:

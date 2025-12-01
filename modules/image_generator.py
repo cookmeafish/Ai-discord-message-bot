@@ -249,7 +249,7 @@ class ImageGenerator:
                 # CRITICAL FIX (2025-10-27): If we have ANY substantial database facts about a subject,
                 # treat them as a specific database person to prevent GPT-4 from hallucinating random details.
                 # Even if facts don't describe appearance, we should use "database user mode" instead of
-                # "generic mode" to avoid adding conflicting made-up details (e.g., "red hair girl" for csama).
+                # "generic mode" to avoid adding conflicting made-up details (e.g., "red hair girl" for a database user).
 
                 # If database context has substantial text (50+ chars), it's a specific person
                 if len(provided_context.strip()) >= 50:
@@ -499,7 +499,15 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
             final_context = enhanced_context if enhanced_context else context
 
             # Build the full prompt with context
-            full_prompt = self._build_prompt(user_prompt, final_context)
+            # For refinements, the prompt already has style_prefix from original generation - don't add again
+            if is_refinement:
+                full_prompt = user_prompt  # Already has style_prefix from cached prompt
+                # BUT: If we have new context (e.g., user facts for newly added person), append it
+                if final_context:
+                    print(f"Image Generator: Appending user context to refinement: {final_context[:100]}...")
+                    full_prompt = f"{full_prompt}. {final_context}"
+            else:
+                full_prompt = self._build_prompt(user_prompt, final_context)
             print(f"Generating image with prompt: {full_prompt}")
 
             # Generate image using Together.ai

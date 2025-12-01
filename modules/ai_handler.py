@@ -499,14 +499,14 @@ class AIHandler:
                         "⚡ **CONVERSATION ENERGY IS VERY LOW** ⚡\n"
                         "This OVERRIDES ALL relationship metrics and personality traits.\n"
                         "**ABSOLUTE REQUIREMENTS:**\n"
-                        "- Respond with 1-5 words MAXIMUM (strict limit)\n"
-                        "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', ':emote:'\n"
+                        "- Respond with 1-6 words MAXIMUM (strict limit)\n"
+                        "- CRITICAL: Your response must ANSWER their message appropriately:\n"
+                        "  - 'how are you?' → 'good' or 'fine, you?' NOT random words\n"
+                        "  - 'what's up?' → 'not much' or 'chillin' NOT 'good point'\n"
                         "- FORBIDDEN: Full sentences, explanations, multiple thoughts\n"
-                        "- Even if you have high affection/rapport/familiarity/trust, you MUST be brief\n"
-                        "- Single emote responses are PERFECT\n\n"
-                        "**RATIONALE**: User is low-energy right now. Matching their brevity shows respect.\n"
-                        "Long responses would feel overwhelming and out of place.\n"
-                        "You can still express warmth/affection through emote choice and tone in 1-5 words.\n\n"
+                        "- Single emote responses are fine for reactions, NOT for questions\n\n"
+                        "**RATIONALE**: User is low-energy. Match their brevity but stay relevant.\n"
+                        "You can express warmth through emote choice and tone in 1-6 words.\n\n"
                     )
                 elif energy_level == "LOW":
                     relationship_prompt += (
@@ -652,6 +652,93 @@ class AIHandler:
                 'user_messages': []
             }
 
+        # DETAIL-SEEKING DETECTION: Check if the MOST RECENT message is asking for elaboration
+        # If user asks "tell me about your day", "what happened", etc., give full responses
+        # This is similar to intent classification but specifically for elaboration requests
+
+        detail_seeking_phrases = [
+            # Direct elaboration requests
+            'tell me about', 'tell me more', 'tell me everything', 'tell me all',
+            'elaborate', 'explain', 'go on', 'keep going', 'continue',
+            'and then what', 'then what', 'what else', 'is that all', 'that\'s it?',
+
+            # Day/activity questions (expect stories)
+            'how was your day', 'how\'s your day', 'hows your day',
+            'about your day', 'what happened', 'what\'d you do', 'what did you do',
+            'what have you been up to', 'what you been up to', 'been up to',
+            'anything interesting', 'anything happen', 'anything new', 'what\'s new',
+            'how\'d it go', 'how did it go', 'how was it',
+
+            # Curiosity/interest expressions
+            'i want to know', 'i\'d like to know', 'i wanna know', 'wanna know',
+            'i\'m curious', 'im curious', 'i\'m interested', 'im interested',
+            'curious about', 'interested in hearing',
+
+            # Sharing/story requests
+            'share with me', 'spill', 'spill the tea', 'gimme the details',
+            'give me the details', 'fill me in', 'catch me up',
+            'tell me a story', 'got any stories', 'any stories',
+
+            # Thought/opinion requests (expect elaboration)
+            'what\'s on your mind', 'whats on your mind', 'on your mind',
+            'what are you thinking', 'what do you think about',
+            'penny for your thoughts', 'your thoughts on',
+
+            # Open-ended prompts expecting detail
+            'how come', 'why is that', 'why\'s that', 'what makes you say',
+            'what do you mean by', 'can you explain', 'could you explain',
+            'walk me through', 'break it down', 'in detail',
+
+            # Continuation after brief response
+            'that\'s all?', 'thats all?', 'just that?', 'nothing else?',
+            'come on', 'c\'mon', 'seriously?', 'for real?',
+            'more than that', 'there\'s gotta be more', 'gotta be more'
+        ]
+
+        last_message = user_messages[-1].lower() if user_messages else ""
+
+        # Also check for question patterns that expect elaboration
+        # e.g., "so what'd you do today?" or "anything fun happen?"
+        elaboration_patterns = [
+            r'\bwhat.{0,10}(do|did|happen|going on)\b',  # "what did you do", "what's going on"
+            r'\bhow.{0,5}(was|is|are|were|did)\b',  # "how was your day", "how did it go"
+            r'\banything.{0,10}(happen|new|interesting|fun|exciting|good)\b',  # "anything happen?"
+            r'\btell me\b',  # any "tell me" request
+            r'\b(share|explain|elaborate)\b',  # direct requests
+        ]
+
+        is_detail_seeking = any(phrase in last_message for phrase in detail_seeking_phrases)
+
+        # Check regex patterns if phrase matching didn't find anything
+        if not is_detail_seeking:
+            for pattern in elaboration_patterns:
+                if re.search(pattern, last_message):
+                    is_detail_seeking = True
+                    break
+
+        if is_detail_seeking:
+            print(f"AI Handler: Detail-seeking phrase detected in '{last_message[:50]}...' - using HIGH energy")
+            return {
+                'max_tokens': 150,  # Full response for detail requests
+                'energy_guidance': (
+                    "\n🚨 **CRITICAL: USER IS EXPLICITLY ASKING FOR DETAILS** 🚨\n"
+                    "The user said something like 'tell me about your day' or 'what happened'.\n"
+                    "This OVERRIDES all brevity rules. They WANT you to elaborate!\n\n"
+                    "**MANDATORY FOR THIS RESPONSE:**\n"
+                    "- Give a FULL, detailed response (3-5 sentences minimum)\n"
+                    "- Actually tell them about something - share a story, experience, or thought\n"
+                    "- Be creative - make up a believable day (surgery gone wrong, annoying patient, weird lunch)\n"
+                    "- Show personality through the details you share\n"
+                    "- DO NOT give a brief dismissive response like 'same old' or 'nothing much'\n"
+                    "- DO NOT refuse to elaborate - they explicitly asked!\n\n"
+                    "Example for 'tell me about your day':\n"
+                    "'Ugh, where do I start? Had a patient come in convinced they swallowed a battery. "
+                    "Turns out it was just a piece of candy wrapper. Then the coffee machine broke again. "
+                    "At least lunch was decent - someone brought donuts.'\n\n"
+                ),
+                'user_messages': user_messages
+            }
+
         # Calculate average message length (in words)
         total_words = 0
         for content in user_messages:
@@ -666,26 +753,29 @@ class AIHandler:
         if avg_words <= 3:
             # Very short messages (1-3 words: "lol", "yeah", "ok cool")
             return {
-                'max_tokens': 25,  # Force very short responses
+                'max_tokens': 30,  # Allow slightly more for contextual responses
                 'energy_guidance': (
                     "\n🔥 **CONVERSATION ENERGY: VERY LOW** 🔥\n"
                     "Recent messages are VERY SHORT (1-3 words). Match this energy:\n"
-                    "- Respond with 1-5 words MAX\n"
-                    "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', 'true'\n"
-                    "- Single emote responses are PERFECT here\n"
-                    "- DO NOT write full sentences\n\n"
+                    "- Respond with 1-6 words MAX\n"
+                    "- CRITICAL: Your response must ANSWER their message appropriately\n"
+                    "  - 'how are you?' → 'good' or 'fine, you?' NOT 'good point'\n"
+                    "  - 'what's up?' → 'not much' or 'chillin' NOT random words\n"
+                    "- Single emote responses are fine for reactions, not for questions\n"
+                    "- DO NOT write full sentences, but DO stay contextually relevant\n\n"
                 ),
                 'user_messages': user_messages  # Return for roleplay detection
             }
         elif avg_words <= 8:
             # Short messages (4-8 words: "that's pretty cool", "i guess that works")
             return {
-                'max_tokens': 40,  # Allow brief responses
+                'max_tokens': 45,  # Allow brief responses
                 'energy_guidance': (
                     "\n🔥 **CONVERSATION ENERGY: LOW** 🔥\n"
                     "Recent messages are SHORT (4-8 words). Match this energy:\n"
-                    "- Respond with 1 SHORT sentence or brief phrase\n"
-                    "- Keep it under 10 words\n"
+                    "- Respond with 1 SHORT sentence or brief phrase (5-12 words)\n"
+                    "- CRITICAL: Your response must ANSWER their message appropriately\n"
+                    "  - 'how are you doing?' → 'doing good, just chilling' NOT random phrases\n"
                     "- Examples: 'yeah that makes sense', 'lol fair enough', 'sounds good to me'\n\n"
                 ),
                 'user_messages': user_messages
@@ -1069,7 +1159,7 @@ Bot response: "{ai_response}"
 - Secrets or confessions: "I've never told anyone but..."
 
 ❌ DO NOT EXTRACT (these are NOT lore):
-- Emote/emoji usage ("uses :fishwhat:")
+- Emote/emoji usage ("uses :some_emote:")
 - Communication style ("speaks casually", "uses the phrase...")
 - Generic opinions without depth ("prefers quiet", "likes to lurk")
 - Observations about tone or mood
@@ -1276,8 +1366,9 @@ Respond with ONLY "YES" or "NO".
 
         bot_name = channel.guild.me.display_name
 
-        # Get randomized emote sample for variety
-        available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
+        # Get emotes with contextual hints for better selection
+        available_emotes = self.emote_handler.get_emotes_with_context(guild_id=channel.guild.id)
+        emote_count = self.emote_handler.get_emote_count(guild_id=channel.guild.id)
 
         # Build bot identity from database
         identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config)
@@ -1296,7 +1387,9 @@ Respond with ONLY "YES" or "NO".
             "1. **REACT AS IF IT'S HAPPENING TO YOU**: The user is showing you this image as if they're doing something to you or showing you something relevant to your life.\n"
             "2. **BE BRIEF AND NATURAL**: 1-2 sentences max. Match your relationship tone.\n"
             "3. **EMOTIONAL REACTIONS**: If the image relates to elements in your lore/traits, react with appropriate emotions based on your character!\n"
-            f"4. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY. **NEVER MAKE UP EMOTE NAMES** - only use emotes from the list above.\n"
+            f"4. **EMOTES** ({emote_count} available - USE THEM ALL, not just favorites!):\n{available_emotes}\n"
+            "   **CRITICAL**: Match the emote to your EMOTION. Use the hints above to pick the RIGHT emote for how you FEEL. "
+            "Rotate through ALL emotes over time - don't always use the same one! **NEVER MAKE UP EMOTE NAMES**.\n"
             "5. **BLEND EMOTIONS**: Your relationship metrics set the baseline, but lore-based emotions should show through.\n\n"
             "Example reaction patterns (adapt to YOUR character):\n"
             "- Image shows something you fear → React with concern/anxiety\n"
@@ -1593,9 +1686,13 @@ Examples:
                     new_count = self.image_generator.increment_refinement_count(message.author.id)
                     print(f"   🔢 Incremented refinement count to {new_count}")
 
-                    # Store refinement prompt in dictionary (keyed by author_id)
+                    # Store refinement prompt AND changes_requested in dictionary (keyed by author_id)
                     # Discord Message objects don't allow arbitrary attribute assignment
-                    self._refinement_prompts[message.author.id] = modified_prompt
+                    # We store both so we can load user context for any new people being added
+                    self._refinement_prompts[message.author.id] = {
+                        'prompt': modified_prompt,
+                        'changes_requested': refinement_result.get('changes_requested', '')
+                    }
                     intent = "image_generation"
                     print(f"   🎯 Forcing intent to 'image_generation' with refined prompt\n")
                 else:
@@ -1623,8 +1720,9 @@ Examples:
 
         bot_name = channel.guild.me.display_name
 
-        # Get randomized emote sample for variety
-        available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
+        # Get emotes with contextual hints for better selection
+        available_emotes = self.emote_handler.get_emotes_with_context(guild_id=channel.guild.id)
+        emote_count = self.emote_handler.get_emote_count(guild_id=channel.guild.id)
 
         # Check if temporal context would improve the response (keyword-based, no API call)
         needs_temporal = self._needs_temporal_context(actual_content, short_term_memory)
@@ -1639,9 +1737,9 @@ Examples:
         energy_analysis = self._calculate_conversation_energy(short_term_memory, bot_id)
 
         # Determine energy level for relationship context
-        if energy_analysis['max_tokens'] <= 25:
+        if energy_analysis['max_tokens'] <= 30:
             energy_level = "VERY LOW"
-        elif energy_analysis['max_tokens'] <= 40:
+        elif energy_analysis['max_tokens'] <= 45:
             energy_level = "LOW"
         elif energy_analysis['max_tokens'] <= 60:
             energy_level = "MEDIUM"
@@ -1689,11 +1787,15 @@ Examples:
                 # Check if this is a refinement (modified prompt) or a new image request
                 # Refinement prompts are stored in self._refinement_prompts dictionary by author_id
                 is_refinement_request = message.author.id in self._refinement_prompts
+                refinement_changes = None  # Will hold changes_requested for refinements
                 if is_refinement_request:
-                    # This is a refinement - use the modified prompt directly
-                    clean_prompt = self._refinement_prompts.pop(message.author.id)  # Pop to remove after use
+                    # This is a refinement - extract prompt and changes_requested from stored dict
+                    refinement_data = self._refinement_prompts.pop(message.author.id)  # Pop to remove after use
+                    clean_prompt = refinement_data['prompt']
+                    refinement_changes = refinement_data.get('changes_requested', '')
                     print(f"\n🔄 IMAGE REFINEMENT MODE ACTIVE")
                     print(f"   Using refined prompt: '{clean_prompt}'")
+                    print(f"   Changes requested: '{refinement_changes}'")
                 else:
                     # Strip bot name and alternative nicknames from the prompt
                     clean_prompt = self._strip_bot_name_from_prompt(actual_content, message.guild)
@@ -1704,10 +1806,64 @@ Examples:
                 # Check if any users are mentioned in the prompt and get their facts
                 # CRITICAL: Check DATABASE nicknames table FIRST before checking guild members
                 # This ensures we find the correct user with facts, not random guild members with similar names
-                # SKIP context for refinements - use the refined prompt as-is to prevent contamination
+                # For refinements: Check if changes_requested mentions a person to add
                 image_context = None
-                if is_refinement_request:
-                    print(f"AI Handler: SKIPPING user context search (refinement mode - using prompt as-is)")
+                if is_refinement_request and refinement_changes:
+                    # For refinements, look for user context ONLY from the changes_requested
+                    # This ensures we load facts for newly added people (like "add UserA riding")
+                    print(f"AI Handler: Checking refinement changes for user context: '{refinement_changes}'")
+
+                    # Extract potential names from changes_requested (words 3+ chars, not common words)
+                    changes_lower = refinement_changes.lower()
+                    common_words = {'add', 'make', 'the', 'put', 'remove', 'delete', 'change', 'riding', 'hugging',
+                                   'holding', 'standing', 'sitting', 'wearing', 'with', 'and', 'next', 'beside'}
+                    potential_names = [w.strip('.,!?"\'') for w in changes_lower.split()
+                                      if len(w) >= 3 and w.strip('.,!?"\'') not in common_words]
+                    print(f"AI Handler: Potential names from refinement: {potential_names}")
+
+                    if potential_names and message.guild:
+                        # Check database nicknames table for matches
+                        try:
+                            import sqlite3
+                            db_path = db_manager.db_path
+                            conn = sqlite3.connect(db_path)
+                            cursor = conn.cursor()
+
+                            for name in potential_names:
+                                cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
+                                for row in cursor.fetchall():
+                                    user_id_str, nickname = str(row[0]), row[1].lower()
+
+                                    # Match if name equals a word in the nickname
+                                    nickname_words = nickname.split()
+                                    if name in nickname_words or nickname in name or name in nickname:
+                                        print(f"AI Handler: Refinement - found user match '{nickname}' (ID: {user_id_str}) for '{name}'")
+
+                                        # Load facts for this user
+                                        user_facts = db_manager.get_long_term_memory(user_id_str)
+                                        if user_facts:
+                                            # Filter to visual/appearance facts only
+                                            appearance_patterns = [
+                                                'has hair', ' hair ', 'has eyes', ' eyes ', 'wears ', 'wearing ',
+                                                'has a slender', 'has a muscular', 'has a', 'dressed in',
+                                                'complexion', 'skin', 'tall', 'short', 'build', 'appearance'
+                                            ]
+                                            descriptive_facts = []
+                                            for fact_tuple in user_facts[:20]:  # Check first 20 facts
+                                                fact_text = fact_tuple[0]
+                                                fact_lower = fact_text.lower()
+                                                if any(p in fact_lower for p in appearance_patterns):
+                                                    descriptive_facts.append(fact_text)
+
+                                            if descriptive_facts:
+                                                image_context = f"{nickname}: {', '.join(descriptive_facts[:5])}"
+                                                print(f"AI Handler: Loaded refinement context: {image_context[:200]}...")
+                                        break
+                                if image_context:
+                                    break
+                            conn.close()
+                        except Exception as e:
+                            print(f"AI Handler: Error loading refinement user context: {e}")
                 elif message.guild:
                     mentioned_users = []
                     prompt_lower = clean_prompt.lower()
@@ -1721,8 +1877,8 @@ Examples:
                     # Examples:
                     # - "draw yourself" → bot is primary subject ✓
                     # - "draw you" → bot is primary subject ✓
-                    # - "draw csama eating you" → csama is primary, bot is secondary ✗
-                    # - "draw you and csama fighting" → both are subjects ✓
+                    # - "draw UserA eating you" → UserA is primary, bot is secondary ✗
+                    # - "draw you and UserA fighting" → both are subjects ✓
 
                     import re
 
@@ -1852,7 +2008,7 @@ Examples:
                             # If not capitalized but also not in common words, might still be a name (some users type lowercase)
                             elif word_lower not in common_english_words:
                                 # Extra check: only include if it doesn't look like a regular word
-                                # This catches usernames like "csama" that aren't capitalized
+                                # This catches usernames like "username123" that aren't capitalized
                                 potential_names.append(word_lower)
 
                         print(f"AI Handler: Potential names for user matching: {potential_names}")
@@ -2415,7 +2571,9 @@ Acknowledge this new information with a short, natural, human-like response base
 
             system_prompt += (
                 f"5. Match your tone to your relationship with the user.\n"
-                f"6. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
+                f"6. **EMOTES** ({emote_count} available - USE THEM ALL, not just favorites!):\n{available_emotes}\n"
+                "   **CRITICAL**: Match the emote to your EMOTION. Use the hints above to pick the RIGHT emote for how you FEEL. "
+                "Rotate through ALL emotes over time - don't always use the same one!\n"
                 "7. Be brief and natural. Sound like a real person answering a question.\n"
             )
         
@@ -2928,7 +3086,9 @@ Respond with ONLY the fact ID number or "NONE".
                     "2. **BE AUTHENTIC**: Let these intense feelings shape every aspect of your response.\n"
                     "3. **STAY IN CHARACTER**: These emotions are REAL, not roleplay.\n"
                     f"4. **SPEAKER AWARENESS**: You are responding to {actual_username}, NOT anyone else!\n"
-                    f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EXTREME EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
+                    f"5. **EMOTES** ({emote_count} available - USE THEM ALL based on your EXTREME EMOTIONS!):\n{available_emotes}\n"
+                    "   **CRITICAL**: Match the emote to your EXTREME EMOTION. Use the hints above to pick the RIGHT emote. "
+                    "Rotate through ALL emotes - don't always use the same one!\n"
                     "6. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
                 )
 
@@ -2959,6 +3119,11 @@ Respond with ONLY the fact ID number or "NONE".
                             "   - Emotes only: ':emote_name:'\n\n"
                             "   **USE YOUR VOICE AND EMOTES ONLY. NO PHYSICAL DESCRIPTIONS WHATSOEVER.**\n"
                         )
+
+                # Add energy guidance to extreme metrics prompt (detail-seeking overrides low energy)
+                energy_guidance = energy_analysis.get('energy_guidance', '')
+                if energy_guidance:
+                    system_prompt += f"\n{energy_guidance}"
 
             else:
                 # Normal prompt structure when fear/intimidation aren't high
@@ -3007,13 +3172,20 @@ Respond with ONLY the fact ID number or "NONE".
                     "   - The conversation history below includes messages from ALL channels in this server\n"
                     "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
                     "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                    f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes instead of defaulting to favorites - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
-                    "   - A server emote by itself is a perfectly valid response (e.g., ':emote1:', ':emote2:')\n"
+                    f"5. **EMOTES** ({emote_count} available - USE THEM ALL, not just favorites!):\n{available_emotes}\n"
+                    "   **CRITICAL**: Match the emote to your EMOTION. Use the hints above to pick the RIGHT emote for how you FEEL. "
+                    "Rotate through ALL emotes over time - don't always default to the same one!\n"
+                    "   - A server emote by itself is a perfectly valid response\n"
                     "   - Great for awkward moments or when you don't have much to say\n"
                     "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
                     "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
                     "8. **MENTIONED USERS VS AUTHOR**: If facts about mentioned users are listed above, use them when answering questions ABOUT THOSE PEOPLE. Do NOT confuse mentioned users with the author.\n"
                 )
+
+            # Add energy guidance to system prompt (detail-seeking overrides low energy)
+            energy_guidance = energy_analysis.get('energy_guidance', '')
+            if energy_guidance:
+                system_prompt += f"\n{energy_guidance}"
 
             # Check if roleplay formatting should be disabled
             enable_roleplay = personality_config.get('enable_roleplay_formatting', True) and personality_mode['immersive_character']
@@ -3183,8 +3355,9 @@ Respond with ONLY the fact ID number or "NONE".
 
             bot_name = channel.guild.me.display_name
 
-            # Get randomized emote sample for variety
-            available_emotes = self.emote_handler.get_random_emote_sample(guild_id=channel.guild.id, sample_size=50)
+            # Get emotes with contextual hints for better selection
+            available_emotes = self.emote_handler.get_emotes_with_context(guild_id=channel.guild.id)
+            emote_count = self.emote_handler.get_emote_count(guild_id=channel.guild.id)
 
             # Calculate conversation energy for dynamic response length
             bot_id = channel.guild.me.id
@@ -3235,20 +3408,20 @@ Respond with ONLY the fact ID number or "NONE".
                     "⚡ **CONVERSATION ENERGY IS VERY LOW** ⚡\n"
                     "This OVERRIDES ALL personality traits.\n"
                     "**ABSOLUTE REQUIREMENTS:**\n"
-                    "- Respond with 1-5 words MAXIMUM (strict limit)\n"
-                    "- Examples: 'lol', 'yeah', 'fair', 'nice', 'oof', ':emote:'\n"
-                    "- FORBIDDEN: Full sentences, explanations, multiple thoughts\n"
-                    "- Single emote responses are PERFECT\n\n"
-                    "**RATIONALE**: Conversation energy is very low. Match the brevity.\n\n"
+                    "- Respond with 1-6 words MAXIMUM (strict limit)\n"
+                    "- CRITICAL: Stay contextually relevant - answer their message!\n"
+                    "- Single emote responses are fine for reactions, not for questions\n"
+                    "- FORBIDDEN: Full sentences, explanations, multiple thoughts\n\n"
+                    "**RATIONALE**: Conversation energy is very low. Match brevity but stay relevant.\n\n"
                 )
             elif energy_level == "LOW":
                 energy_override = (
                     "\n🚨 CRITICAL PRIORITY OVERRIDE 🚨\n"
                     "⚡ **CONVERSATION ENERGY IS LOW** ⚡\n"
                     "**REQUIREMENTS:**\n"
-                    "- Keep responses under 10 words (strict limit)\n"
+                    "- Keep responses under 12 words (strict limit)\n"
                     "- 1 SHORT sentence or brief phrase only\n"
-                    "- Examples: 'yeah that makes sense', 'lol fair enough', 'sounds good :emote:'\n"
+                    "- CRITICAL: Stay contextually relevant - answer their message!\n"
                     "- FORBIDDEN: Multiple sentences, detailed explanations\n\n"
                     "**RATIONALE**: Match the brief conversational style.\n\n"
                 )
@@ -3273,7 +3446,9 @@ Respond with ONLY the fact ID number or "NONE".
                 f"2. **NEUTRAL TONE**: Use your base personality, but don't apply relationship metrics to any specific user.\n"
                 f"3. **NO CONFUSION**: If you mention a user, use their actual name from the conversation history.\n"
                 f"4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                f"5. **EMOTES**: Available: {available_emotes}. **CRITICAL**: READ the emote names carefully and choose ones that match your EMOTIONAL STATE and the CONTEXT. Use emotes in MOST responses (80%+ of the time). ALWAYS try different emotes - you have 200+ available, explore them! **DO NOT choose emotes based on names** (yours or the user's name) - choose based on FEELINGS and SITUATION ONLY.\n"
+                f"5. **EMOTES** ({emote_count} available - USE THEM ALL, not just favorites!):\n{available_emotes}\n"
+                f"   **CRITICAL**: Match the emote to your EMOTION. Use the hints above to pick the RIGHT emote. "
+                f"Rotate through ALL emotes - don't always use the same one!\n"
                 f"6. **JOIN NATURALLY**: Comment on the conversation topic, answer questions if relevant, or add to the discussion.\n"
                 f"7. **NEVER mention your own name or make puns about it.**\n"
             )
