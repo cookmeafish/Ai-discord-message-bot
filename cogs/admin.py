@@ -1489,10 +1489,18 @@ class AdminCog(commands.Cog):
 
         # === BASIC SETTINGS ===
         purpose = channel_setting.get('purpose', 'Default purpose')
-        embed.add_field(name="Purpose", value=purpose[:1024] if purpose else "Not set", inline=False)
+        embed.add_field(
+            name="Purpose",
+            value=f"{purpose[:500] if purpose else 'Not set'}\n`/channel_set_purpose`",
+            inline=False
+        )
 
         reply_chance = channel_setting.get('random_reply_chance', config.get('random_reply_chance', 0.05))
-        embed.add_field(name="Random Reply Chance", value=f"{float(reply_chance) * 100:.1f}%", inline=True)
+        embed.add_field(
+            name="Random Reply Chance",
+            value=f"{float(reply_chance) * 100:.1f}%\n`/channel_set_reply_chance`",
+            inline=True
+        )
 
         # === PERSONALITY MODE ===
         immersive = channel_setting.get('immersive_character', global_personality.get('immersive_character', True))
@@ -1500,14 +1508,25 @@ class AdminCog(commands.Cog):
         use_server_info = channel_setting.get('use_server_info', False)
         roleplay_fmt = channel_setting.get('enable_roleplay_formatting', global_personality.get('enable_roleplay_formatting', True))
 
-        embed.add_field(name="Immersive Character", value="Yes" if immersive else "No", inline=True)
-        embed.add_field(name="Technical Language", value="Allowed" if tech_lang else "Forbidden", inline=True)
-        embed.add_field(name="Use Server Info", value="Yes" if use_server_info else "No", inline=True)
-        embed.add_field(name="Roleplay Formatting", value="Yes" if roleplay_fmt else "No", inline=True)
+        embed.add_field(
+            name="Personality Mode",
+            value=(
+                f"Immersive: {'Yes' if immersive else 'No'}\n"
+                f"Tech Language: {'Yes' if tech_lang else 'No'}\n"
+                f"Server Info: {'Yes' if use_server_info else 'No'}\n"
+                f"Roleplay Format: {'Yes' if roleplay_fmt else 'No'}\n"
+                "`/channel_set_personality`"
+            ),
+            inline=True
+        )
 
         # === PROACTIVE ENGAGEMENT ===
         proactive_enabled = channel_setting.get('allow_proactive_engagement', True)
-        embed.add_field(name="Proactive Engagement", value="Enabled" if proactive_enabled else "Disabled", inline=True)
+        embed.add_field(
+            name="Proactive Engagement",
+            value=f"{'Enabled' if proactive_enabled else 'Disabled'}\n`/channel_set_proactive`",
+            inline=True
+        )
 
         # === CONVERSATION CONTINUATION ===
         conv_enabled = channel_setting.get('enable_conversation_detection', 0)
@@ -1516,7 +1535,11 @@ class AdminCog(commands.Cog):
 
         embed.add_field(
             name="Conversation Continuation",
-            value=f"{'Enabled' if conv_enabled else 'Disabled'} (threshold: {conv_threshold:.2f}, context: {conv_context} msgs)",
+            value=(
+                f"{'Enabled' if conv_enabled else 'Disabled'}\n"
+                f"Threshold: {conv_threshold:.2f} | Context: {conv_context} msgs\n"
+                "`/channel_conversation_enable`"
+            ),
             inline=False
         )
 
@@ -1538,16 +1561,25 @@ class AdminCog(commands.Cog):
 
                 embed.add_field(
                     name="Random Events",
-                    value=f"{'Enabled' if rand_enabled else 'Disabled'} ({rand_chance}% chance every {rand_interval} hours)",
+                    value=(
+                        f"{'Enabled' if rand_enabled else 'Disabled'}\n"
+                        f"Chance: {rand_chance}% | Interval: {rand_interval} hours\n"
+                        "`/random_event_config`"
+                    ),
                     inline=False
                 )
             else:
-                embed.add_field(name="Random Events", value="Disabled (default)", inline=False)
+                embed.add_field(
+                    name="Random Events",
+                    value="Disabled (default)\n`/random_event_config`",
+                    inline=False
+                )
         except Exception:
-            embed.add_field(name="Random Events", value="Disabled (default)", inline=False)
-
-        # === FOOTER WITH HELP ===
-        embed.set_footer(text="Use /channel_set_* commands to modify these settings")
+            embed.add_field(
+                name="Random Events",
+                value="Disabled (default)\n`/random_event_config`",
+                inline=False
+            )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
