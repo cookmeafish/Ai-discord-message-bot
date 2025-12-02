@@ -3324,18 +3324,21 @@ Respond with ONLY the fact ID number or "NONE".
                         # HAS FACTS - Normal memory challenge response
                         system_prompt += (
                             "--- MEMORY CHALLENGE RESPONSE ---\n"
-                            "🎯 The user is challenging you to prove you know them. This is NOT a database query!\n\n"
-                            "**HOW A REAL PERSON RECALLS SOMEONE:**\n"
-                            "- Pick 2-3 STANDOUT things that come to mind first (interesting, unique, memorable)\n"
-                            "- Be casual and uncertain - 'if I remember right', 'pretty sure you mentioned'\n"
-                            "- React to what you remember - 'oh yeah, you're the teacher!' not 'you are a teacher'\n"
-                            "- Trail off naturally - 'that's the main stuff I got' or 'something like that'\n"
-                            "- DON'T try to list everything - that's robotic\n\n"
-                            "❌ ROBOTIC (never do this):\n"
-                            "'You're Crowy, retired, juggling responsibilities, got a couple of jobs including teaching physics and language, maybe biology soon. You prefer English in chats, find calling seniors senpai a bit awkward, but you're solid and trustworthy.'\n\n"
-                            "✅ NATURAL (do this):\n"
-                            "'Oh you're the retired teacher right? Physics and language if I remember. Pretty sure you mentioned not being a fan of the whole senpai thing lol'\n\n"
-                            "**KEY**: You have facts listed above but DON'T read them off like a list. Pick highlights, be casual, sound like you're actually remembering - not reciting.\n\n"
+                            "🚨 **CRITICAL: DO NOT LIST FACTS LIKE A DATABASE** 🚨\n\n"
+                            "**STRICT RULES:**\n"
+                            "1. Pick ONLY 1-2 things - NOT a summary\n"
+                            "2. Sound casual: 'if I remember right...', 'pretty sure...'\n"
+                            "3. React genuinely: 'Oh right, you're the...!'\n"
+                            "4. Keep it SHORT - one sentence is enough\n\n"
+                            "❌ **FORBIDDEN**:\n"
+                            "- Listing multiple facts\n"
+                            "- Using dashes to separate facts\n"
+                            "- 'You're X, Y, Z, and also W'\n\n"
+                            "✅ **DO THIS** (casual, brief):\n"
+                            "- 'Oh you're the gym bro right? lol'\n"
+                            "- 'Pretty sure you hate my surgeries... rude'\n"
+                            "- 'You're my annoying brother if I remember correctly'\n\n"
+                            "**YOU ARE A PERSON, NOT A SEARCH ENGINE.** Pick ONE thing.\n\n"
                         )
 
                 system_prompt += (
