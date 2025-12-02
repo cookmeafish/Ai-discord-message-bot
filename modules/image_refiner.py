@@ -172,43 +172,80 @@ Return ONLY valid JSON, no explanations."""
             print(f"{'='*80}\n")
             return original_prompt
 
-        system_prompt = f"""You are making MINIMAL modifications to an image prompt.
+        system_prompt = f"""You are intelligently modifying an image prompt based on user feedback.
 
 ORIGINAL PROMPT: "{original_prompt}"
 
 USER FEEDBACK: "{changes_requested}"
 
-**YOUR ONLY JOB:** Make the SMALLEST possible change to satisfy the feedback.
+**YOUR TASK: Analyze both the original prompt and the user's feedback to understand their intent.**
 
-**ABSOLUTE RULES - VIOLATIONS WILL BE REJECTED:**
-1. **ONLY ADD WHAT'S REQUESTED** - If user asks to add a person/character by name, add them. But never add people the user didn't ask for.
-2. **NO UNREQUESTED SCENES** - Never add backgrounds/settings unless explicitly asked.
-3. **NO CREATIVITY BEYOND REQUEST** - Only change exactly what was requested.
-4. **LITERAL INTERPRETATION** - "plate it with wings" = put it on a plate with chicken wings, NOT add wing accessories
+Ask yourself: Is the user trying to REPLACE something, or MODIFY/ADD to it?
 
-**Examples:**
-- Original: "a hot sauce bottle"
-  Feedback: "plate it with wings"
-  New Prompt: "a hot sauce bottle on a plate with chicken wings"
-  WRONG: "chefs in a kitchen with hot sauce" ❌ (user didn't ask for chefs)
+**REPLACEMENT** = User wants a DIFFERENT subject entirely
+- The new thing is a DIFFERENT CATEGORY/TYPE than the original
+- Example: taco → quesadilla (different food), dragon → phoenix (different creature), cat → dog (different animal)
+- Action: Swap out the old subject completely, preserve all surrounding context (actions, other elements, setting)
 
-- Original: "a dragon"
-  Feedback: "make it blue"
-  New Prompt: "a blue dragon"
-  WRONG: "a blue dragon in a magical forest with a wizard" ❌ (user didn't ask for forest/wizard)
+**MODIFICATION** = User wants to CHANGE PROPERTIES of the existing subject
+- The subject stays the same, but gains new attributes
+- Example: dragon → blue dragon (same creature, new color), food → food on fire (same food, new state)
+- Action: Keep the subject, add/change only the requested property
 
-- Original: "a manbearpig standing on two legs"
-  Feedback: "add Alice hugging it"
-  New Prompt: "a manbearpig standing on two legs with Alice hugging it"
-  ✅ (user explicitly asked to add Alice)
+**EXAMPLES:**
 
-Return ONLY the minimally modified prompt (no explanations)."""
+Original: "a taco with dogs surrounding it and eating it"
+Feedback: "make it a quesadilla"
+Analysis: Taco and quesadilla are different foods → REPLACEMENT
+New Prompt: "a quesadilla with dogs surrounding it and eating it"
+
+Original: "a quesadilla with dogs surrounding it"
+Feedback: "set it on fire"
+Analysis: User wants the same quesadilla but burning → MODIFICATION
+New Prompt: "a quesadilla on fire with dogs surrounding it"
+
+Original: "a red dragon breathing fire"
+Feedback: "I want a phoenix"
+Analysis: Dragon and phoenix are different creatures → REPLACEMENT
+New Prompt: "a red phoenix breathing fire"
+
+Original: "a dragon"
+Feedback: "make it blue"
+Analysis: Same dragon, different color → MODIFICATION
+New Prompt: "a blue dragon"
+
+Original: "a cat sitting on a chair wearing a hat"
+Feedback: "actually make it a dog"
+Analysis: Cat and dog are different animals → REPLACEMENT
+New Prompt: "a dog sitting on a chair wearing a hat"
+
+Original: "a sombrero with fire"
+Feedback: "brown please"
+Analysis: Same sombrero, different color → MODIFICATION
+New Prompt: "a brown sombrero with fire"
+
+**ABSOLUTE RULES:**
+1. **ANALYZE INTENT** - Understand what the user actually wants based on meaning, not keywords
+2. **NEVER CREATE HYBRIDS** - If replacing, fully replace (no "taco-quesadilla", no "dragon with phoenix features")
+3. **PRESERVE UNMENTIONED ELEMENTS** - Keep dogs, fire, location, actions, etc. unless user specifically changes them
+4. **NO CREATIVITY** - Don't add anything the user didn't ask for
+
+Return ONLY the modified prompt (no explanations, no quotes)."""
 
         try:
+            # Calculate max_tokens dynamically based on original prompt length
+            # Rough estimate: 1 token ≈ 3 characters, add buffer for modifications
+            estimated_prompt_tokens = len(original_prompt) // 3  # Generous estimate
+            min_tokens = 500  # Minimum for short prompts
+            max_tokens = max(min_tokens, estimated_prompt_tokens + 100)  # Add buffer for modifications
+            max_tokens = min(max_tokens, 1000)  # Cap at 1000 to avoid excessive costs
+
+            print(f"ImageRefiner: Using max_tokens={max_tokens} for prompt modification (original ~{len(original_prompt)} chars)")
+
             response = await self.client.chat.completions.create(
                 model=self.config.get('modification_model', 'gpt-4o'),
                 messages=[{'role': 'system', 'content': system_prompt}],
-                max_tokens=self.config.get('modification_max_tokens', 300),  # Higher limit to avoid truncating long prompts
+                max_tokens=max_tokens,
                 temperature=0.0  # Zero temperature for deterministic, non-creative output
             )
 

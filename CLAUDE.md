@@ -265,11 +265,16 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - `.env` - Secrets (DISCORD_TOKEN, OPENAI_API_KEY, TOGETHER_API_KEY)
 - `gui.py` - Graphical configuration interface with Server Manager
 
-### Image Generation Module (2025-10-15, Updated 2025-10-27)
+### Image Generation Module (2025-10-15, Updated 2025-12-01)
 - `modules/image_generator.py` - Together.ai API integration for AI image generation
 - `modules/ai_handler.py:_strip_bot_name_from_prompt()` - Removes bot name from prompts
   - **Model**: FLUX.1-schnell (optimized for 4 steps, 512x512 resolution)
   - **Style**: User-determined (prompt dictates style - "cute kitten" = cute, "badass dragon" = badass, etc.)
+  - **Literal Interpretation (2025-12-01)**: Strict literal interpretation of user prompts
+    - "sombrero" = traditional Mexican sombrero (NOT baseball cap or trucker hat)
+    - Temperature 0.0 for deterministic, non-creative output
+    - Explicit instructions to NEVER substitute similar but different items
+    - Prevents AI from "interpreting" items into something more generic
   - **Multi-Character Scene Handling (2025-10-27)**: Detects and preserves complex scenes with multiple people and actions
     - **Action Word Detection**: Recognizes 25+ action words (fighting, sitting, running, versus, with, and, etc.)
     - **Multi-Subject Detection**: Identifies when prompt mentions 2+ people
@@ -308,6 +313,9 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
       - Example: "draw Alice" → DB lookup (Alice is capitalized, not common)
       - Prevents users with generic words in names from being matched incorrectly
     - Only includes appearance/visual facts, excludes behavioral rules and non-visual descriptions
+    - **Increased Appearance Limit (2025-12-01)**: Now loads up to 15 appearance facts per user (up from 5)
+      - Additional patterns: hat, cap, headwear, eyeliner, fang, bandage
+      - Ensures accessories and distinguishing features are included in generated images
     - **Gender Detection (2025-10-18)**: Automatically detects gender from pronouns in database facts
       - Scans ALL facts for gendered pronouns (she/her/hers vs he/him/his)
       - Adds "a woman" or "a man" as FIRST descriptor in image context
@@ -335,7 +343,7 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Config**: `config.json` under `image_generation` section
   - **GUI Integration**: Checkbox for enable/disable, fields for period limit and reset hours
 
-### Image Refinement System (2025-11-24)
+### Image Refinement System (2025-11-24, Updated 2025-12-01)
 - `modules/image_refiner.py` - Detects and handles image refinement requests
 - **Purpose**: Allows users to iteratively refine generated images without starting over
 - **Flow**:
@@ -359,11 +367,22 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
     - Prevents accidental image generation when user is responding to bot's text
   - **Bot Name Stripping (2025-11-24)**: Strips bot name from user message before analysis
 - **Prompt Modification**: Makes MINIMAL changes to cached enhanced prompt
+  - **Semantic Replacement vs Modification (2025-12-01)**: AI analyzes user intent to determine whether to REPLACE or MODIFY
+    - **REPLACEMENT**: User wants a DIFFERENT subject entirely (taco → quesadilla, dragon → phoenix)
+      - Swaps out old subject completely, preserves surrounding context (actions, settings)
+    - **MODIFICATION**: User wants to CHANGE PROPERTIES of existing subject (dragon → blue dragon)
+      - Keeps the subject, adds/changes only the requested property
+    - No trigger words - uses semantic analysis of both original prompt and user feedback
   - **Strict Rules**: No new people, no new scenes, no creativity beyond request
   - **Temperature 0.0**: Deterministic output to prevent creative additions
+  - **Dynamic Token Allocation (2025-12-01)**: max_tokens calculated based on original prompt length
+    - Minimum: 500 tokens (prevents truncation)
+    - Maximum: 1000 tokens (cost control)
+    - Formula: `max(500, len(prompt)//3 + 100)` capped at 1000
   - **Examples**:
-    - "make it blue" → adds "blue" to enhanced prompt
-    - "add a sword" → adds "with a sword" to enhanced prompt
+    - "make it blue" → adds "blue" to enhanced prompt (MODIFICATION)
+    - "make it a quesadilla" → replaces taco with quesadilla, keeps dogs eating it (REPLACEMENT)
+    - "add a sword" → adds "with a sword" to enhanced prompt (MODIFICATION)
 - **Refinement Safeguards (2025-11-24)**:
   - **Skip AI Enhancement**: Refined prompts bypass GPT-4 enhancement (already enhanced in cache)
   - **Skip User Context**: User facts/names not loaded during refinements to prevent identity leakage
@@ -583,6 +602,24 @@ User-associated facts with source attribution:
 - Semantic similarity search prevents duplicate/contradictory facts
 - Accessed via `db_manager.find_contradictory_memory()`, `db_manager.update_long_term_memory_fact()`, and `db_manager.delete_long_term_memory()`
 
+**Source-Aware Fact Presentation (2025-12-01)**:
+- Facts are presented naturally based on who told the bot
+- **Three presentation modes based on source**:
+  1. **Direct knowledge** (they told you about themselves) → speak confidently ("Your favorite color is blue")
+  2. **From current speaker** (about someone else) → acknowledge source ("You mentioned that Alice likes cats")
+  3. **From others** (third party information) → indicate secondhand ("I heard that..." or "Someone mentioned...")
+- **Implementation**: `source_user_id` tracked for every fact
+- **AI prompt formatting**: Facts grouped by source type for natural presentation
+- **Benefits**: More natural conversation, acknowledges uncertainty of secondhand information
+
+**Memory Storage Targeting (2025-12-01)**:
+- When UserA says something about UserB, the fact is saved to UserB's record (not UserA's)
+- **Detection**: AI extracts WHO the fact is ABOUT using ABOUT/FACT parsing
+  - Prompt format: `ABOUT: [self OR the name of the person]` + `FACT: [the extracted fact]`
+- **User Matching**: Three-tier matching (Discord name → Nicknames table → Long-term memory)
+- **Example**: "Alice has a black hat" from UserA → saved to Alice's record with source=UserA
+- **Prevents**: Mixing up user facts when discussing others
+
 ### nicknames
 **User Nickname Tracking Table (2025-10-26)**:
 Stores historical display names and nicknames for users to enable flexible user matching across the bot.
@@ -738,12 +775,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 207 tests across 23 categories (updated 2025-10-27)
+  - Runs 225 tests across 28 categories (updated 2025-12-01)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (5), Cleanup Verification (5) = 207 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (5), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Cleanup Verification (5) = 225 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):

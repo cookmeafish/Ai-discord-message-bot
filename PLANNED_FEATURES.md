@@ -1544,6 +1544,187 @@ Bot: aw man, i'm sorry :fishsad: you wanna talk about it?
 
 ---
 
+---
+
+## Phase 6 (PLANNED)
+
+### Support Ticketing System
+
+**Problem Statement:**
+Users need a way to contact server staff for help with rules, questions, and support issues. Currently there's no structured system for handling user inquiries.
+
+**Proposed Solution: AI-Powered Ticket System**
+
+A complete ticketing system where users can create private support tickets, receive AI-assisted answers based on Server_Info content, and escalate to staff if needed.
+
+**CRITICAL: Complete Isolation from Chat System**
+This ticketing system operates COMPLETELY SEPARATELY from the normal chat/AI response system:
+- Does NOT use normal message intents (memory_storage, casual_chat, etc.)
+- Does NOT access the database for user facts or relationship metrics
+- Does NOT use bot personality or lore
+- ONLY uses Server_Info folder content for answering questions
+- Separate cog file (`cogs/tickets.py`) with no dependencies on ai_handler's chat methods
+
+---
+
+#### Core Functionality
+
+**1. Ticket Button Channel Setup**
+- Admin runs `/ticket_setup` to configure:
+  - Ticket button channel (read-only channel with "Create Ticket" button)
+  - Ticket category (where new tickets are created)
+  - Closed tickets category (where resolved tickets are moved)
+  - Staff role (who gets pinged on escalation)
+
+**2. Ticket Creation Flow**
+1. User clicks "Create Ticket" button in designated channel
+2. Bot creates private channel `ticket-{number}` with permissions:
+   - User: Read + Send messages
+   - Bot: Read + Send + Manage Channel
+   - Staff role: Read + Send messages
+   - @everyone: No access
+3. Bot sends generic (non-AI) welcome message:
+   > "Thank you for contacting support. Please describe your issue and wait for a response."
+
+**3. User Response Handling**
+- **No response within 30 minutes**: Ticket auto-deleted (abandoned)
+- **User describes issue**: Bot generates AI response using ONLY Server_Info context
+
+**4. AI Response Generation**
+```python
+async def generate_ticket_response(self, user_message, guild_id, guild_name):
+    """Generate AI response using ONLY Server_Info context - NO database access"""
+    server_info = self._load_server_info(guild_id, guild_name)
+
+    system_prompt = f"""You are a support assistant for this Discord server.
+    Answer the user's question using ONLY the following server information:
+
+    {server_info}
+
+    If the information isn't available, politely say you cannot answer and
+    a staff member will assist them.
+
+    IMPORTANT: Do NOT use any personality, lore, or user-specific information.
+    This is a neutral support context only."""
+
+    # Call OpenAI API
+    return response
+```
+
+**5. Resolution Flow**
+After AI responds, two buttons appear:
+- **"Resolved"** (green): Closes ticket, moves to Closed Tickets category
+- **"Need More Help"** (red): Pings @staff role for human assistance
+
+**6. Ticket Lifecycle**
+- Status values: `awaiting_response`, `open`, `resolved`, `escalated`, `closed`
+- Max 3 open tickets per user
+- Closed tickets auto-deleted after 30 days
+
+---
+
+#### Database Schema
+
+```sql
+-- Ticket configuration per server
+CREATE TABLE IF NOT EXISTS ticket_config (
+    guild_id TEXT PRIMARY KEY,
+    ticket_button_channel_id TEXT,
+    ticket_category_id TEXT,
+    closed_category_id TEXT,
+    staff_role_id TEXT,
+    next_ticket_number INTEGER DEFAULT 1
+);
+
+-- Individual tickets
+CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_number INTEGER NOT NULL,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT UNIQUE,
+    user_id TEXT NOT NULL,
+    status TEXT DEFAULT 'awaiting_response',
+    created_at TEXT NOT NULL,
+    first_response_at TEXT,
+    closed_at TEXT,
+    close_reason TEXT
+);
+```
+
+---
+
+#### Slash Commands
+
+| Command | Description | Permissions |
+|---------|-------------|-------------|
+| `/ticket_setup` | Configure ticket system (button channel, categories, staff role) | Administrator |
+| `/ticket_config_view` | View current ticket configuration | Administrator |
+| `/ticket_close` | Manually close a ticket (in ticket channel) | Manage Messages |
+| `/ticket_add_user` | Add a user to the ticket | Manage Messages |
+
+---
+
+#### Configuration (config.json)
+
+```json
+"tickets": {
+    "enabled": true,
+    "timeout_minutes": 30,
+    "max_per_user": 3,
+    "retention_days": 30,
+    "ai_model": "gpt-4.1-mini",
+    "ai_max_tokens": 500
+}
+```
+
+---
+
+#### Implementation Files
+
+| File | Changes |
+|------|---------|
+| `cogs/tickets.py` | **NEW** - Complete ticketing cog with buttons, commands, AI response |
+| `database/schemas.py` | Add `ticket_config` and `tickets` tables |
+| `database/db_manager.py` | Add ticket-related database methods |
+| `config.json` | Add `tickets` configuration section |
+| `main.py` | Register persistent button views on startup |
+
+---
+
+#### User Flow Summary
+
+1. **Admin Setup**: `/ticket_setup` → configures channels, categories, staff role
+2. **User Creates Ticket**: Clicks button → private channel created
+3. **Initial Message**: Generic "describe your issue" (non-AI)
+4. **30-min Timeout**: No response → ticket deleted
+5. **User Describes Issue**: AI responds using Server_Info ONLY
+6. **Resolution**:
+   - Resolved → ticket closed, moved to closed category
+   - Need More Help → @staff pinged, human takes over
+7. **Cleanup**: Closed tickets auto-deleted after 30 days
+
+---
+
+#### Key Design Principles
+
+1. **Complete Chat System Isolation**: Tickets do NOT use normal message intents, database facts, or bot personality
+2. **Server_Info Only**: AI responses draw ONLY from `Server_Info/{ServerName}/` text files
+3. **No User Tracking**: No relationship metrics, no memory storage, no user profiling in tickets
+4. **Staff Escalation**: Clear path to human help when AI can't answer
+5. **Automatic Cleanup**: Abandoned and old tickets cleaned up automatically
+
+---
+
+**Implementation Priority:** 🟡 MEDIUM
+
+**Estimated Complexity:** Medium-High
+- New cog with Discord UI components (Views, Buttons)
+- Database schema additions
+- Background tasks for timeout and cleanup
+- Persistent views that survive bot restarts
+
+---
+
 ### Other Feature Ideas
 
 - User-configurable memory consolidation schedules

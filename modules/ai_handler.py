@@ -1753,13 +1753,27 @@ Examples:
         long_term_memory_entries = db_manager.get_long_term_memory(author.id)
         user_profile_prompt = ""
         if long_term_memory_entries:
-            # Format facts naturally without database-like prefixes
-            facts_str_list = [fact for fact, source_id, source_name in long_term_memory_entries]
-            facts_str = "\n- ".join(facts_str_list)
-            # CRITICAL: Identify this as the AUTHOR (person asking the question)
+            # Format facts with source attribution for natural conversation
             author_name = author.display_name if hasattr(author, 'display_name') else author.name
+            author_id_str = str(author.id)
+
+            facts_from_self = []  # Facts the author told you about themselves
+            facts_from_others = []  # Facts others told you about the author
+
+            for fact, source_id, source_name in long_term_memory_entries:
+                if str(source_id) == author_id_str:
+                    facts_from_self.append(fact)
+                else:
+                    facts_from_others.append(f"{fact} (told by {source_name})")
+
             user_profile_prompt = f"=== THINGS YOU KNOW ABOUT THE AUTHOR ===\n"
-            user_profile_prompt += f"Author: **{author_name}** (ID: {author.id})\n- {facts_str}\n\n"
+            user_profile_prompt += f"Author: **{author_name}** (ID: {author.id})\n"
+
+            if facts_from_self:
+                user_profile_prompt += "**Direct knowledge** (they told you themselves):\n- " + "\n- ".join(facts_from_self) + "\n"
+            if facts_from_others:
+                user_profile_prompt += "**Secondhand knowledge** (you heard from others - present as rumors/hearsay):\n- " + "\n- ".join(facts_from_others) + "\n"
+            user_profile_prompt += "\n"
 
         # Build mentioned users prompt (will be populated for casual_chat/memory_recall/factual_question)
         mentioned_users_prompt = ""
@@ -1846,18 +1860,20 @@ Examples:
                                             appearance_patterns = [
                                                 'has hair', ' hair ', 'has eyes', ' eyes ', 'wears ', 'wearing ',
                                                 'has a slender', 'has a muscular', 'has a', 'dressed in',
-                                                'complexion', 'skin', 'tall', 'short', 'build', 'appearance'
+                                                'complexion', 'skin', 'tall', 'short', 'build', 'appearance',
+                                                ' hat', ' cap', 'eyeliner', 'fang', 'bandage', 'fingernail', 'painted'
                                             ]
                                             descriptive_facts = []
-                                            for fact_tuple in user_facts[:20]:  # Check first 20 facts
+                                            for fact_tuple in user_facts:  # Check ALL facts
                                                 fact_text = fact_tuple[0]
                                                 fact_lower = fact_text.lower()
                                                 if any(p in fact_lower for p in appearance_patterns):
                                                     descriptive_facts.append(fact_text)
 
                                             if descriptive_facts:
-                                                image_context = f"{nickname}: {', '.join(descriptive_facts[:5])}"
-                                                print(f"AI Handler: Loaded refinement context: {image_context[:200]}...")
+                                                # Use up to 15 appearance facts for better visual accuracy
+                                                image_context = f"{nickname}: {', '.join(descriptive_facts[:15])}"
+                                                print(f"AI Handler: Loaded refinement context ({len(descriptive_facts)} facts): {image_context[:300]}...")
                                         break
                                 if image_context:
                                     break
@@ -2264,13 +2280,13 @@ Respond with ONLY the extracted visual description, nothing else.
                                     # Check if fact describes physical appearance, not just contains appearance words
                                     appearance_patterns = [
                                         'has hair', ' hair ', 'has eyes', ' eyes ', 'has eye', ' eye ', 'has a face', 'has skin',
-                                        'wears ', 'wearing ',
+                                        'wears ', 'wearing ', ' hat', ' cap', 'headwear',
                                         'has a slender', 'has a muscular', 'has a', 'has an',
                                         'hair is', 'eyes are', 'skin is', 'skin on',
                                         'dressed in', 'outfit', 'clothing',
                                         'has fringe', 'has bangs', 'has a build',
                                         'complexion', 'has lips', 'has a mouth', 'has a nose',
-                                        'has fingernails', 'painted', 'has makeup',
+                                        'has fingernails', 'painted', 'has makeup', 'eyeliner', 'fang', 'bandage',
                                         'depicted in', 'drawn in', 'art style',
                                         'shading', 'highlights', 'giving a', 'making them',
                                         'shoulders', 'contrasts in light', 'bright areas', 'impression is', 'overall impression',
@@ -2294,7 +2310,7 @@ Respond with ONLY the extracted visual description, nothing else.
                                             other_facts.append(fact_text)
 
                                     # Prioritize appearance facts first, then add other descriptive facts
-                                    descriptive_facts = appearance_facts[:10]  # Up to 10 appearance facts
+                                    descriptive_facts = appearance_facts[:15]  # Up to 15 appearance facts
                                     if len(descriptive_facts) < 5:
                                         # Fill remaining slots with other facts
                                         descriptive_facts.extend(other_facts[:5 - len(descriptive_facts)])
@@ -2453,18 +2469,44 @@ Respond with a VERY brief, natural comment about your drawing (1 sentence max).
 
         elif intent == "memory_storage":
             extraction_prompt = f"""
-The user wants you to remember a fact about them or the world. Analyze the user's message and extract the core piece of information as a concise statement.
-- If the user says 'my favorite color is blue', the fact is 'My favorite color is blue'.
-- If the user says 'my cat is named Whiskers', the fact is 'My cat is named Whiskers'.
-- If the user says 'remember that I work as a software engineer', the fact is 'I work as a software engineer'.
+The user wants you to remember a fact. Analyze who the fact is ABOUT and extract the information.
+
+CRITICAL: Determine if this fact is about:
+1. The speaker themselves (uses "I", "my", "me")
+2. Someone else (uses a name, "he", "she", "they", or refers to another person)
+
+Respond in this EXACT format:
+ABOUT: [self OR the name of the person]
+FACT: [the extracted fact, written in third person if about someone else]
+
+Examples:
+- User says "my favorite color is blue"
+  ABOUT: self
+  FACT: Their favorite color is blue
+
+- User says "csama has a black hat"
+  ABOUT: csama
+  FACT: Has a black hat
+
+- User says "remember that John loves pizza"
+  ABOUT: John
+  FACT: Loves pizza
+
+- User says "he has red hair" (context: discussing someone named Alex)
+  ABOUT: Alex
+  FACT: Has red hair
+
+- User says "I work as a developer"
+  ABOUT: self
+  FACT: Works as a developer
 
 User message: "{actual_content}"
 
-Respond with ONLY the extracted fact.
+Respond with ONLY the ABOUT and FACT lines, nothing else.
 """
             # Get model configuration for memory extraction
             extraction_config = self._get_model_config('memory_extraction')
-            
+
             try:
                 # First, extract and save the fact
                 response = await self.client.chat.completions.create(
@@ -2473,23 +2515,89 @@ Respond with ONLY the extracted fact.
                     max_tokens=extraction_config['max_tokens'],
                     temperature=extraction_config['temperature']
                 )
-                extracted_fact = response.choices[0].message.content.strip()
-                if not extracted_fact:
+                extraction_result = response.choices[0].message.content.strip()
+                if not extraction_result:
                     return "I'm not sure what you want me to remember from that."
-                
+
+                # Parse the ABOUT and FACT from the response
+                about_person = "self"
+                extracted_fact = extraction_result
+
+                if "ABOUT:" in extraction_result and "FACT:" in extraction_result:
+                    lines = extraction_result.split('\n')
+                    for line in lines:
+                        if line.startswith("ABOUT:"):
+                            about_person = line.replace("ABOUT:", "").strip().lower()
+                        elif line.startswith("FACT:"):
+                            extracted_fact = line.replace("FACT:", "").strip()
+
+                # Determine who to save the fact for
+                target_user_id = author.id
+                target_user_name = author.display_name
+
+                if about_person != "self":
+                    # Try to find this person in the database
+                    print(f"AI Handler: Fact is about '{about_person}', searching for user...")
+
+                    # Search nicknames table and members for a match
+                    found_user = None
+                    if message.guild:
+                        about_lower = about_person.lower()
+
+                        # Check guild members
+                        for member in message.guild.members:
+                            member_name_lower = member.display_name.lower()
+                            if about_lower in member_name_lower or member_name_lower in about_lower:
+                                found_user = member
+                                print(f"AI Handler: Found user match: {member.display_name} (ID: {member.id})")
+                                break
+
+                        # Also check nicknames table if no match
+                        if not found_user:
+                            try:
+                                import sqlite3
+                                conn = sqlite3.connect(db_manager.db_path)
+                                cursor = conn.cursor()
+                                cursor.execute("SELECT user_id, nickname FROM nicknames")
+                                for user_id, nickname in cursor.fetchall():
+                                    if nickname and about_lower in nickname.lower():
+                                        # Find the member with this ID
+                                        found_member = message.guild.get_member(int(user_id))
+                                        if found_member:
+                                            found_user = found_member
+                                            print(f"AI Handler: Found user via nickname: {nickname} -> {found_member.display_name}")
+                                            break
+                                conn.close()
+                            except Exception as e:
+                                print(f"AI Handler: Error searching nicknames: {e}")
+
+                    if found_user:
+                        target_user_id = found_user.id
+                        target_user_name = found_user.display_name
+                        print(f"AI Handler: Saving fact about {target_user_name} (ID: {target_user_id}), source: {author.display_name}")
+                    else:
+                        print(f"AI Handler: Could not find user '{about_person}', saving to author instead")
+
                 db_manager.add_long_term_memory(
-                    author.id, extracted_fact, author.id, author.display_name
+                    target_user_id, extracted_fact, author.id, author.display_name
                 )
+                print(f"AI Handler: Stored fact '{extracted_fact}' for user {target_user_id} (source: {author.display_name})")
                 
                 # Now, generate a natural response to having learned the fact
                 personality_mode = self._get_personality_mode(personality_config)
+
+                # Build context about who the fact is about
+                if about_person == "self":
+                    fact_context = f"The user just told you a fact about THEMSELVES: '{extracted_fact}'"
+                else:
+                    fact_context = f"The user just told you a fact about {target_user_name}: '{extracted_fact}'"
 
                 response_prompt = f"""
 {identity_prompt}
 {relationship_prompt}
 
-You just learned a new fact from the user: '{extracted_fact}'.
-Acknowledge this new information with a short, natural, human-like response based on your personality and relationship with them.
+{fact_context}
+Acknowledge this new information with a short, natural, human-like response based on your personality.
 
 **CRITICAL RULES**:
 - BE BRIEF AND NATURAL. Sound like a real person would when learning something new.
@@ -2499,6 +2607,7 @@ Acknowledge this new information with a short, natural, human-like response base
   * Low rapport: "k", "sure", "whatever", "okay"
   * Neutral: "interesting", "ah okay", "makes sense"
 - You can also react to the CONTENT of what they told you, not just acknowledge it
+- If the fact is about someone else, you might comment on that person too
 - DO NOT ask follow-up questions unless it's extremely natural for your character
 """
 
@@ -2838,26 +2947,49 @@ Respond with ONLY the fact ID number or "NONE".
                             else:
                                 print(f"AI Handler: Skipped '{member.display_name}' - word used in different context, not referring to user")
 
-                # Load facts for each mentioned user
+                # Load facts for each mentioned user with source attribution
                 for member in mentioned_users:
                     user_facts = db_manager.get_long_term_memory(str(member.id))
                     user_metrics = db_manager.get_relationship_metrics(str(member.id))
 
                     if user_facts or user_metrics:
-                        facts_list = [fact[0] for fact in user_facts] if user_facts else []
+                        # Separate facts by source for natural presentation
+                        member_id_str = str(member.id)
+                        author_id_str = str(author.id)
+
+                        facts_from_self = []  # Facts the mentioned user said about themselves
+                        facts_from_author = []  # Facts the current speaker told you
+                        facts_from_others = []  # Facts from third parties
+
+                        for fact, source_id, source_name in (user_facts or []):
+                            source_id_str = str(source_id) if source_id else ""
+                            if source_id_str == member_id_str:
+                                facts_from_self.append(fact)
+                            elif source_id_str == author_id_str:
+                                facts_from_author.append(fact)
+                            else:
+                                facts_from_others.append(f"{fact} (told by {source_name})")
+
                         mentioned_users_info.append({
                             'name': member.display_name,
-                            'id': str(member.id),
-                            'facts': facts_list,
+                            'id': member_id_str,
+                            'facts_from_self': facts_from_self,
+                            'facts_from_author': facts_from_author,
+                            'facts_from_others': facts_from_others,
                             'metrics': user_metrics
                         })
-                        print(f"AI Handler: Loaded {len(facts_list)} facts for mentioned user {member.display_name}")
+                        total_facts = len(facts_from_self) + len(facts_from_author) + len(facts_from_others)
+                        print(f"AI Handler: Loaded {total_facts} facts for mentioned user {member.display_name} (self:{len(facts_from_self)}, author:{len(facts_from_author)}, others:{len(facts_from_others)})")
 
-            # Build mentioned users prompt from collected info
+            # Build mentioned users prompt from collected info with source attribution
             if mentioned_users_info:
                 mentioned_users_prompt = "=== THINGS YOU KNOW ABOUT MENTIONED USERS (people being discussed, NOT the author) ===\n"
                 mentioned_users_prompt += "⚠️ CRITICAL: These are OTHER PEOPLE being mentioned in the conversation.\n"
-                mentioned_users_prompt += "DO NOT confuse them with the AUTHOR (person asking the question).\n\n"
+                mentioned_users_prompt += "DO NOT confuse them with the AUTHOR (person asking the question).\n"
+                mentioned_users_prompt += "📝 SOURCE GUIDE: Present facts naturally based on how you learned them:\n"
+                mentioned_users_prompt += "   - Direct: They told you themselves → speak confidently\n"
+                mentioned_users_prompt += "   - From author: The person you're talking to told you → 'you mentioned that...'\n"
+                mentioned_users_prompt += "   - From others: Someone else told you → 'I heard that...' or 'rumor has it...'\n\n"
 
                 for user_info in mentioned_users_info:
                     mentioned_users_prompt += f"**{user_info['name']}** (ID: {user_info['id']}):\n"
@@ -2872,14 +3004,30 @@ Respond with ONLY the fact ID number or "NONE".
                         if metrics_str:
                             mentioned_users_prompt += f"  Your feelings: {', '.join(metrics_str)}\n"
 
-                    # Add facts
-                    if user_info['facts']:
-                        for fact in user_info['facts'][:15]:  # Limit to 15 facts per user to avoid token overload
+                    # Add facts with source categories
+                    if user_info.get('facts_from_self'):
+                        mentioned_users_prompt += "  **Direct knowledge** (they told you):\n"
+                        for fact in user_info['facts_from_self'][:5]:
+                            mentioned_users_prompt += f"    - {fact}\n"
+
+                    if user_info.get('facts_from_author'):
+                        mentioned_users_prompt += "  **From current speaker** (remind them they told you):\n"
+                        for fact in user_info['facts_from_author'][:5]:
+                            mentioned_users_prompt += f"    - {fact}\n"
+
+                    if user_info.get('facts_from_others'):
+                        mentioned_users_prompt += "  **Secondhand** (present as rumors/hearsay):\n"
+                        for fact in user_info['facts_from_others'][:5]:
+                            mentioned_users_prompt += f"    - {fact}\n"
+
+                    # Fallback for old-style facts list (backwards compatibility)
+                    if user_info.get('facts') and not any([user_info.get('facts_from_self'), user_info.get('facts_from_author'), user_info.get('facts_from_others')]):
+                        for fact in user_info['facts'][:15]:
                             mentioned_users_prompt += f"  - {fact}\n"
 
                     mentioned_users_prompt += "\n"
 
-                print(f"AI Handler: Built mentioned_users_prompt with {len(mentioned_users_info)} users")
+                print(f"AI Handler: Built mentioned_users_prompt with {len(mentioned_users_info)} users (source-aware)")
 
             # Check if user has EXTREME relationship metrics - this COMPLETELY changes the prompt structure
             metrics = db_manager.get_relationship_metrics(author.id)

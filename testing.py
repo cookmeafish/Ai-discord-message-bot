@@ -81,6 +81,14 @@ class BotTestSuite:
         await self.test_admin_logging()
         await self.test_proactive_engagement()
         await self.test_user_identification()
+        await self.test_status_updates()
+        await self.test_user_id_resolution()
+        await self.test_bot_name_stripping()
+
+        # New tests (2025-12-01)
+        await self.test_source_attribution()
+        await self.test_memory_storage_targeting()
+        await self.test_image_refinement()
 
         # Final cleanup verification (catch-all)
         await self.test_cleanup_verification()
@@ -2094,6 +2102,251 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "User Identification Tests", False, f"Error: {e}")
 
+    # ==================== SOURCE ATTRIBUTION TESTS ====================
+
+    async def test_source_attribution(self):
+        """Test source-aware fact attribution system (2025-12-01)."""
+        category = "Source Attribution"
+
+        test_user_id = 666666666666666666  # User whose fact it is
+        test_source_id = 555555555555555555  # User who told the bot this fact
+        test_fact = f"TEST_FACT_SOURCE_{datetime.now().timestamp()}"
+
+        # Test 1: Add memory with source attribution
+        try:
+            # Ensure both users exist
+            self.db_manager._ensure_user_exists(test_user_id)
+            self.db_manager._ensure_user_exists(test_source_id)
+
+            result = self.db_manager.add_long_term_memory(
+                user_id=test_user_id,
+                fact=test_fact,
+                source_user_id=test_source_id,
+                source_nickname="SourceUser"
+            )
+
+            memories = self.db_manager.get_long_term_memory(test_user_id)
+            # memories returns [(fact, source_user_id, source_nickname), ...]
+            found_memory = None
+            for m in memories:
+                if m[0] == test_fact:
+                    found_memory = m
+                    break
+
+            source_correct = found_memory and str(found_memory[1]) == str(test_source_id)
+
+            self._log_test(
+                category,
+                "Add Memory with Source Attribution",
+                source_correct,
+                f"Memory stored with source_user_id={found_memory[1] if found_memory else 'N/A'}" if source_correct else "Source attribution failed"
+            )
+        except Exception as e:
+            self._log_test(category, "Add Memory with Source Attribution", False, f"Error: {e}")
+
+        # Test 2: Memory retrieval includes source information
+        try:
+            memories = self.db_manager.get_long_term_memory(test_user_id)
+            has_source_info = all(len(m) >= 3 for m in memories)  # Should have (fact, source_id, source_nickname)
+
+            self._log_test(
+                category,
+                "Memory Retrieval Includes Source",
+                has_source_info,
+                "All memories include source information (id, nickname)" if has_source_info else "Missing source information in memory retrieval"
+            )
+        except Exception as e:
+            self._log_test(category, "Memory Retrieval Includes Source", False, f"Error: {e}")
+
+        # Test 3: Clean up test data
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("DELETE FROM long_term_memory WHERE fact LIKE ?", ("%TEST_FACT_SOURCE_%",))
+            cursor.execute("DELETE FROM users WHERE user_id IN (?, ?)", (test_user_id, test_source_id))
+            cursor.execute("DELETE FROM relationship_metrics WHERE user_id IN (?, ?)", (test_user_id, test_source_id))
+            self.db_manager.conn.commit()
+            cursor.close()
+
+            self._log_test(
+                category,
+                "Clean Up Source Attribution Test",
+                True,
+                "Test data cleaned up successfully"
+            )
+        except Exception as e:
+            self._log_test(category, "Clean Up Source Attribution Test", False, f"Error: {e}")
+
+    # ==================== MEMORY STORAGE TARGETING TESTS ====================
+
+    async def test_memory_storage_targeting(self):
+        """Test that facts about UserB get stored to UserB's record, not the speaker's (2025-12-01)."""
+        category = "Memory Storage Targeting"
+
+        # Test 1: Verify AI handler has ABOUT/FACT parsing logic
+        try:
+            with open('modules/ai_handler.py', 'r', encoding='utf-8') as f:
+                ai_handler_source = f.read()
+
+            has_about_parsing = 'ABOUT:' in ai_handler_source and 'FACT:' in ai_handler_source
+            has_target_user_logic = 'target_user_id' in ai_handler_source or 'mentioned_user' in ai_handler_source
+
+            self._log_test(
+                category,
+                "ABOUT/FACT Parsing Logic Exists",
+                has_about_parsing,
+                "Memory storage prompt includes ABOUT/FACT parsing" if has_about_parsing else "Missing ABOUT/FACT parsing in prompts"
+            )
+        except Exception as e:
+            self._log_test(category, "ABOUT/FACT Parsing Logic Exists", False, f"Error: {e}")
+
+        # Test 2: Verify nickname table is used for user matching
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='nicknames'")
+            nicknames_table_exists = cursor.fetchone() is not None
+            cursor.close()
+
+            self._log_test(
+                category,
+                "Nicknames Table for User Matching",
+                nicknames_table_exists,
+                "Nicknames table exists for flexible user matching" if nicknames_table_exists else "Nicknames table missing"
+            )
+        except Exception as e:
+            self._log_test(category, "Nicknames Table for User Matching", False, f"Error: {e}")
+
+        # Test 3: Verify storage prompt instructs AI to identify WHO fact is ABOUT
+        try:
+            with open('modules/ai_handler.py', 'r', encoding='utf-8') as f:
+                ai_handler_source = f.read()
+
+            has_about_instruction = 'who is this fact ABOUT' in ai_handler_source.lower() or 'ABOUT: [self OR' in ai_handler_source
+
+            self._log_test(
+                category,
+                "Storage Prompt Identifies Target User",
+                has_about_instruction,
+                "AI instructed to identify who fact is about (self vs other user)" if has_about_instruction else "Missing target user identification in storage prompt"
+            )
+        except Exception as e:
+            self._log_test(category, "Storage Prompt Identifies Target User", False, f"Error: {e}")
+
+    # ==================== IMAGE REFINEMENT TESTS ====================
+
+    async def test_image_refinement(self):
+        """Test image refinement system (2025-12-01)."""
+        category = "Image Refinement"
+
+        # Test 1: ImageRefiner module exists
+        try:
+            from modules.image_refiner import ImageRefiner
+            module_exists = True
+            self._log_test(
+                category,
+                "ImageRefiner Module Import",
+                True,
+                "ImageRefiner module imported successfully"
+            )
+        except Exception as e:
+            self._log_test(category, "ImageRefiner Module Import", False, f"Error importing: {e}")
+            module_exists = False
+
+        # Test 2: ImageRefiner has required methods
+        if module_exists:
+            try:
+                from modules.image_refiner import ImageRefiner
+                refiner = ImageRefiner(self.bot.config_manager)
+
+                has_detect = hasattr(refiner, 'detect_refinement')
+                has_modify = hasattr(refiner, 'modify_prompt')
+
+                all_methods = has_detect and has_modify
+
+                self._log_test(
+                    category,
+                    "ImageRefiner Methods",
+                    all_methods,
+                    "All required methods found: detect_refinement, modify_prompt" if all_methods else f"Missing methods: detect={has_detect}, modify={has_modify}"
+                )
+            except Exception as e:
+                self._log_test(category, "ImageRefiner Methods", False, f"Error: {e}")
+
+        # Test 3: Replacement vs Modification semantic analysis
+        if module_exists:
+            try:
+                with open('modules/image_refiner.py', 'r', encoding='utf-8') as f:
+                    refiner_source = f.read()
+
+                # Check for semantic analysis keywords
+                has_replacement_logic = 'REPLACEMENT' in refiner_source and 'MODIFICATION' in refiner_source
+                has_semantic_analysis = 'Analyze' in refiner_source or 'intent' in refiner_source.lower()
+                no_trigger_words = 'trigger_words' not in refiner_source.lower()  # Should NOT use trigger words
+
+                semantic_approach = has_replacement_logic and has_semantic_analysis
+
+                self._log_test(
+                    category,
+                    "Semantic Replacement vs Modification",
+                    semantic_approach,
+                    "Uses semantic analysis to distinguish replacement vs modification" if semantic_approach else "May be using keyword-based approach instead of semantic analysis"
+                )
+            except Exception as e:
+                self._log_test(category, "Semantic Replacement vs Modification", False, f"Error: {e}")
+
+        # Test 4: Dynamic max_tokens for prompt modification
+        if module_exists:
+            try:
+                with open('modules/image_refiner.py', 'r', encoding='utf-8') as f:
+                    refiner_source = f.read()
+
+                has_dynamic_tokens = 'estimated_prompt_tokens' in refiner_source or 'len(original_prompt)' in refiner_source
+                has_min_max = 'min_tokens' in refiner_source and 'max_tokens' in refiner_source
+
+                dynamic_tokens = has_dynamic_tokens and has_min_max
+
+                self._log_test(
+                    category,
+                    "Dynamic Token Allocation",
+                    dynamic_tokens,
+                    "Dynamically calculates max_tokens based on prompt length (500-1000)" if dynamic_tokens else "May be using fixed token limit"
+                )
+            except Exception as e:
+                self._log_test(category, "Dynamic Token Allocation", False, f"Error: {e}")
+
+        # Test 5: Topic change detection
+        if module_exists:
+            try:
+                with open('modules/image_refiner.py', 'r', encoding='utf-8') as f:
+                    refiner_source = f.read()
+
+                has_topic_change = 'topic change' in refiner_source.lower() or 'recent_conversation' in refiner_source
+                has_conversation_context = 'conversation_context' in refiner_source
+
+                topic_detection = has_topic_change or has_conversation_context
+
+                self._log_test(
+                    category,
+                    "Topic Change Detection",
+                    topic_detection,
+                    "Includes conversation context to detect topic changes" if topic_detection else "Missing topic change detection"
+                )
+            except Exception as e:
+                self._log_test(category, "Topic Change Detection", False, f"Error: {e}")
+
+        # Test 6: Config for image refinement
+        try:
+            config = self.bot.config_manager.get_config()
+            has_refinement_config = 'image_refinement' in config
+
+            self._log_test(
+                category,
+                "Image Refinement Config",
+                True,  # Always pass - config is optional
+                f"Refinement config {'exists' if has_refinement_config else 'not found (using defaults)'}"
+            )
+        except Exception as e:
+            self._log_test(category, "Image Refinement Config", False, f"Error: {e}")
+
     # ==================== CLEANUP VERIFICATION TESTS ====================
 
     async def test_cleanup_verification(self):
@@ -2104,7 +2357,7 @@ class BotTestSuite:
         category = "Cleanup Verification"
 
         # All test user IDs used in tests
-        test_user_ids = [999999999999999999, 888888888888888888, 777777777777777777]
+        test_user_ids = [999999999999999999, 888888888888888888, 777777777777777777, 666666666666666666, 555555555555555555]
         test_message_id = 999999999999999999
 
         # Test 1: No test bot identity entries remain

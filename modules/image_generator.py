@@ -359,29 +359,38 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
 2. Any database/conversation facts above (if provided) can supplement your knowledge
 3. Provide specific visual details that would help an image AI draw accurately
 
+**CRITICAL - LITERAL INTERPRETATION REQUIRED:**
+- **BE 100% LITERAL** - If user says "sombrero", describe a TRADITIONAL MEXICAN SOMBRERO (wide brim, tall crown, straw/felt), NOT a baseball cap or any other hat type
+- **DO NOT SUBSTITUTE** - Never replace the subject with something similar but different
+- **PRESERVE THE SUBJECT** - "dragon" = dragon, "sombrero" = Mexican sombrero, "katana" = Japanese sword
+- **ADD DETAILS, NOT CHANGES** - Enhance with visual details, but keep the fundamental subject EXACTLY as requested
+
 **ABSOLUTE RULES - VIOLATIONS WILL BE REJECTED:**
 - **NO PEOPLE** - Never add humans, chefs, handlers, characters unless EXPLICITLY in the subject
 - **NO SCENES** - Never add kitchens, backgrounds, forests, rooms unless EXPLICITLY requested
 - **NO CREATIVITY** - Only describe what's in the subject, nothing more
-- **LITERAL ONLY** - "hot sauce on a plate with wings" = bottle + plate + chicken wings (NOT chefs, NOT kitchens)
+- **NO SUBSTITUTION** - "sombrero" = wide-brimmed Mexican hat (NOT baseball cap, NOT trucker hat, NOT any other hat)
 - If subject is "an ice turtle" → describe ONLY the turtle
 - If subject is "a dragon" → describe ONLY the dragon
-- If subject is "hot sauce with wings" → describe ONLY the bottle, plate, and wings
+- If subject is "a sombrero" → describe a TRADITIONAL MEXICAN SOMBRERO with wide brim
 
 **Requirements:**
 - **If this is a real person you know about** (politician, celebrity, historical figure, etc.): Describe their actual appearance in detail
 - **If this is a character from media** (anime, game, movie, etc.): Use your knowledge of that character's design
-- **If this is a generic subject** (dragon, house, tree, animal, etc.): Use typical visual characteristics for THAT SUBJECT ONLY
-- Focus on VISUAL details only (appearance, colors, clothing, style, physical features)
+- **If this is a generic subject** (dragon, house, tree, hat, etc.): Use the TRADITIONAL/TYPICAL form of that subject
+- Focus on VISUAL details only (appearance, colors, materials, style, physical features)
 - Be specific and detailed (not vague)
 - Keep it under 100 words
 - Don't mention "database", "conversation", or "knowledge" - just provide the description naturally
-- **CONTENT SAFETY**: Avoid words like "muscular", "bare", "naked", "revealing", "body" - keep descriptions PG-rated and focused on clothed appearances, fur, or natural features
+- **CONTENT SAFETY**: Avoid words like "muscular", "bare", "naked", "revealing", "body" - keep descriptions PG-rated
 
 **Example output for famous person:**
 "A woman in her late 50s with shoulder-length dark brown hair, warm brown eyes, professional attire typically consisting of tailored pantsuits in navy or black, pearl necklace, confident smile"
 
-**Example output for generic subject:**
+**Example output for generic subject (sombrero):**
+"A traditional Mexican sombrero with an extra-wide circular brim, tall conical crown, made of woven straw with colorful embroidered patterns along the brim edge, decorative tassels hanging from the rim"
+
+**Example output for generic subject (dragon):**
 "A large red dragon with golden eyes, massive wings spread wide, sharp talons, scales reflecting light, smoke curling from nostrils"
 
 **Your visual description:**"""
@@ -392,20 +401,18 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
             config = self.config_manager.get_config() if self.config_manager else {}
             model_config = config.get('ai_models', {}).get('vision_description', {
                 'model': 'gpt-4o-mini',
-                'max_tokens': 150,
+                'max_tokens': 300,
                 'temperature': 0.3
             })
 
-            # Use more tokens for multi-subject scenes (they need more description)
-            max_tokens = model_config.get('max_tokens', 150)
-            if is_multi_subject or is_action_scene:
-                max_tokens = max(max_tokens, 200)  # Ensure at least 200 tokens for complex scenes
+            # Use 300 tokens for initial drawings (enough for detailed descriptions)
+            max_tokens = model_config.get('max_tokens', 300)
 
             response = await self.openai_client.chat.completions.create(
                 model=model_config.get('model', 'gpt-4o-mini'),
                 messages=[{'role': 'user', 'content': enhancement_prompt}],
                 max_tokens=max_tokens,
-                temperature=0.1  # Low temperature for minimal creativity
+                temperature=0.0  # Zero temperature for deterministic, literal output
             )
 
             enhanced_description = response.choices[0].message.content.strip()
