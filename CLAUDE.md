@@ -620,6 +620,16 @@ User-associated facts with source attribution:
 - **Example**: "Alice has a black hat" from UserA → saved to Alice's record with source=UserA
 - **Prevents**: Mixing up user facts when discussing others
 
+**No-Facts Honesty (2025-12-01)**:
+- When a user asks "what do you know about me?" and the bot has NO stored facts, it must be honest
+- **Problem Solved**: Bot was previously hallucinating facts about new users it just met
+- **Implementation**: Special handling for `memory_challenge` intent when `user_profile_prompt` is empty
+- **Behavior**:
+  - With facts: Normal memory challenge response ("Oh you're the teacher right?")
+  - Without facts: Honest response ("We just met!" or "I don't know much about you yet")
+- **Critical Rule Added**: "NEVER INVENT FACTS ABOUT USERS" - bot can only claim to know things explicitly listed in the facts section
+- **Exception**: Bot CAN make up facts about ITSELF (its lore, opinions, feelings) - just never about users
+
 ### nicknames
 **User Nickname Tracking Table (2025-10-26)**:
 Stores historical display names and nicknames for users to enable flexible user matching across the bot.
@@ -775,12 +785,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 225 tests across 28 categories (updated 2025-12-01)
+  - Runs 227 tests across 28 categories (updated 2025-12-01)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (5), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Cleanup Verification (5) = 225 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Cleanup Verification (5) = 227 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):

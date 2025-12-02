@@ -2099,6 +2099,28 @@ class BotTestSuite:
                 f"Found {warning_count} bot name warnings in prompts" if has_name_warnings else "Missing bot name warnings"
             )
 
+            # Test 6: No-facts memory challenge handling (2025-12-01)
+            has_no_facts_handling = 'MEMORY CHALLENGE RESPONSE (NO FACTS)' in ai_handler_source
+            has_honest_response = 'We just met' in ai_handler_source or 'NEVER fabricate information' in ai_handler_source
+
+            self._log_test(
+                category,
+                "No-Facts Memory Challenge Handling",
+                has_no_facts_handling and has_honest_response,
+                "Bot will be honest when no facts about user exist" if (has_no_facts_handling and has_honest_response) else "Missing no-facts handling for memory challenges"
+            )
+
+            # Test 7: Never invent facts rule (2025-12-01)
+            has_never_invent = 'NEVER INVENT FACTS ABOUT USERS' in ai_handler_source
+            has_only_claim = 'You can ONLY claim to know things' in ai_handler_source
+
+            self._log_test(
+                category,
+                "Never Invent Facts Rule",
+                has_never_invent and has_only_claim,
+                "Critical rule prevents bot from inventing facts about users" if (has_never_invent and has_only_claim) else "Missing 'never invent facts' rule"
+            )
+
         except Exception as e:
             self._log_test(category, "User Identification Tests", False, f"Error: {e}")
 

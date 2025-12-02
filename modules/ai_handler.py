@@ -3296,21 +3296,46 @@ Respond with ONLY the fact ID number or "NONE".
 
                 # Add specific guidance for memory challenge questions ("what do you remember about me?")
                 if intent == "memory_challenge":
-                    system_prompt += (
-                        "--- MEMORY CHALLENGE RESPONSE ---\n"
-                        "🎯 The user is challenging you to prove you know them. This is NOT a database query!\n\n"
-                        "**HOW A REAL PERSON RECALLS SOMEONE:**\n"
-                        "- Pick 2-3 STANDOUT things that come to mind first (interesting, unique, memorable)\n"
-                        "- Be casual and uncertain - 'if I remember right', 'pretty sure you mentioned'\n"
-                        "- React to what you remember - 'oh yeah, you're the teacher!' not 'you are a teacher'\n"
-                        "- Trail off naturally - 'that's the main stuff I got' or 'something like that'\n"
-                        "- DON'T try to list everything - that's robotic\n\n"
-                        "❌ ROBOTIC (never do this):\n"
-                        "'You're Crowy, retired, juggling responsibilities, got a couple of jobs including teaching physics and language, maybe biology soon. You prefer English in chats, find calling seniors senpai a bit awkward, but you're solid and trustworthy.'\n\n"
-                        "✅ NATURAL (do this):\n"
-                        "'Oh you're the retired teacher right? Physics and language if I remember. Pretty sure you mentioned not being a fan of the whole senpai thing lol'\n\n"
-                        "**KEY**: You have facts listed above but DON'T read them off like a list. Pick highlights, be casual, sound like you're actually remembering - not reciting.\n\n"
-                    )
+                    # Check if we actually have facts about this user
+                    if not user_profile_prompt or not long_term_memory_entries:
+                        # NO FACTS - Be honest that you don't know them yet
+                        system_prompt += (
+                            "--- MEMORY CHALLENGE RESPONSE (NO FACTS) ---\n"
+                            "🚨 **CRITICAL: YOU HAVE NO STORED FACTS ABOUT THIS USER** 🚨\n\n"
+                            "The user is asking what you know about them, but you have NOTHING stored.\n"
+                            "This likely means you JUST MET them or haven't learned anything about them yet.\n\n"
+                            "**YOU MUST BE HONEST:**\n"
+                            "- Admit you don't really know them yet\n"
+                            "- Say something like 'we just met' or 'I don't think I know much about you yet'\n"
+                            "- Be friendly and open to learning about them\n"
+                            "- DO NOT invent or guess facts about them\n\n"
+                            "❌ NEVER DO THIS (inventing facts):\n"
+                            "'Oh you're the retired teacher right? You mentioned physics...'\n"
+                            "(This is LYING - you have NO information about them!)\n\n"
+                            "✅ DO THIS (be honest):\n"
+                            "'Hmm, I don't think I actually know much about you yet! We haven't really talked before have we?'\n"
+                            "'Honestly? Not much lol, feel like we just met'\n"
+                            "'Can't say I know anything yet - tell me about yourself!'\n\n"
+                            "**ABSOLUTE RULE**: If there are no facts listed about the user above, you MUST admit you don't know them. "
+                            "NEVER fabricate information about someone you haven't met.\n\n"
+                        )
+                    else:
+                        # HAS FACTS - Normal memory challenge response
+                        system_prompt += (
+                            "--- MEMORY CHALLENGE RESPONSE ---\n"
+                            "🎯 The user is challenging you to prove you know them. This is NOT a database query!\n\n"
+                            "**HOW A REAL PERSON RECALLS SOMEONE:**\n"
+                            "- Pick 2-3 STANDOUT things that come to mind first (interesting, unique, memorable)\n"
+                            "- Be casual and uncertain - 'if I remember right', 'pretty sure you mentioned'\n"
+                            "- React to what you remember - 'oh yeah, you're the teacher!' not 'you are a teacher'\n"
+                            "- Trail off naturally - 'that's the main stuff I got' or 'something like that'\n"
+                            "- DON'T try to list everything - that's robotic\n\n"
+                            "❌ ROBOTIC (never do this):\n"
+                            "'You're Crowy, retired, juggling responsibilities, got a couple of jobs including teaching physics and language, maybe biology soon. You prefer English in chats, find calling seniors senpai a bit awkward, but you're solid and trustworthy.'\n\n"
+                            "✅ NATURAL (do this):\n"
+                            "'Oh you're the retired teacher right? Physics and language if I remember. Pretty sure you mentioned not being a fan of the whole senpai thing lol'\n\n"
+                            "**KEY**: You have facts listed above but DON'T read them off like a list. Pick highlights, be casual, sound like you're actually remembering - not reciting.\n\n"
+                        )
 
                 system_prompt += (
                     "--- CRITICAL RULES ---\n"
@@ -3319,15 +3344,20 @@ Respond with ONLY the fact ID number or "NONE".
                     "3. **USE MEMORY WISELY**: Only mention facts if relevant.\n"
                     "   - The conversation history below includes messages from ALL channels in this server\n"
                     "   - Pay attention to things people have said across all channels - it's all part of the same ongoing conversation\n"
-                    "4. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
-                    f"5. **EMOTES** ({emote_count} available - USE THEM ALL, not just favorites!):\n{available_emotes}\n"
+                    "4. **NEVER INVENT FACTS ABOUT USERS**: You can ONLY claim to know things that are explicitly listed in 'THINGS YOU KNOW ABOUT THE AUTHOR' above.\n"
+                    "   - If NO facts are listed for a user, you DON'T know anything about them yet\n"
+                    "   - If asked 'what do you know about me?' with no facts listed, be HONEST: 'We just met!' or 'I don't know much about you yet'\n"
+                    "   - NEVER guess or fabricate information about users - this is LYING\n"
+                    "   - You CAN make up facts about YOURSELF (your lore, opinions, feelings) - just never about users\n"
+                    "5. **NO NAME PREFIX**: NEVER start with your name and a colon.\n"
+                    f"6. **EMOTES** ({emote_count} available - USE THEM ALL, not just favorites!):\n{available_emotes}\n"
                     "   **CRITICAL**: Match the emote to your EMOTION. Use the hints above to pick the RIGHT emote for how you FEEL. "
                     "Rotate through ALL emotes over time - don't always default to the same one!\n"
                     "   - A server emote by itself is a perfectly valid response\n"
                     "   - Great for awkward moments or when you don't have much to say\n"
-                    "6. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
-                    "7. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
-                    "8. **MENTIONED USERS VS AUTHOR**: If facts about mentioned users are listed above, use them when answering questions ABOUT THOSE PEOPLE. Do NOT confuse mentioned users with the author.\n"
+                    "7. **EMOTIONAL TOPICS**: If the conversation touches on your lore, let those emotions show naturally while respecting your relationship with the user.\n"
+                    "8. **REFERENCING FACTS ABOUT YOURSELF**: When mentioning facts from your identity (traits/lore/facts), speak naturally in complete sentences. Never compress them into awkward phrases.\n"
+                    "9. **MENTIONED USERS VS AUTHOR**: If facts about mentioned users are listed above, use them when answering questions ABOUT THOSE PEOPLE. Do NOT confuse mentioned users with the author.\n"
                 )
 
             # Add energy guidance to system prompt (detail-seeking overrides low energy)
@@ -3351,7 +3381,7 @@ Respond with ONLY the fact ID number or "NONE".
             print(f"DEBUG ROLEPLAY: Final enable_roleplay = {enable_roleplay}")
             if not enable_roleplay:
                 system_prompt += (
-                    "\n8. 🚫 **CRITICAL: NO ROLEPLAY MODE ACTIVE** 🚫\n"
+                    "\n10. 🚫 **CRITICAL: NO ROLEPLAY MODE ACTIVE** 🚫\n"
                     "   **YOU ARE ABSOLUTELY FORBIDDEN FROM DESCRIBING PHYSICAL ACTIONS.**\n"
                     "   **ANY RESPONSE WITH PHYSICAL DESCRIPTIONS WILL BE REJECTED.**\n\n"
                     "   ❌ FORBIDDEN - DO NOT WRITE:\n"
@@ -3368,7 +3398,7 @@ Respond with ONLY the fact ID number or "NONE".
                 )
 
             if not personality_mode['allow_technical_language']:
-                rule_num = 9 if not enable_roleplay else 8
+                rule_num = 11 if not enable_roleplay else 10
                 system_prompt += (
                     f"\n{rule_num}. **ABSOLUTELY NO TECHNICAL/ROBOTIC LANGUAGE**: NEVER use these terms:\n"
                     "   - 'cached', 'stored', 'database', 'info', 'data', 'system', 'record', 'log'\n"
