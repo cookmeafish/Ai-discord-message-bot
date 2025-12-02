@@ -397,9 +397,11 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Time Keywords**: "when", "what time", "today", "yesterday", "ago", "how long", etc.
   - **Memory Keywords**: "remember when", "you said", "I told you", "earlier you", etc.
 - **Conditional Inclusion**:
-  - When relevant: Bot prompt includes current date/time, messages include timestamps
+  - When relevant: Bot prompt includes current date/time, user messages include timestamps
   - When not relevant: No temporal information included (saves tokens, prevents random time references)
 - **Message Timestamp Format**: `UserName (ID: 123) [2 hours ago]: message`
+- **Bot Messages**: NO timestamps on bot's own messages (prevents AI from mimicking `[just now]` format in responses)
+- **Timestamp Warning**: When temporal context is enabled, prompt includes explicit instruction to NOT include timestamps in responses
 - **Date Format**: `📅 Current Date & Time: November 24, 2025 (Sunday) at 03:45 PM`
 - **Applied To**:
   - Main `generate_response()` - checks current message + recent messages
@@ -655,10 +657,23 @@ User-associated facts with source attribution:
 - **Problem Solved**: Bot was previously hallucinating facts about new users it just met
 - **Implementation**: Special handling for `memory_challenge` intent when `user_profile_prompt` is empty
 - **Behavior**:
-  - With facts: Normal memory challenge response ("Oh you're the teacher right?")
+  - With facts: Natural casual response ("Oh you're the gym bro right? lol")
   - Without facts: Honest response ("We just met!" or "I don't know much about you yet")
 - **Critical Rule Added**: "NEVER INVENT FACTS ABOUT USERS" - bot can only claim to know things explicitly listed in the facts section
 - **Exception**: Bot CAN make up facts about ITSELF (its lore, opinions, feelings) - just never about users
+
+**Natural Memory Responses (2025-12-01)**:
+- **Problem Solved**: Bot was listing facts like a database ("You're X—the Y with Z, and also W...")
+- **New Behavior**: Pick only 1-2 things and react casually like a real person
+- **Forbidden Patterns**:
+  - Listing multiple facts in one response
+  - Using dashes/em-dashes to separate facts
+  - Summarizing someone like a Wikipedia article
+- **Good Examples**:
+  - "Oh you're the gym bro right? lol"
+  - "Pretty sure you hate my surgeries... rude"
+  - "You're my annoying brother if I remember correctly"
+- **Key Instruction**: "YOU ARE A PERSON, NOT A SEARCH ENGINE. Pick ONE thing."
 
 ### nicknames
 **User Nickname Tracking Table (2025-10-26)**:
