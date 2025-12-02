@@ -874,64 +874,6 @@ class AdminCog(commands.Cog):
             ephemeral=True
         )
 
-    @app_commands.command(name="channel_conversation_view", description="View conversation continuation settings for this channel")
-    @app_commands.default_permissions(administrator=True)
-    async def channel_conversation_view(self, interaction: discord.Interaction):
-        """View current conversation continuation settings for this channel."""
-        # Defer immediately to prevent timeout
-        await interaction.response.defer(ephemeral=True)
-
-        if not interaction.guild:
-            await interaction.followup.send("❌ This command can only be used in a server.", ephemeral=True)
-            return
-
-        db_manager = self._get_db(interaction)
-        if not db_manager:
-            await interaction.followup.send("❌ Failed to access server database.", ephemeral=True)
-            return
-
-        channel_id = str(interaction.channel_id)
-        channel_setting = db_manager.get_channel_setting(channel_id)
-
-        if not channel_setting:
-            await interaction.followup.send(
-                "❌ This channel is not activated yet. Please use `/activate` first.",
-                ephemeral=True
-            )
-            return
-
-        enabled = channel_setting.get('enable_conversation_detection', 0)
-        threshold = channel_setting.get('conversation_detection_threshold', 0.7)
-        context_window = channel_setting.get('conversation_context_window', 10)
-
-        status = "✅ Enabled" if enabled else "❌ Disabled"
-        responsiveness = "Very Responsive (may have false positives)" if threshold < 0.5 else \
-                        "Balanced" if threshold < 0.8 else \
-                        "Conservative (only responds when very confident)"
-
-        embed = discord.Embed(
-            title="⚙️ Conversation Continuation Settings",
-            description=f"Settings for {interaction.channel.mention}",
-            color=discord.Color.blue()
-        )
-
-        embed.add_field(name="Status", value=status, inline=False)
-        embed.add_field(name="Threshold", value=f"{threshold:.2f} ({responsiveness})", inline=True)
-        embed.add_field(name="Context Window", value=f"{context_window} messages", inline=True)
-
-        embed.add_field(
-            name="How It Works",
-            value=(
-                "When enabled, the bot uses AI to detect if messages are directed at it without requiring @mentions.\n\n"
-                "**Threshold**: Lower = more responsive (may respond when not intended), Higher = more selective.\n"
-                "**Context Window**: How many recent messages to analyze for conversation flow.\n\n"
-                "**Note**: Explicit @mentions and replies always trigger responses regardless of this setting."
-            ),
-            inline=False
-        )
-
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
     # ==================== GLOBAL BOT CONFIGURATION COMMANDS ====================
 
     @app_commands.command(name="config_set_reply_chance", description="Set global random reply chance")
@@ -1516,56 +1458,96 @@ class AdminCog(commands.Cog):
     @app_commands.command(name="channel_view_settings", description="View all current channel settings")
     @app_commands.default_permissions(administrator=True)
     async def channel_view_settings(self, interaction: discord.Interaction):
-        """View all settings for the current channel."""
+        """View all settings for the current channel including conversation continuation and random events."""
         if not interaction.guild:
-            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            return
+
+        db_manager = self._get_db(interaction)
+        if not db_manager:
+            await interaction.response.send_message("Failed to access server database.", ephemeral=True)
             return
 
         channel_id = str(interaction.channel.id)
         config = self.bot.config_manager.get_config()
-
-        channel_config = config.get('channel_settings', {}).get(channel_id, {})
         global_personality = config.get('personality_mode', {})
 
-        if not channel_config:
+        # Get channel settings from database
+        channel_setting = db_manager.get_channel_setting(channel_id)
+
+        if not channel_setting:
             await interaction.response.send_message(
-                f"ℹ️ No settings configured for <#{channel_id}>. Using global defaults.\n"
-                f"Use `/activate` to activate this channel first.",
+                f"No settings configured for this channel. Use `/activate` to activate it first.",
                 ephemeral=True
             )
             return
 
         embed = discord.Embed(
-            title=f"⚙️ Channel Settings: #{interaction.channel.name}",
+            title=f"Channel Settings: #{interaction.channel.name}",
             color=discord.Color.blue()
         )
 
-        # Basic settings
-        purpose = channel_config.get('purpose', 'Default purpose')
-        embed.add_field(name="Purpose", value=purpose[:1024], inline=False)
+        # === BASIC SETTINGS ===
+        purpose = channel_setting.get('purpose', 'Default purpose')
+        embed.add_field(name="Purpose", value=purpose[:1024] if purpose else "Not set", inline=False)
 
-        reply_chance = channel_config.get('random_reply_chance', config.get('random_reply_chance', 0.05))
-        embed.add_field(name="Random Reply Chance", value=f"{reply_chance * 100:.1f}%", inline=True)
+        reply_chance = channel_setting.get('random_reply_chance', config.get('random_reply_chance', 0.05))
+        embed.add_field(name="Random Reply Chance", value=f"{float(reply_chance) * 100:.1f}%", inline=True)
 
-        # Personality mode
-        immersive = channel_config.get('immersive_character', global_personality.get('immersive_character', True))
-        tech_lang = channel_config.get('allow_technical_language', global_personality.get('allow_technical_language', False))
-        use_server_info = channel_config.get('use_server_info', False)
-        roleplay_fmt = channel_config.get('enable_roleplay_formatting', global_personality.get('enable_roleplay_formatting', True))
+        # === PERSONALITY MODE ===
+        immersive = channel_setting.get('immersive_character', global_personality.get('immersive_character', True))
+        tech_lang = channel_setting.get('allow_technical_language', global_personality.get('allow_technical_language', False))
+        use_server_info = channel_setting.get('use_server_info', False)
+        roleplay_fmt = channel_setting.get('enable_roleplay_formatting', global_personality.get('enable_roleplay_formatting', True))
 
-        embed.add_field(name="Immersive Character", value="✅ Yes" if immersive else "❌ No", inline=True)
-        embed.add_field(name="Technical Language", value="✅ Allowed" if tech_lang else "❌ Forbidden", inline=True)
-        embed.add_field(name="Use Server Info", value="✅ Yes" if use_server_info else "❌ No", inline=True)
-        embed.add_field(name="Roleplay Formatting", value="✅ Yes" if roleplay_fmt else "❌ No", inline=True)
+        embed.add_field(name="Immersive Character", value="Yes" if immersive else "No", inline=True)
+        embed.add_field(name="Technical Language", value="Allowed" if tech_lang else "Forbidden", inline=True)
+        embed.add_field(name="Use Server Info", value="Yes" if use_server_info else "No", inline=True)
+        embed.add_field(name="Roleplay Formatting", value="Yes" if roleplay_fmt else "No", inline=True)
 
-        # Proactive engagement
-        proactive_enabled = channel_config.get('allow_proactive_engagement', True)
-        proactive_interval = channel_config.get('proactive_check_interval', 30)
-        proactive_threshold = channel_config.get('proactive_threshold', 0.7)
+        # === PROACTIVE ENGAGEMENT ===
+        proactive_enabled = channel_setting.get('allow_proactive_engagement', True)
+        embed.add_field(name="Proactive Engagement", value="Enabled" if proactive_enabled else "Disabled", inline=True)
 
-        embed.add_field(name="Proactive Engagement", value="✅ Enabled" if proactive_enabled else "❌ Disabled", inline=True)
-        embed.add_field(name="Check Interval", value=f"{proactive_interval} min", inline=True)
-        embed.add_field(name="Threshold", value=f"{proactive_threshold:.2f}", inline=True)
+        # === CONVERSATION CONTINUATION ===
+        conv_enabled = channel_setting.get('enable_conversation_detection', 0)
+        conv_threshold = channel_setting.get('conversation_detection_threshold', 0.7)
+        conv_context = channel_setting.get('conversation_context_window', 10)
+
+        embed.add_field(
+            name="Conversation Continuation",
+            value=f"{'Enabled' if conv_enabled else 'Disabled'} (threshold: {conv_threshold:.2f}, context: {conv_context} msgs)",
+            inline=False
+        )
+
+        # === RANDOM EVENTS ===
+        # Fetch random event settings directly from database
+        try:
+            cursor = db_manager.conn.cursor()
+            cursor.execute("""
+                SELECT random_event_enabled, random_event_chance, random_event_interval_hours
+                FROM channel_settings WHERE channel_id = ?
+            """, (channel_id,))
+            result = cursor.fetchone()
+            cursor.close()
+
+            if result:
+                rand_enabled = result[0] if result[0] is not None else 0
+                rand_chance = result[1] if result[1] is not None else 50.0
+                rand_interval = result[2] if result[2] is not None else 5.0
+
+                embed.add_field(
+                    name="Random Events",
+                    value=f"{'Enabled' if rand_enabled else 'Disabled'} ({rand_chance}% chance every {rand_interval} hours)",
+                    inline=False
+                )
+            else:
+                embed.add_field(name="Random Events", value="Disabled (default)", inline=False)
+        except Exception:
+            embed.add_field(name="Random Events", value="Disabled (default)", inline=False)
+
+        # === FOOTER WITH HELP ===
+        embed.set_footer(text="Use /channel_set_* commands to modify these settings")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

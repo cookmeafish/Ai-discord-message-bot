@@ -796,7 +796,7 @@ All three Phase 5 features fully implemented and integrated into the bot.
 - **AI Model**: GPT-4.1-mini for classification (configurable via `conversation_detection.model`)
 - **Discord Commands (NEW 2025-11-23)**:
   - `/channel_conversation_enable` - Configure per-channel (enabled, threshold, context_window)
-  - `/channel_conversation_view` - View per-channel settings
+  - `/channel_view_settings` - Unified view of all channel settings
 - **How It Works**:
   1. Optimization check: Only runs if bot was recently active in last N messages
   2. Fetches last 10 messages for context analysis

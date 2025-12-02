@@ -332,63 +332,6 @@ Do NOT explain why you're talking. Just jump in naturally."""
             self.logger.error(f"Error in random_event_config: {e}")
             await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
-    @app_commands.command(name="random_event_view", description="View random event settings for this channel")
-    async def random_event_view(self, interaction: discord.Interaction):
-        """View current random event settings."""
-        if not interaction.guild:
-            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
-            return
-
-        try:
-            db_manager = self.bot.get_server_db(str(interaction.guild.id), interaction.guild.name)
-            channel_id = str(interaction.channel.id)
-
-            cursor = db_manager.conn.cursor()
-            cursor.execute("""
-                SELECT random_event_enabled, random_event_chance, random_event_interval_hours
-                FROM channel_settings WHERE channel_id = ?
-            """, (channel_id,))
-            result = cursor.fetchone()
-            cursor.close()
-
-            if result:
-                is_enabled, chance, interval = result
-                # Handle None values (column doesn't exist yet)
-                is_enabled = is_enabled if is_enabled is not None else 0
-                chance = chance if chance is not None else 50.0
-                interval = interval if interval is not None else 5.0
-
-                status = "Enabled" if is_enabled else "Disabled"
-
-                embed = discord.Embed(
-                    title="Random Event Settings",
-                    description=f"Current settings for #{interaction.channel.name}",
-                    color=discord.Color.green() if is_enabled else discord.Color.gray()
-                )
-                embed.add_field(name="Status", value=status, inline=True)
-                embed.add_field(name="Trigger Chance", value=f"{chance}%", inline=True)
-                embed.add_field(name="Check Interval", value=f"{interval} hours", inline=True)
-
-                # Check last event time
-                last_event = self.last_event_times.get(int(channel_id))
-                if last_event:
-                    time_ago = datetime.utcnow() - last_event
-                    hours_ago = time_ago.total_seconds() / 3600
-                    embed.add_field(name="Last Event", value=f"{hours_ago:.1f} hours ago", inline=True)
-                else:
-                    embed.add_field(name="Last Event", value="Never (this session)", inline=True)
-
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-            else:
-                await interaction.response.send_message(
-                    "This channel is not activated. Use `/activate` first.",
-                    ephemeral=True
-                )
-
-        except Exception as e:
-            self.logger.error(f"Error in random_event_view: {e}")
-            await interaction.response.send_message(f"Error: {e}", ephemeral=True)
-
     @app_commands.command(name="random_event_trigger", description="Manually trigger a random event (for testing)")
     @app_commands.describe(event_type="Type of event to trigger")
     @app_commands.choices(event_type=[

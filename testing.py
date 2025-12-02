@@ -90,6 +90,7 @@ class BotTestSuite:
         await self.test_memory_storage_targeting()
         await self.test_image_refinement()
         await self.test_random_events()
+        await self.test_sentiment_analysis_behavior()
 
         # Final cleanup verification (catch-all)
         await self.test_cleanup_verification()
@@ -2462,26 +2463,158 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "Config Section Exists", False, f"Error: {e}")
 
-        # Test 6: Slash commands defined
+        # Test 6: Slash commands defined (view is now in unified /channel_view_settings)
         if cog_exists:
             try:
                 with open('cogs/random_events.py', 'r', encoding='utf-8') as f:
                     cog_source = f.read()
 
                 has_config_cmd = 'random_event_config' in cog_source
-                has_view_cmd = 'random_event_view' in cog_source
                 has_trigger_cmd = 'random_event_trigger' in cog_source
 
-                all_commands = has_config_cmd and has_view_cmd and has_trigger_cmd
+                all_commands = has_config_cmd and has_trigger_cmd
 
                 self._log_test(
                     category,
                     "Slash Commands Defined",
                     all_commands,
-                    "All slash commands found: config, view, trigger" if all_commands else f"Missing commands: config={has_config_cmd}, view={has_view_cmd}, trigger={has_trigger_cmd}"
+                    "All slash commands found: config, trigger (view in /channel_view_settings)" if all_commands else f"Missing commands: config={has_config_cmd}, trigger={has_trigger_cmd}"
                 )
             except Exception as e:
                 self._log_test(category, "Slash Commands Defined", False, f"Error: {e}")
+
+    # ==================== SENTIMENT ANALYSIS BEHAVIOR TESTS ====================
+
+    async def test_sentiment_analysis_behavior(self):
+        """
+        Test that sentiment analysis only runs during memory consolidation
+        and uses holistic non-additive analysis with capped changes.
+        """
+        category = "Sentiment Analysis Behavior"
+
+        # Test 1: Per-message sentiment analysis is disabled in ai_handler.py
+        try:
+            with open('modules/ai_handler.py', 'r', encoding='utf-8') as f:
+                ai_handler_source = f.read()
+
+            # Check that all calls to _analyze_sentiment_and_update_metrics are commented out
+            import re
+            # Find all lines containing the method call
+            all_calls = re.findall(r'.*_analyze_sentiment_and_update_metrics.*', ai_handler_source)
+
+            # Check that ALL calls are commented out (start with #)
+            uncommented_calls = [call for call in all_calls if not call.strip().startswith('#') and 'async def' not in call]
+
+            per_message_disabled = len(uncommented_calls) == 0
+
+            self._log_test(
+                category,
+                "Per-Message Sentiment Disabled",
+                per_message_disabled,
+                "All per-message sentiment analysis calls are commented out" if per_message_disabled else f"Found {len(uncommented_calls)} active per-message sentiment calls"
+            )
+        except Exception as e:
+            self._log_test(category, "Per-Message Sentiment Disabled", False, f"Error: {e}")
+
+        # Test 2: Sentiment analysis only runs during memory consolidation
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            has_batch_analysis = '_analyze_user_sentiment_batch' in memory_tasks_source
+            has_consolidation_call = 'await self._analyze_user_sentiment_batch' in memory_tasks_source
+
+            # Check that it's called INSIDE consolidate_memories
+            consolidation_only = has_batch_analysis and has_consolidation_call
+
+            self._log_test(
+                category,
+                "Sentiment Only During Consolidation",
+                consolidation_only,
+                "Sentiment analysis is batch-processed during memory consolidation only" if consolidation_only else "Missing batch sentiment analysis in memory consolidation"
+            )
+        except Exception as e:
+            self._log_test(category, "Sentiment Only During Consolidation", False, f"Error: {e}")
+
+        # Test 3: Change values are clamped to -2 to +2
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            # Check for the clamp code
+            has_clamp = 'max(-2, min(2, change))' in memory_tasks_source
+            has_comment = 'CRITICAL: Clamp change to -2 to +2' in memory_tasks_source
+
+            clamping_exists = has_clamp and has_comment
+
+            self._log_test(
+                category,
+                "Change Values Clamped -2 to +2",
+                clamping_exists,
+                "Change values are hard-clamped to -2 to +2 range" if clamping_exists else "Missing -2 to +2 clamping code"
+            )
+        except Exception as e:
+            self._log_test(category, "Change Values Clamped -2 to +2", False, f"Error: {e}")
+
+        # Test 4: Prompt mentions holistic non-additive analysis
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            has_holistic = 'HOLISTIC NON-ADDITIVE ANALYSIS' in memory_tasks_source
+            has_overall_tone = 'OVERALL TONE' in memory_tasks_source
+            has_not_additive = '50 rude messages = +1 or +2 anger (NOT +50)' in memory_tasks_source
+            has_limits = 'Changes are CAPPED at -2 to +2 MAXIMUM' in memory_tasks_source
+
+            holistic_prompt = has_holistic and has_overall_tone and has_not_additive and has_limits
+
+            self._log_test(
+                category,
+                "Holistic Non-Additive Prompt",
+                holistic_prompt,
+                "AI prompt explicitly states holistic non-additive analysis with examples" if holistic_prompt else "Missing holistic/non-additive language in prompt"
+            )
+        except Exception as e:
+            self._log_test(category, "Holistic Non-Additive Prompt", False, f"Error: {e}")
+
+        # Test 5: Natural decay for negative emotions exists
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            has_anger_decay = 'current anger > 3' in memory_tasks_source and 'natural decay' in memory_tasks_source.lower()
+            has_fear_decay = 'current fear > 3' in memory_tasks_source
+            has_intimidation_decay = 'current intimidation > 3' in memory_tasks_source
+
+            natural_decay = has_anger_decay and has_fear_decay and has_intimidation_decay
+
+            self._log_test(
+                category,
+                "Natural Decay for Negative Emotions",
+                natural_decay,
+                "Anger, fear, and intimidation naturally decay when neutral and above 3" if natural_decay else "Missing natural decay rules"
+            )
+        except Exception as e:
+            self._log_test(category, "Natural Decay for Negative Emotions", False, f"Error: {e}")
+
+        # Test 6: Minimum message requirement for sentiment analysis
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            has_min_check = 'MIN_MESSAGES_FOR_SENTIMENT' in memory_tasks_source
+            has_skip_message = 'Skipping sentiment analysis' in memory_tasks_source
+
+            min_messages_required = has_min_check and has_skip_message
+
+            self._log_test(
+                category,
+                "Minimum Messages Required",
+                min_messages_required,
+                "Sentiment analysis requires minimum messages to prevent rapid changes" if min_messages_required else "Missing minimum message requirement"
+            )
+        except Exception as e:
+            self._log_test(category, "Minimum Messages Required", False, f"Error: {e}")
 
     # ==================== CLEANUP VERIFICATION TESTS ====================
 

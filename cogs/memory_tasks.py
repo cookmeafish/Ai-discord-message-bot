@@ -41,6 +41,13 @@ class MemoryTasksCog(commands.Cog):
         sentiment_prompt = f"""Analyze these recent messages from a Discord user and determine how relationship metrics should change.
 This analysis is based ONLY on these recent messages (short-term memory), not any stored facts about the user.
 
+⚠️ **CRITICAL: HOLISTIC NON-ADDITIVE ANALYSIS** ⚠️
+You are analyzing the OVERALL TONE of this conversation as a SINGLE UNIT.
+- Changes are CAPPED at -2 to +2 MAXIMUM, regardless of message count
+- 50 rude messages = +1 or +2 anger (NOT +50)
+- 100 kind messages = +1 or +2 rapport (NOT +100)
+- DO NOT add up changes per message - assess the OVERALL vibe
+
 User's recent messages:
 {conversation_text}
 
@@ -63,19 +70,21 @@ Respond with ONLY a JSON object:
     "reason": "brief explanation"
 }}
 
-Guidelines (changes should be -2 to +2 based on OVERALL tone across ALL messages):
+**ABSOLUTE LIMITS** (NEVER exceed these):
+- Maximum change per metric: -2 to +2
+- Any value outside this range is INVALID
 
 **NEGATIVE EMOTIONS SHOULD DECAY:**
 - **Anger**:
-  - User is hostile/rude/insulting → +1/+2
+  - User is hostile/rude/insulting → +1 (mild) or +2 (severe/repeated hostility)
   - User is neutral (normal conversation) AND current anger > 3 → -1 (natural decay)
   - User is patient/kind/friendly → -1/-2
 - **Fear**:
-  - User makes threats → +1
+  - User makes threats → +1 (or +2 for severe threats)
   - User is neutral AND current fear > 3 → -1 (natural decay)
   - User is reassuring/protective → -1/-2
 - **Intimidation**:
-  - User displays power/authority aggressively → +1
+  - User displays power/authority aggressively → +1 (or +2 for severe)
   - User is neutral AND current intimidation > 3 → -1 (natural decay)
   - User shows vulnerability/asks for help → -1/-2
 
@@ -92,6 +101,7 @@ IMPORTANT RULES:
 3. Playful teasing or jokes are NOT hostile - do not increase anger for humor
 4. If the conversation is neutral/positive, set should_update to true and apply natural decay to negative emotions
 5. Be conservative with increases (+1 max for mild cases), generous with decreases (-1/-2 for positive interactions)
+6. NEVER output a change value outside the range [-2, +2] - this is a hard limit
 """
 
         try:
@@ -123,6 +133,9 @@ IMPORTANT RULES:
 
                 for metric_name, change_key in metric_changes:
                     change = result.get(change_key, 0)
+                    # CRITICAL: Clamp change to -2 to +2 to enforce non-additive behavior
+                    # Even if AI misbehaves and returns +10, we cap it at +2
+                    change = max(-2, min(2, change))
                     if change != 0 and metric_name in current_metrics:
                         new_value = max(0, min(10, current_metrics[metric_name] + change))
                         updates[metric_name] = new_value

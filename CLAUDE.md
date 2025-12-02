@@ -507,8 +507,8 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - `random_event_interval_hours`: Hours between potential triggers (default: 5)
 - **Slash Commands**:
   - `/random_event_config enabled:True chance:50 interval_hours:5` - Configure settings
-  - `/random_event_view` - View current settings
   - `/random_event_trigger event_type:random` - Manually trigger for testing
+  - View settings via unified `/channel_view_settings` command
 - **Config**: `config.json` under `random_events` section for global enable/disable
 - **Database**: Settings stored in `channel_settings` table (per-channel, per-server)
 
@@ -750,8 +750,13 @@ Per-channel configuration stored in database (per-server):
   - AI determines if new fact contradicts any existing fact
   - If contradiction detected, old fact is **updated** instead of creating duplicate
   - If no contradiction, fact is added as new
-- **Batch Sentiment Analysis (2025-11-25)**: During consolidation, analyzes user sentiment to update relationship metrics
+- **Batch Sentiment Analysis (2025-11-25, Updated 2025-12-01)**: During consolidation, analyzes user sentiment to update relationship metrics
   - **ONLY runs during memory consolidation** - never at startup or per-message
+  - **HOLISTIC NON-ADDITIVE Analysis (2025-12-01)**: Analyzes OVERALL tone across ALL messages as a single unit
+    - 50 rude messages = +1 or +2 anger (NOT +50)
+    - 100 kind messages = +1 or +2 rapport (NOT +100)
+    - Changes are assessed holistically, not per-message additively
+  - **Hard-Capped Changes**: All metric changes are clamped to -2 to +2 range (enforced in code)
   - **Analyzes SHORT-TERM memory only** - not influenced by long-term stored facts
   - **Metrics Updated**: rapport, trust, anger, respect, affection, familiarity, fear, intimidation
   - **Natural Decay for Negative Emotions**: If no hostility detected AND anger/fear/intimidation > 3, they decrease by 1
@@ -762,6 +767,7 @@ Per-channel configuration stored in database (per-server):
     - Playful teasing/jokes are NOT hostile
   - **Respects Locks**: Locked metrics are not modified
   - **Conservative increases, generous decreases**: +1 max for mild cases, -1/-2 for positive interactions
+  - **Minimum 3 messages required**: Users with fewer than 3 messages are skipped to prevent rapid changes
 - Facts are saved to (or updated in) that server's `long_term_memory` with source attribution
 - All short-term messages are then archived to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
 - After archival, short-term table is cleared for that server
@@ -830,12 +836,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 233 tests across 29 categories (updated 2025-12-01)
+  - Runs 239 tests across 30 categories (updated 2025-12-01)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Cleanup Verification (5) = 227 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Random Events (6), Sentiment Analysis Behavior (6), Cleanup Verification (5) = 239 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):
@@ -901,9 +907,7 @@ Per-channel conversation continuation - bot responds without @mentions when it d
     - `context_window` (optional, default: 10): Number of recent messages to analyze (5-20)
   - **Example**: `/channel_conversation_enable enabled:True threshold:0.6 context_window:12`
   - **Quick enable**: `/channel_conversation_enable enabled:True` (uses defaults)
-
-- `/channel_conversation_view` - View current settings for this channel
-  - Shows status, threshold, context window, and explanation of how it works
+  - View settings via unified `/channel_view_settings` command
 
 **How it works:**
 1. Bot analyzes last 10 messages (configurable) when you send a message
@@ -920,7 +924,7 @@ Per-channel conversation continuation - bot responds without @mentions when it d
 - `/channel_set_purpose` - Set channel purpose/instructions
 - `/channel_set_reply_chance` - Set per-channel random reply chance
 - `/channel_set_proactive` - Configure proactive engagement (enable, interval, threshold)
-- `/channel_view_settings` - View all channel settings
+- `/channel_view_settings` - **Unified view** of all channel settings (personality, proactive, conversation continuation, random events)
 - `/channel_list_active` - List all active channels in server
 
 #### Per-Server Configuration

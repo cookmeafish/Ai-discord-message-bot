@@ -514,7 +514,7 @@ For complete Phase 4 roadmap and hierarchical folder system details, see `PLANNE
 
 **Discord Commands (2025-11-23)**:
 - `/channel_conversation_enable enabled:True` - Enable for this channel (optional: threshold, context_window)
-- `/channel_conversation_view` - View settings for this channel
+- `/channel_view_settings` - View all channel settings (unified view)
 
 ### Iterative Image Refinement ✅
 - Users can refine images naturally: "add fire", "make it bigger", "change color to blue"
