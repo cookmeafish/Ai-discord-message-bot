@@ -210,7 +210,8 @@ class AIHandler:
         # Only add date/time when temporal context is relevant to the conversation
         if include_temporal:
             now = datetime.datetime.now()
-            identity_prompt += f"📅 Current Date & Time: {now.strftime('%B %d, %Y')} ({now.strftime('%A')}) at {now.strftime('%I:%M %p')}\n\n"
+            identity_prompt += f"📅 Current Date & Time: {now.strftime('%B %d, %Y')} ({now.strftime('%A')}) at {now.strftime('%I:%M %p')}\n"
+            identity_prompt += "⚠️ Timestamps like [just now] or [2 hours ago] are metadata showing WHEN messages were sent - do NOT include them in your responses.\n\n"
 
         if traits:
             identity_prompt += "Core Traits:\n"
@@ -3466,11 +3467,8 @@ Respond with ONLY the fact ID number or "NONE".
                 # Include nickname, user ID, and timestamp (if temporal) to help AI with context
                 content = f'{author_name} (ID: {msg_data["author_id"]}){time_str}: {clean_content}'
             else:
-                # Assistant messages include timestamp (if temporal) but no name prefix
-                if needs_temporal and time_str:
-                    content = f'{time_str.strip()} {clean_content}'
-                else:
-                    content = clean_content
+                # Assistant messages: NO timestamps to prevent AI from mimicking [just now] format
+                content = clean_content
 
             messages_for_api.append({'role': role, 'content': content})
 
