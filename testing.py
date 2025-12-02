@@ -89,6 +89,7 @@ class BotTestSuite:
         await self.test_source_attribution()
         await self.test_memory_storage_targeting()
         await self.test_image_refinement()
+        await self.test_random_events()
 
         # Final cleanup verification (catch-all)
         await self.test_cleanup_verification()
@@ -2368,6 +2369,119 @@ class BotTestSuite:
             )
         except Exception as e:
             self._log_test(category, "Image Refinement Config", False, f"Error: {e}")
+
+    # ==================== RANDOM EVENTS TESTS ====================
+
+    async def test_random_events(self):
+        """Test random events system (2025-12-01)."""
+        category = "Random Events"
+
+        # Test 1: RandomEvents cog exists
+        try:
+            from cogs.random_events import RandomEvents
+            cog_exists = True
+            self._log_test(
+                category,
+                "RandomEvents Cog Import",
+                True,
+                "RandomEvents cog imported successfully"
+            )
+        except Exception as e:
+            self._log_test(category, "RandomEvents Cog Import", False, f"Error importing: {e}")
+            cog_exists = False
+
+        # Test 2: Database columns exist
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("PRAGMA table_info(channel_settings)")
+            columns = [row[1] for row in cursor.fetchall()]
+            cursor.close()
+
+            has_enabled = 'random_event_enabled' in columns
+            has_chance = 'random_event_chance' in columns
+            has_interval = 'random_event_interval_hours' in columns
+
+            all_columns = has_enabled and has_chance and has_interval
+
+            self._log_test(
+                category,
+                "Database Columns Exist",
+                all_columns,
+                "All random event columns found in channel_settings" if all_columns else f"Missing columns: enabled={has_enabled}, chance={has_chance}, interval={has_interval}"
+            )
+        except Exception as e:
+            self._log_test(category, "Database Columns Exist", False, f"Error: {e}")
+
+        # Test 3: Default is disabled (random_event_enabled = 0)
+        try:
+            with open('database/schemas.py', 'r', encoding='utf-8') as f:
+                schema_source = f.read()
+
+            default_disabled = 'random_event_enabled INTEGER DEFAULT 0' in schema_source
+
+            self._log_test(
+                category,
+                "Default Disabled Per Channel",
+                default_disabled,
+                "Random events disabled by default (must be manually enabled)" if default_disabled else "Random events may be enabled by default - check schema"
+            )
+        except Exception as e:
+            self._log_test(category, "Default Disabled Per Channel", False, f"Error: {e}")
+
+        # Test 4: Self-reply prevention exists
+        if cog_exists:
+            try:
+                with open('cogs/random_events.py', 'r', encoding='utf-8') as f:
+                    cog_source = f.read()
+
+                has_self_reply_check = 'last_message.author.id == self.bot.user.id' in cog_source
+                has_skip_message = 'last message was from bot' in cog_source.lower()
+
+                self_reply_prevention = has_self_reply_check and has_skip_message
+
+                self._log_test(
+                    category,
+                    "Self-Reply Prevention",
+                    self_reply_prevention,
+                    "Bot skips random event if last message was from itself" if self_reply_prevention else "Missing self-reply prevention check"
+                )
+            except Exception as e:
+                self._log_test(category, "Self-Reply Prevention", False, f"Error: {e}")
+
+        # Test 5: Config section exists
+        try:
+            config = self.bot.config_manager.get_config()
+            has_random_events_config = 'random_events' in config
+
+            self._log_test(
+                category,
+                "Config Section Exists",
+                has_random_events_config,
+                "random_events config section found" if has_random_events_config else "Missing random_events config section"
+            )
+        except Exception as e:
+            self._log_test(category, "Config Section Exists", False, f"Error: {e}")
+
+        # Test 6: Slash commands defined
+        if cog_exists:
+            try:
+                with open('cogs/random_events.py', 'r', encoding='utf-8') as f:
+                    cog_source = f.read()
+
+                has_config_cmd = 'random_event_config' in cog_source
+                has_view_cmd = 'random_event_view' in cog_source
+                has_trigger_cmd = 'random_event_trigger' in cog_source
+
+                all_commands = has_config_cmd and has_view_cmd and has_trigger_cmd
+
+                self._log_test(
+                    category,
+                    "Slash Commands Defined",
+                    all_commands,
+                    "All slash commands found: config, view, trigger" if all_commands else f"Missing commands: config={has_config_cmd}, view={has_view_cmd}, trigger={has_trigger_cmd}"
+                )
+            except Exception as e:
+                self._log_test(category, "Slash Commands Defined", False, f"Error: {e}")
 
     # ==================== CLEANUP VERIFICATION TESTS ====================
 
