@@ -88,6 +88,26 @@ class DBManager:
                 'INTEGER DEFAULT 10'
             )
 
+            # Migration: Add random event columns to channel_settings (2025-12-01)
+            self._add_column_if_not_exists(
+                cursor,
+                'channel_settings',
+                'random_event_enabled',
+                'INTEGER DEFAULT 0'
+            )
+            self._add_column_if_not_exists(
+                cursor,
+                'channel_settings',
+                'random_event_chance',
+                'REAL DEFAULT 50.0'
+            )
+            self._add_column_if_not_exists(
+                cursor,
+                'channel_settings',
+                'random_event_interval_hours',
+                'REAL DEFAULT 5.0'
+            )
+
             self.conn.commit()
             print("Database migrations completed successfully.")
         except Exception as e:

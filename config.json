@@ -69,6 +69,12 @@
         "min_messages_to_analyze": 5
     },
     "server_proactive_settings": {},
+    "random_events": {
+        "enabled": true,
+        "default_chance": 50.0,
+        "default_interval_hours": 5.0,
+        "check_loop_minutes": 30
+    },
     "conversation_detection": {
         "enabled": true,
         "default_threshold": 0.7,

@@ -139,6 +139,9 @@ CREATE TABLE IF NOT EXISTS channel_settings (
     enable_conversation_detection INTEGER DEFAULT 0,
     conversation_detection_threshold REAL DEFAULT 0.7,
     conversation_context_window INTEGER DEFAULT 10,
+    random_event_enabled INTEGER DEFAULT 0,
+    random_event_chance REAL DEFAULT 50.0,
+    random_event_interval_hours REAL DEFAULT 5.0,
     formality INTEGER DEFAULT 0,
     formality_locked INTEGER DEFAULT 0,
     activated_at TEXT NOT NULL

@@ -489,6 +489,36 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
 - Disable in **formal support channels** where bot should wait to be asked
 - Enable in **general/casual channels** where proactive conversation is welcome
 
+### Random Events System (2025-12-01)
+- `cogs/random_events.py` - Timed random event triggers for spontaneous bot engagement
+- **Purpose**: Bot randomly jumps into conversation or rants about its status at configurable intervals
+- **How It Works**:
+  1. Every X hours (default: 5), the system checks each enabled channel
+  2. If the interval has passed, roll for Y% chance (default: 50%) to trigger
+  3. If triggered, 50/50 choice between:
+     - **Conversation Response**: React to recent messages in the channel
+     - **Status Rant**: Comment/rant about the bot's current Discord status
+  4. **Self-Reply Prevention**: Event is SKIPPED if the last message was from the bot (prevents talking to itself)
+- **Per-Channel Configuration**:
+  - `random_event_enabled`: Enable/disable for this channel (default: disabled)
+  - `random_event_chance`: Trigger chance percentage 0-100 (default: 50%)
+  - `random_event_interval_hours`: Hours between potential triggers (default: 5)
+- **Slash Commands**:
+  - `/random_event_config enabled:True chance:50 interval_hours:5` - Configure settings
+  - `/random_event_view` - View current settings
+  - `/random_event_trigger event_type:random` - Manually trigger for testing
+- **Config**: `config.json` under `random_events` section for global enable/disable
+- **Database**: Settings stored in `channel_settings` table (per-channel, per-server)
+
+**Random Events vs Proactive Engagement**:
+| Feature | Random Events | Proactive Engagement |
+|---------|---------------|----------------------|
+| Trigger | Time-based interval + RNG | Continuous AI analysis |
+| Frequency | Every X hours (if lucky) | Every 30 min check |
+| Decision | Pure chance (50%) | AI judges conversation interest |
+| Actions | Conversation OR Status rant | Only conversation response |
+| Use Case | Spontaneous, unpredictable | Intelligent, contextual |
+
 ### GUI Server Manager (2025-10-14, Updated 2025-10-16)
 The GUI provides a server-first interface for managing bot settings:
 - **Main View**: Lists all active Discord servers (scans `database/{ServerName}/{guild_id}_data.db` files)
