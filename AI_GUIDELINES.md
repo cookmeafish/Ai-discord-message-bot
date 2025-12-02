@@ -470,7 +470,7 @@ This is the most critical section and supersedes all other guidelines in cases o
 - `/channel_set_reply_chance` - Set per-channel random reply chance
 - `/channel_set_personality` - Configure personality mode settings (immersive, technical language, server info)
 - `/channel_set_proactive` - Configure proactive engagement settings
-- `/channel_view_settings` - View all channel settings
+- `/channel_view_settings` - View all channel settings with command references for each setting
 - `/channel_list_active` - List all active channels in server
 
 **Per-Server Configuration**:

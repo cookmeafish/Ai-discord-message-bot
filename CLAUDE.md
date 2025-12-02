@@ -924,7 +924,7 @@ Per-channel conversation continuation - bot responds without @mentions when it d
 - `/channel_set_purpose` - Set channel purpose/instructions
 - `/channel_set_reply_chance` - Set per-channel random reply chance
 - `/channel_set_proactive` - Configure proactive engagement (enable, interval, threshold)
-- `/channel_view_settings` - **Unified view** of all channel settings (personality, proactive, conversation continuation, random events)
+- `/channel_view_settings` - **Unified view** of all channel settings with command references for each setting (shows which command to run to change each value)
 - `/channel_list_active` - List all active channels in server
 
 #### Per-Server Configuration

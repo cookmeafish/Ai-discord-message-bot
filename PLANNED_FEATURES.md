@@ -213,8 +213,9 @@ All GUI-configurable settings now have Discord command equivalents, including:
   - Example: `/channel_set_proactive_threshold threshold:0.8`
   - Current: GUI-only (gui.py:560-564)
 
-- `/channel_view_settings` - View all current channel settings
-  - Shows: purpose, reply chance, personality mode, proactive settings, all toggles
+- `/channel_view_settings` - View all current channel settings ✅ IMPLEMENTED
+  - Shows: purpose, reply chance, personality mode, proactive settings, conversation continuation, random events
+  - Each setting displays the command needed to change it
 
 **Note:** `/channel_set_personality` already exists for personality mode toggles ✅
 

@@ -750,7 +750,7 @@ All GUI settings now have Discord command equivalents for complete headless VPS 
 - `/channel_set_purpose` - Set channel purpose/instructions
 - `/channel_set_reply_chance` - Set per-channel random reply chance (0.0-1.0)
 - `/channel_set_proactive` - Configure proactive engagement (enable/disable)
-- `/channel_view_settings` - View all channel settings
+- `/channel_view_settings` - View all channel settings with command references for each setting
 - `/channel_list_active` - List all active channels in server
 
 **Per-Server Configuration (2 commands)**:
