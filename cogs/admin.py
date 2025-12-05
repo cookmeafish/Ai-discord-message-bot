@@ -835,44 +835,53 @@ class AdminCog(commands.Cog):
         # Defer immediately to prevent timeout
         await interaction.response.defer(ephemeral=True)
 
-        if not interaction.guild:
-            await interaction.followup.send("❌ This command can only be used in a server.", ephemeral=True)
-            return
+        try:
+            if not interaction.guild:
+                await interaction.followup.send("❌ This command can only be used in a server.", ephemeral=True)
+                return
 
-        db_manager = self._get_db(interaction)
-        if not db_manager:
-            await interaction.followup.send("❌ Failed to access server database.", ephemeral=True)
-            return
+            db_manager = self._get_db(interaction)
+            if not db_manager:
+                await interaction.followup.send("❌ Failed to access server database.", ephemeral=True)
+                return
 
-        channel_id = str(interaction.channel_id)
-        channel_setting = db_manager.get_channel_setting(channel_id)
+            channel_id = str(interaction.channel_id)
+            channel_setting = db_manager.get_channel_setting(channel_id)
 
-        if not channel_setting:
+            if not channel_setting:
+                await interaction.followup.send(
+                    "❌ This channel is not activated yet. Please use `/activate` first.",
+                    ephemeral=True
+                )
+                return
+
+            # Update settings with provided or default values
+            db_manager.add_channel_setting(
+                channel_id=channel_id,
+                guild_id=str(interaction.guild.id),
+                enable_conversation_detection=enabled,
+                conversation_detection_threshold=threshold,
+                conversation_context_window=context_window
+            )
+
+            status = "✅ **Enabled**" if enabled else "❌ **Disabled**"
             await interaction.followup.send(
-                "❌ This channel is not activated yet. Please use `/activate` first.",
+                f"**Conversation Continuation Updated**\n\n"
+                f"**Status:** {status}\n"
+                f"**Threshold:** {threshold:.2f} (0.0 = very responsive, 1.0 = very selective)\n"
+                f"**Context Window:** {context_window} messages\n\n"
+                f"{'Bot will now respond without @mentions when it detects conversations directed at it.' if enabled else 'Bot requires @mentions or replies to respond.'}\n\n"
+                f"Changes take effect immediately.",
                 ephemeral=True
             )
-            return
-
-        # Update settings with provided or default values
-        db_manager.add_channel_setting(
-            channel_id=channel_id,
-            guild_id=str(interaction.guild.id),
-            enable_conversation_detection=enabled,
-            conversation_detection_threshold=threshold,
-            conversation_context_window=context_window
-        )
-
-        status = "✅ **Enabled**" if enabled else "❌ **Disabled**"
-        await interaction.followup.send(
-            f"**Conversation Continuation Updated**\n\n"
-            f"**Status:** {status}\n"
-            f"**Threshold:** {threshold:.2f} (0.0 = very responsive, 1.0 = very selective)\n"
-            f"**Context Window:** {context_window} messages\n\n"
-            f"{'✅ Bot will now respond without @mentions when it detects conversations directed at it.' if enabled else '❌ Bot requires @mentions or replies to respond.'}\n\n"
-            f"Changes take effect immediately.",
-            ephemeral=True
-        )
+        except Exception as e:
+            print(f"ERROR in channel_conversation_enable: {e}")
+            import traceback
+            traceback.print_exc()
+            await interaction.followup.send(
+                f"❌ An error occurred: {str(e)}",
+                ephemeral=True
+            )
 
     # ==================== GLOBAL BOT CONFIGURATION COMMANDS ====================
 

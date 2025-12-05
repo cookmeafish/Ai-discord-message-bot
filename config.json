@@ -135,10 +135,16 @@
     },
     "server_alternative_nicknames": {
         "701157082510000198": [
-            "doctor fish"
-        ],
-        "1260857723193528360": [
+            "doctor fish",
             "dr fish"
+        ],
+        "1427827466432548957": [
+            "fish"
         ]
+    },
+    "channel_settings": {
+        "1260857723734724640": {
+            "allow_proactive_engagement": true
+        }
     }
 }
