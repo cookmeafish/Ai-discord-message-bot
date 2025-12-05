@@ -327,52 +327,87 @@ FACT: Favorite food is pizza
                     existing_facts = db_manager.find_contradictory_memory(user_id, fact)
 
                     if existing_facts:
-                        # Use AI to determine if there's a contradiction
+                        # Use AI to determine if there's a contradiction OR duplicate
                         # Note: existing_facts is a list of tuples (fact_id, fact_text)
-                        contradiction_prompt = f"""You are a memory contradiction detector. Compare a new fact with existing facts about a user.
+                        contradiction_prompt = f"""You are a memory fact analyzer. Compare a new fact with existing facts about a user.
 
 NEW FACT: {fact}
 
 EXISTING FACTS:
 {chr(10).join([f"{i+1}. {ef[1]}" for i, ef in enumerate(existing_facts)])}
 
-Determine if the new fact contradicts any existing fact. If it does:
-- Respond with ONLY the number (1, 2, 3, etc.) of the contradicted fact that should be replaced
-- The new fact should replace the old one if it's more recent or more specific
+Determine if the new fact is:
+1. **CONTRADICTORY** - The new fact conflicts with an existing fact (e.g., "Favorite color is red" vs "Favorite color is blue")
+2. **REDUNDANT/DUPLICATE** - The new fact says the same thing as an existing fact in different words (e.g., "Loves pizza" vs "Favorite food is pizza")
 
-If there is NO contradiction:
-- Respond with ONLY the word "NO_CONTRADICTION"
+Response format:
+- If CONTRADICTORY: "CONTRADICTION:X" where X is the fact number (new fact replaces old)
+- If REDUNDANT/DUPLICATE: "DUPLICATE:X" where X is the fact number (keep old, skip new)
+- If TRULY NEW: "NEW" (add as new fact)
 
-Response (number or NO_CONTRADICTION):"""
+Examples:
+- "Loves chilaquiles" vs "Favorite food is chilaquiles" → DUPLICATE:1
+- "Favorite color is red" vs "Favorite color is blue" → CONTRADICTION:1
+- "Works as a nurse" vs "Loves hiking" → NEW
+
+Response (CONTRADICTION:X, DUPLICATE:X, or NEW):"""
 
                         try:
                             response = await client.chat.completions.create(
                                 model=model,
                                 messages=[{'role': 'system', 'content': contradiction_prompt}],
-                                max_tokens=10,
+                                max_tokens=20,
                                 temperature=0.0
                             )
 
-                            contradiction_result = response.choices[0].message.content.strip()
+                            result = response.choices[0].message.content.strip().upper()
 
-                            # Check if AI detected a contradiction
-                            if contradiction_result.isdigit():
-                                # AI identified a contradictory fact - update it
-                                fact_index = int(contradiction_result) - 1
-                                if 0 <= fact_index < len(existing_facts):
-                                    old_fact_id = existing_facts[fact_index][0]  # Tuple index 0 = fact_id
-                                    db_manager.update_long_term_memory_fact(old_fact_id, fact)
-                                    print(f"Updated contradictory memory for user {user_id}: {fact[:50]}...")
-                                else:
-                                    # Invalid index, add as new fact
+                            if result.startswith("CONTRADICTION:"):
+                                # AI identified a contradictory fact - replace it with new fact
+                                try:
+                                    fact_index = int(result.split(":")[1]) - 1
+                                    if 0 <= fact_index < len(existing_facts):
+                                        old_fact_id = existing_facts[fact_index][0]
+                                        old_fact_text = existing_facts[fact_index][1]
+                                        db_manager.update_long_term_memory_fact(old_fact_id, fact)
+                                        print(f"  🔄 Updated contradictory fact for user {user_id}:")
+                                        print(f"     OLD: {old_fact_text[:50]}...")
+                                        print(f"     NEW: {fact[:50]}...")
+                                        memories_added += 1
+                                    else:
+                                        db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                                        print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                                        memories_added += 1
+                                except (ValueError, IndexError):
                                     db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
                                     print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                                    memories_added += 1
+
+                            elif result.startswith("DUPLICATE:"):
+                                # AI identified a duplicate fact - skip adding the new one
+                                try:
+                                    fact_index = int(result.split(":")[1]) - 1
+                                    if 0 <= fact_index < len(existing_facts):
+                                        existing_fact_text = existing_facts[fact_index][1]
+                                        print(f"  ⏭️ Skipped duplicate fact for user {user_id}:")
+                                        print(f"     NEW: {fact[:50]}...")
+                                        print(f"     EXISTING: {existing_fact_text[:50]}...")
+                                        # Don't increment memories_added - we're not adding anything
+                                    else:
+                                        # Invalid index, add as new fact
+                                        db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                                        print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                                        memories_added += 1
+                                except (ValueError, IndexError):
+                                    db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
+                                    print(f"Saved memory for user {user_id}: {fact[:50]}...")
+                                    memories_added += 1
+
                             else:
-                                # No contradiction detected, add as new fact
+                                # NEW or unrecognized response - add as new fact
                                 db_manager.add_long_term_memory(user_id, fact, user_id, user_name)
                                 print(f"Saved memory for user {user_id}: {fact[:50]}...")
-
-                            memories_added += 1
+                                memories_added += 1
 
                         except Exception as e:
                             # If contradiction detection fails, fall back to adding as new

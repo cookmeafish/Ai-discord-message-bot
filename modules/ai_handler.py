@@ -1675,10 +1675,66 @@ Examples:
 
                     print(f"   ✅ REFINEMENT CONFIRMED (confidence: {refinement_result['confidence']:.2f} >= {threshold})")
 
-                    # Modify the prompt based on user feedback
+                    # BEFORE modifying prompt, load user context for any people mentioned in changes
+                    user_context_for_refinement = {}
+                    changes_text = refinement_result["changes_requested"]
+                    if changes_text and message.guild:
+                        # Extract potential names from changes_requested
+                        changes_lower = changes_text.lower()
+                        common_words = {'add', 'make', 'the', 'put', 'remove', 'delete', 'change', 'riding', 'hugging',
+                                       'holding', 'standing', 'sitting', 'wearing', 'with', 'and', 'next', 'beside',
+                                       'milking', 'eating', 'drinking', 'fighting', 'talking', 'cow', 'person'}
+                        potential_names = [w.strip('.,!?"\'') for w in changes_lower.split()
+                                          if len(w) >= 3 and w.strip('.,!?"\'') not in common_words]
+
+                        if potential_names:
+                            print(f"   🔍 Looking for user context for: {potential_names}")
+                            try:
+                                import sqlite3
+                                db_path = db_manager.db_path
+                                conn = sqlite3.connect(db_path)
+                                cursor = conn.cursor()
+
+                                for name in potential_names:
+                                    cursor.execute("SELECT DISTINCT user_id, nickname FROM nicknames")
+                                    for row in cursor.fetchall():
+                                        user_id_str, nickname = str(row[0]), row[1].lower()
+                                        nickname_words = nickname.split()
+
+                                        if name in nickname_words or nickname in name or name in nickname:
+                                            print(f"   ✅ Found user match '{nickname}' for '{name}'")
+
+                                            # Load appearance facts for this user
+                                            user_facts = db_manager.get_long_term_memory(user_id_str)
+                                            if user_facts:
+                                                appearance_patterns = [
+                                                    'has hair', ' hair ', 'has eyes', ' eyes ', 'wears ', 'wearing ',
+                                                    'has a slender', 'has a muscular', 'has a', 'dressed in',
+                                                    'complexion', 'skin', 'tall', 'short', 'build', 'appearance',
+                                                    ' hat', ' cap', 'eyeliner', 'fang', 'bandage', 'fingernail', 'painted'
+                                                ]
+                                                descriptive_facts = []
+                                                for fact_tuple in user_facts:
+                                                    fact_text = fact_tuple[0]
+                                                    fact_lower = fact_text.lower()
+                                                    if any(p in fact_lower for p in appearance_patterns):
+                                                        descriptive_facts.append(fact_text)
+
+                                                if descriptive_facts:
+                                                    user_context_for_refinement[name] = ', '.join(descriptive_facts[:10])
+                                                    print(f"   📋 Loaded {len(descriptive_facts)} facts for '{name}'")
+                                            break
+                                    if name in user_context_for_refinement:
+                                        break
+                                conn.close()
+                            except Exception as e:
+                                print(f"   ⚠️ Error loading user context for refinement: {e}")
+
+                    # Modify the prompt based on user feedback (WITH user context)
                     modified_prompt = await self.image_generator.refiner.modify_prompt(
                         original_prompt=cached_prompt_data["prompt"],
-                        changes_requested=refinement_result["changes_requested"]
+                        changes_requested=refinement_result["changes_requested"],
+                        user_context=user_context_for_refinement if user_context_for_refinement else None
                     )
 
                     print(f"   📝 Storing refinement prompt for author {message.author.id}: '{modified_prompt}'")

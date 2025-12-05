@@ -150,13 +150,14 @@ Return ONLY valid JSON, no explanations."""
             print(f"{'='*80}\n")
             return {"is_refinement": False, "confidence": 0.0, "changes_requested": ""}
 
-    async def modify_prompt(self, original_prompt, changes_requested):
+    async def modify_prompt(self, original_prompt, changes_requested, user_context=None):
         """
         Uses GPT-4o to intelligently modify the original prompt based on user feedback.
 
         Args:
             original_prompt: The original image generation prompt
             changes_requested: Description of what the user wants changed
+            user_context: Optional dict of {name: description} for people mentioned in changes
 
         Returns:
             str: Modified prompt for image generation
@@ -166,17 +167,28 @@ Return ONLY valid JSON, no explanations."""
         print(f"{'='*80}")
         print(f"Original prompt: '{original_prompt}'")
         print(f"Changes requested: '{changes_requested}'")
+        if user_context:
+            print(f"User context provided: {list(user_context.keys())}")
 
         if not self.client:
             print("❌ ImageRefiner: OpenAI client not set, cannot modify prompt")
             print(f"{'='*80}\n")
             return original_prompt
 
+        # Build user context section if we have info about mentioned people
+        user_context_section = ""
+        if user_context:
+            user_context_section = "\n\n**PERSON DESCRIPTIONS (USE THESE FOR ANY NEW PEOPLE ADDED):**\n"
+            for name, description in user_context.items():
+                user_context_section += f"- **{name}**: {description}\n"
+            user_context_section += "\n**CRITICAL**: When adding a person, include their description from above DIRECTLY in the prompt. Don't just say 'a person' - describe them!"
+
         system_prompt = f"""You are intelligently modifying an image prompt based on user feedback.
 
 ORIGINAL PROMPT: "{original_prompt}"
 
 USER FEEDBACK: "{changes_requested}"
+{user_context_section}
 
 **YOUR TASK: Analyze both the original prompt and the user's feedback to understand their intent.**
 
@@ -192,6 +204,12 @@ Ask yourself: Is the user trying to REPLACE something, or MODIFY/ADD to it?
 - Example: dragon → blue dragon (same creature, new color), food → food on fire (same food, new state)
 - Action: Keep the subject, add/change only the requested property
 
+**ADDING A PERSON** = User wants to add someone to the scene
+- If person descriptions are provided above, USE THEM in the modified prompt
+- DON'T just say "a person" or "someone" - describe them with the details given
+- Example: If adding "csama" and description says "slender build, white hair, purple eyes"
+  → Add: "with csama (a person with slender build, white hair, purple eyes) milking the cow"
+
 **EXAMPLES:**
 
 Original: "a taco with dogs surrounding it and eating it"
@@ -199,36 +217,23 @@ Feedback: "make it a quesadilla"
 Analysis: Taco and quesadilla are different foods → REPLACEMENT
 New Prompt: "a quesadilla with dogs surrounding it and eating it"
 
+Original: "a cow standing in a field"
+Feedback: "add csama milking the cow"
+(csama description: slender build, pale skin, white hair, purple eyes, wears black)
+Analysis: Adding a specific person → Use their description
+New Prompt: "a cow standing in a field, with a slender person with pale skin, white hair, and purple eyes wearing black, milking the cow"
+
 Original: "a quesadilla with dogs surrounding it"
 Feedback: "set it on fire"
 Analysis: User wants the same quesadilla but burning → MODIFICATION
 New Prompt: "a quesadilla on fire with dogs surrounding it"
-
-Original: "a red dragon breathing fire"
-Feedback: "I want a phoenix"
-Analysis: Dragon and phoenix are different creatures → REPLACEMENT
-New Prompt: "a red phoenix breathing fire"
-
-Original: "a dragon"
-Feedback: "make it blue"
-Analysis: Same dragon, different color → MODIFICATION
-New Prompt: "a blue dragon"
-
-Original: "a cat sitting on a chair wearing a hat"
-Feedback: "actually make it a dog"
-Analysis: Cat and dog are different animals → REPLACEMENT
-New Prompt: "a dog sitting on a chair wearing a hat"
-
-Original: "a sombrero with fire"
-Feedback: "brown please"
-Analysis: Same sombrero, different color → MODIFICATION
-New Prompt: "a brown sombrero with fire"
 
 **ABSOLUTE RULES:**
 1. **ANALYZE INTENT** - Understand what the user actually wants based on meaning, not keywords
 2. **NEVER CREATE HYBRIDS** - If replacing, fully replace (no "taco-quesadilla", no "dragon with phoenix features")
 3. **PRESERVE UNMENTIONED ELEMENTS** - Keep dogs, fire, location, actions, etc. unless user specifically changes them
 4. **NO CREATIVITY** - Don't add anything the user didn't ask for
+5. **USE PERSON DESCRIPTIONS** - If adding a named person and their description is provided, include those visual details in the prompt
 
 Return ONLY the modified prompt (no explanations, no quotes)."""
 
