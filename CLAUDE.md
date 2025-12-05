@@ -931,7 +931,7 @@ Per-channel conversation continuation - bot responds without @mentions when it d
 
 **Selective Detection (2025-12-05):**
 Bot is intentionally EXTREMELY selective about when to respond. It will NOT respond to:
-- **Messages addressing another user by name** (e.g., "yo mike", "hey sarah", "mistel you wanna...")
+- **Messages addressing another user by name** (e.g., "yo mike", "hey sarah", "alex you wanna...")
 - Questions directed at another person ("you wanna game later?" when talking to someone else)
 - Simple reactions: `:)`, `lol`, `nice`, `cool`, `ok`, `I like it`, `fair enough`
 - Messages where there's ANY chance it's meant for another human

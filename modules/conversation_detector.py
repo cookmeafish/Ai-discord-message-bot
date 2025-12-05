@@ -137,8 +137,8 @@ Latest message (from {current_user}): "{current_message}"
 **CRITICAL: The bot should almost NEVER respond. Be EXTREMELY selective.**
 
 **=== INSTANT 0.0 - NEVER RESPOND ===**
-- Message addresses ANOTHER USER by name (e.g., "yo mike", "hey sarah", "mistel you wanna...")
-- Message is a question directed at someone else ("you wanna game?", "what are you doing later?")
+- Message addresses ANOTHER USER by name (e.g., "yo mike", "hey sarah", "alex you wanna...")
+- Message is a question directed at someone else ("you wanna hang out?", "what are you doing later?")
 - Message starts with another person's name or nickname
 - User is clearly having a side conversation with someone who is NOT the bot
 - Simple reactions: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
