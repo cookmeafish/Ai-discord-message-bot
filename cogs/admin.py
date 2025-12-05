@@ -1484,7 +1484,15 @@ class AdminCog(commands.Cog):
 
         embed = discord.Embed(
             title=f"Channel Settings: #{interaction.channel.name}",
-            color=discord.Color.blue()
+            color=discord.Color.green()  # Green = activated
+        )
+
+        # === ACTIVATION STATUS ===
+        activated_at = channel_setting.get('activated_at', 'Unknown')
+        embed.add_field(
+            name="Status",
+            value=f"✅ **Activated**\nSince: {activated_at[:10] if activated_at else 'Unknown'}\n`/activate` | `/deactivate`",
+            inline=False
         )
 
         # === BASIC SETTINGS ===
