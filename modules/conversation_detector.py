@@ -53,6 +53,13 @@ class ConversationDetector:
             print(f"{'='*80}\n")
             return False
 
+        # Check if bot's last message was a question - if so, user is likely answering
+        bot_asked_question = self._did_bot_ask_question(recent_messages, bot_id, current_message.author.id)
+        if bot_asked_question:
+            print(f"🔔 Bot's last message to this user was a question - auto-responding")
+            print(f"{'='*80}\n")
+            return True
+
         # Format conversation history for AI analysis
         context = self._format_conversation_history(recent_messages, bot_id, bot_name)
         print(f"\nFormatted conversation context:")
@@ -191,5 +198,48 @@ Return ONLY a single number between 0.0 and 1.0. No explanations."""
             author_id = msg.get('author_id', '')
             if str(author_id) == str(bot_id):
                 return True
+
+        return False
+
+    def _did_bot_ask_question(self, messages, bot_id, current_user_id):
+        """
+        Checks if the bot's last message in the conversation was a question.
+        This helps detect when a user is answering the bot's question.
+
+        Args:
+            messages: List of recent messages from short-term memory
+            bot_id: Bot's Discord ID
+            current_user_id: ID of the user who sent the current message
+
+        Returns:
+            bool: True if bot's last message ended with a question mark
+        """
+        if not messages:
+            return False
+
+        # Look through messages in reverse to find the most recent bot message
+        # that occurred BEFORE any messages from the current user
+        found_user_message = False
+        for msg in reversed(messages):
+            author_id = msg.get('author_id', '')
+            content = msg.get('content', '').strip()
+
+            # If we hit a message from the current user, mark that we've passed their messages
+            if str(author_id) == str(current_user_id):
+                found_user_message = True
+                continue
+
+            # If this is a bot message AND we've already passed a user message
+            # (meaning this bot message came before the user's recent messages)
+            if str(author_id) == str(bot_id) and found_user_message:
+                # Check if this message ends with a question mark
+                # Strip emotes and whitespace from the end
+                import re
+                # Remove Discord emotes <:name:id> and <a:name:id> from the end
+                cleaned = re.sub(r'<a?:\w+:\d+>\s*$', '', content).strip()
+                if cleaned.endswith('?'):
+                    print(f"   Bot's last message was a question: '{content[:50]}...'")
+                    return True
+                return False
 
         return False

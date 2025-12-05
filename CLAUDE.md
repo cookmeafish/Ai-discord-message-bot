@@ -841,12 +841,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 246 tests across 31 categories (updated 2025-12-04)
+  - Runs 247 tests across 31 categories (updated 2025-12-04)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Random Events (6), Sentiment Analysis Behavior (8), Conversation Detection (5), Cleanup Verification (5) = 246 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Random Events (6), Sentiment Analysis Behavior (8), Conversation Detection (6), Cleanup Verification (5) = 247 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):
@@ -926,6 +926,13 @@ Bot now also responds when users talk ABOUT the bot's conversation, not just TO 
 - "She's so lovely" (commenting on bot's behavior) → bot may respond
 - Comments about bot in third person are scored 0.7 (indirect mentions)
 - Still ignores messages clearly directed at other humans about unrelated topics
+
+**Question Auto-Response (2025-12-04):**
+When the bot asks a question (message ending with `?`), it will automatically respond to the user's next message:
+- Bot: "Nah, just surviving. You?" → User: "im gonna eat a burrito" → Bot responds automatically
+- Prevents awkward silences when users answer the bot's questions
+- Strips Discord emotes before checking for question mark
+- Only applies to the user being asked (not other users in the channel)
 
 **Use cases:**
 - Natural conversation flow without repeated @mentions

@@ -2764,6 +2764,26 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "Bot Recently Active Check", False, f"Error: {e}")
 
+        # Test 6: Bot question detection (auto-respond when bot asked a question)
+        try:
+            with open('modules/conversation_detector.py', 'r', encoding='utf-8') as f:
+                detector_source = f.read()
+
+            has_question_check = '_did_bot_ask_question' in detector_source
+            has_auto_respond = 'auto-responding' in detector_source.lower()
+            has_question_mark_check = "endswith('?')" in detector_source
+
+            question_detection = has_question_check and has_auto_respond and has_question_mark_check
+
+            self._log_test(
+                category,
+                "Bot Question Auto-Response",
+                question_detection,
+                "Auto-responds when bot's last message was a question" if question_detection else "Missing bot question detection"
+            )
+        except Exception as e:
+            self._log_test(category, "Bot Recently Active Check", False, f"Error: {e}")
+
     # ==================== CLEANUP VERIFICATION TESTS ====================
 
     async def test_cleanup_verification(self):
