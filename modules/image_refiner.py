@@ -210,8 +210,6 @@ Ask yourself: Is the user trying to REPLACE something, or MODIFY/ADD to it?
 - **CRITICAL: PUT THE PERSON FIRST** - Image AI focuses on whatever appears first in the prompt
 - The person should be the PRIMARY subject, with the object as secondary
 - Keep person description SHORT (max 30 words) - just key visual features
-- Example: If adding "csama" and description says "slender build, white hair, purple eyes, black eyeliner, fang"
-  → "A slender person with white hair, purple eyes, and black eyeliner, drinking a chocolate frappuccino"
 
 **EXAMPLES:**
 
@@ -220,17 +218,17 @@ Feedback: "make it a quesadilla"
 Analysis: REPLACEMENT
 New Prompt: "a quesadilla with dogs surrounding it"
 
-Original: "a chocolate frappuccino in a glass"
-Feedback: "add csama drinking it"
-(csama: slender, pale skin, white hair, purple eyes, black eyeliner, fang)
+Original: "a chocolate milkshake in a glass"
+Feedback: "add Alice drinking it"
+(Alice: tall, red hair, green eyes, freckles)
 Analysis: ADDING PERSON → Put person FIRST, keep description SHORT
-New Prompt: "A slender person with pale skin, white shaggy hair, large purple eyes, and black winged eyeliner, drinking a chocolate frappuccino in a glass"
+New Prompt: "A tall person with red hair, green eyes, and freckles, drinking a chocolate milkshake in a glass"
 
 Original: "a cow standing in a field"
-Feedback: "add csama milking the cow"
-(csama: slender, pale skin, white hair, purple eyes)
+Feedback: "add Bob petting the cow"
+(Bob: short, brown hair, glasses, beard)
 Analysis: ADDING PERSON → Put person FIRST
-New Prompt: "A slender person with pale skin, white hair, and purple eyes, milking a cow in a field"
+New Prompt: "A short person with brown hair, glasses, and a beard, petting a cow in a field"
 
 **ABSOLUTE RULES:**
 1. **PERSON FIRST** - When adding a person, they become the PRIMARY subject (appear first in prompt)
