@@ -257,12 +257,14 @@ An AI-powered background process that converts short-term message data into long
 
 2.  For each user, GPT-4o analyzes their messages and extracts new summarized facts based on their activity.
 
-3.  **Smart Contradiction Detection (2025-10-13)**: Before adding each extracted fact:
-    - System uses semantic similarity search to find existing facts that might contradict the new one
-    - AI compares the new fact against existing similar facts
-    - If a contradiction is detected, the old fact is **updated** with the new information
-    - If no contradiction exists, the fact is added as new
-    - This prevents duplicate or conflicting information in long-term memory
+3.  **Smart Contradiction & Duplicate Detection (2025-10-13, Updated 2025-12-04)**: Before adding each extracted fact:
+    - System uses semantic similarity search to find existing facts that might conflict with the new one
+    - AI determines if the new fact is CONTRADICTORY, DUPLICATE, or TRULY NEW:
+      - **CONTRADICTION**: New fact conflicts with existing → old fact is **updated**
+      - **DUPLICATE**: New fact says same thing differently → **skipped** (keep existing)
+      - **NEW**: Truly new information → added as new fact
+    - Example: "Loves chilaquiles" and "Favorite food is chilaquiles" = DUPLICATE (skipped)
+    - This prevents redundant facts from cluttering long-term memory
 
 4.  Extracted facts are added to (or updated in) the server's **Long-Term Memory** table with source attribution.
 
@@ -844,6 +846,12 @@ All three Phase 5 features fully implemented and integrated into the bot.
   - AI checks if conversation topic changed since image was generated
   - Prevents false positives when user responds to bot's text, not the image
   - Example: Image → "what are you doing?" → bot responds → "yikes" = NOT a refinement
+- **Person-First Prompts (2025-12-04)**:
+  - When adding a person to the scene, user context is loaded BEFORE calling modify_prompt()
+  - Person description integrated DIRECTLY into prompt (not appended at end)
+  - **Person appears FIRST** in prompt - FLUX.1-schnell focuses on whatever appears first
+  - Short descriptions only (max 30 words) - key visual features only
+  - Example: "add Alice drinking it" → "A tall person with red hair and green eyes, drinking a milkshake"
 - **Configuration** (`config.json`):
   ```json
   "image_refinement": {

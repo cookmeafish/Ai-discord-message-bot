@@ -662,6 +662,27 @@ class BotTestSuite:
         except Exception as e:
             self._log_test(category, "Consolidation Function Exists", False, f"Error: {e}")
 
+        # Test 3: Duplicate detection logic exists (2025-12-04)
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            # Check for duplicate detection keywords
+            has_duplicate_detection = 'DUPLICATE' in memory_tasks_source
+            has_contradiction_detection = 'CONTRADICTION' in memory_tasks_source
+            has_skip_logic = 'skip' in memory_tasks_source.lower() or 'Skipping' in memory_tasks_source
+
+            duplicate_logic = has_duplicate_detection and has_contradiction_detection
+
+            self._log_test(
+                category,
+                "Duplicate & Contradiction Detection",
+                duplicate_logic,
+                "Memory consolidation detects both duplicates and contradictions" if duplicate_logic else "Missing duplicate/contradiction detection logic"
+            )
+        except Exception as e:
+            self._log_test(category, "Duplicate & Contradiction Detection", False, f"Error: {e}")
+
     # ==================== AI INTEGRATION TESTS ====================
 
     async def test_ai_integration(self):
@@ -2370,7 +2391,49 @@ class BotTestSuite:
             except Exception as e:
                 self._log_test(category, "Topic Change Detection", False, f"Error: {e}")
 
-        # Test 6: Config for image refinement
+        # Test 6: User context parameter in modify_prompt (2025-12-04)
+        if module_exists:
+            try:
+                import inspect
+                from modules.image_refiner import ImageRefiner
+                refiner = ImageRefiner(self.bot.config_manager)
+
+                # Check that modify_prompt accepts user_context parameter
+                sig = inspect.signature(refiner.modify_prompt)
+                params = list(sig.parameters.keys())
+                has_user_context = 'user_context' in params
+
+                self._log_test(
+                    category,
+                    "User Context Parameter",
+                    has_user_context,
+                    "modify_prompt accepts user_context for person-first prompts" if has_user_context else "modify_prompt missing user_context parameter"
+                )
+            except Exception as e:
+                self._log_test(category, "User Context Parameter", False, f"Error: {e}")
+
+        # Test 7: Person-first prompt instructions
+        if module_exists:
+            try:
+                with open('modules/image_refiner.py', 'r', encoding='utf-8') as f:
+                    refiner_source = f.read()
+
+                # Check for person-first instructions
+                has_person_first = 'PERSON FIRST' in refiner_source or 'person FIRST' in refiner_source.lower()
+                has_short_desc = '30 words' in refiner_source or 'short' in refiner_source.lower()
+
+                person_first_logic = has_person_first and has_short_desc
+
+                self._log_test(
+                    category,
+                    "Person-First Prompt Logic",
+                    person_first_logic,
+                    "Uses person-first prompts with short descriptions for image AI" if person_first_logic else "Missing person-first prompt logic"
+                )
+            except Exception as e:
+                self._log_test(category, "Person-First Prompt Logic", False, f"Error: {e}")
+
+        # Test 8: Config for image refinement
         try:
             config = self.bot.config_manager.get_config()
             has_refinement_config = 'image_refinement' in config

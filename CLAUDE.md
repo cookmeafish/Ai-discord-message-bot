@@ -376,7 +376,12 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
     - **MODIFICATION**: User wants to CHANGE PROPERTIES of existing subject (dragon → blue dragon)
       - Keeps the subject, adds/changes only the requested property
     - No trigger words - uses semantic analysis of both original prompt and user feedback
-  - **Strict Rules**: No new people, no new scenes, no creativity beyond request
+  - **Adding a Person (2025-12-04)**: When user adds a person to the scene
+    - User context loaded BEFORE calling modify_prompt() (not after)
+    - Person description integrated DIRECTLY into prompt (not appended at end)
+    - **Person appears FIRST** in prompt - image AI focuses on whatever appears first
+    - Short descriptions only (max 30 words) - key visual features
+    - Example: "add Alice drinking it" → "A tall person with red hair and green eyes, drinking a milkshake"
   - **Temperature 0.0**: Deterministic output to prevent creative additions
   - **Dynamic Token Allocation (2025-12-01)**: max_tokens calculated based on original prompt length
     - Minimum: 500 tokens (prevents truncation)
@@ -385,10 +390,11 @@ All database operations MUST go through `database/db_manager.py`. Never write ra
   - **Examples**:
     - "make it blue" → adds "blue" to enhanced prompt (MODIFICATION)
     - "make it a quesadilla" → replaces taco with quesadilla, keeps dogs eating it (REPLACEMENT)
-    - "add a sword" → adds "with a sword" to enhanced prompt (MODIFICATION)
-- **Refinement Safeguards (2025-11-24)**:
+    - "add Alice eating it" → person-first prompt with Alice's description (ADDING PERSON)
+- **Refinement Safeguards (2025-11-24, Updated 2025-12-04)**:
   - **Skip AI Enhancement**: Refined prompts bypass GPT-4 enhancement (already enhanced in cache)
-  - **Skip User Context**: User facts/names not loaded during refinements to prevent identity leakage
+  - **User Context Loaded Early**: For adding people, context loaded BEFORE prompt modification
+  - **No Double Context**: User context integrated once in modify_prompt(), not appended again
   - **Bot Name Stripped**: "@Dr. Fish add a sword" → "add a sword" before processing
 - **Rate Limiting**: Max 3 refinements per image (configurable)
 - **Cache Duration**: Prompts cached for refinement window (configurable in config.json)
@@ -748,11 +754,14 @@ Per-channel configuration stored in database (per-server):
 
 **Memory Consolidation Process (Per-Server):**
 - AI (GPT-4o) analyzes up to 500 messages and extracts facts about users
-- **Smart Contradiction Detection (2025-10-13)**: Before saving each fact, system checks for contradictions:
+- **Smart Contradiction & Duplicate Detection (2025-10-13, Updated 2025-12-04)**: Before saving each fact, system checks for issues:
   - Uses semantic similarity search to find related existing facts
-  - AI determines if new fact contradicts any existing fact
-  - If contradiction detected, old fact is **updated** instead of creating duplicate
-  - If no contradiction, fact is added as new
+  - AI determines if new fact is CONTRADICTORY, DUPLICATE, or TRULY NEW:
+    - **CONTRADICTION**: New fact conflicts with existing → old fact is **updated**
+    - **DUPLICATE**: New fact says same thing differently → **skipped** (keep existing)
+    - **NEW**: Truly new information → added as new fact
+  - Example: "Loves chilaquiles" and "Favorite food is chilaquiles" = DUPLICATE (skipped)
+  - Prevents redundant facts from cluttering long-term memory
 - **Batch Sentiment Analysis (2025-11-25, Updated 2025-12-04)**: During consolidation, analyzes user sentiment to update relationship metrics
   - **ONLY runs during memory consolidation** - never at startup or per-message
   - **HOLISTIC NON-ADDITIVE Analysis (2025-12-01)**: Analyzes OVERALL tone across ALL messages as a single unit
@@ -841,12 +850,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 247 tests across 31 categories (updated 2025-12-04)
+  - Runs 250 tests across 31 categories (updated 2025-12-04)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Random Events (6), Sentiment Analysis Behavior (8), Conversation Detection (6), Cleanup Verification (5) = 247 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (3), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (8), Random Events (6), Sentiment Analysis Behavior (8), Conversation Detection (6), Cleanup Verification (5) = 250 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):
@@ -944,7 +953,7 @@ When the bot asks a question (message ending with `?`), it will automatically re
 - `/channel_set_reply_chance` - Set per-channel random reply chance
 - `/channel_set_proactive` - Configure proactive engagement (enable, interval, threshold)
 - `/channel_view_settings` - **Unified view** of all channel settings with command references for each setting (shows which command to run to change each value)
-- `/channel_list_active` - List all active channels in server
+- `/channel_list_active` - List all active channels in server (**NOT IMPLEMENTED** - documented but pending development)
 
 #### Per-Server Configuration
 - `/server_set_emote_sources` - Manage emote sources (list/add/remove/clear)
