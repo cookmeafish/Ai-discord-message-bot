@@ -2485,8 +2485,8 @@ Examples:
   ABOUT: self
   FACT: Their favorite color is blue
 
-- User says "csama has a black hat"
-  ABOUT: csama
+- User says "Alice has a black hat"
+  ABOUT: Alice
   FACT: Has a black hat
 
 - User says "remember that John loves pizza"

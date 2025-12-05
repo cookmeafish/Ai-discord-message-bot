@@ -1895,11 +1895,23 @@ class BotTestSuite:
             import inspect
 
             # Check if user_set_metrics accepts string for user parameter
-            sig = inspect.signature(AdminCog.user_set_metrics)
-            user_param = sig.parameters.get('user')
-
-            # The parameter should be annotated as str
-            accepts_string = user_param and user_param.annotation == str
+            # Note: AdminCog.user_set_metrics is a Command object, need to check the callback
+            admin_cog = self.bot.get_cog('AdminCog')
+            if admin_cog:
+                # Get the command from the cog
+                cmd = admin_cog.user_set_metrics
+                # Access the underlying callback function
+                if hasattr(cmd, 'callback'):
+                    sig = inspect.signature(cmd.callback)
+                    user_param = sig.parameters.get('user')
+                    accepts_string = user_param and user_param.annotation == str
+                else:
+                    # Fallback: try direct signature
+                    sig = inspect.signature(cmd)
+                    user_param = sig.parameters.get('user')
+                    accepts_string = user_param and user_param.annotation == str
+            else:
+                accepts_string = False
 
             self._log_test(
                 category,
