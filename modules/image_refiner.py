@@ -207,33 +207,37 @@ Ask yourself: Is the user trying to REPLACE something, or MODIFY/ADD to it?
 **ADDING A PERSON** = User wants to add someone to the scene
 - If person descriptions are provided above, USE THEM in the modified prompt
 - DON'T just say "a person" or "someone" - describe them with the details given
-- Example: If adding "csama" and description says "slender build, white hair, purple eyes"
-  → Add: "with csama (a person with slender build, white hair, purple eyes) milking the cow"
+- **CRITICAL: PUT THE PERSON FIRST** - Image AI focuses on whatever appears first in the prompt
+- The person should be the PRIMARY subject, with the object as secondary
+- Keep person description SHORT (max 30 words) - just key visual features
+- Example: If adding "csama" and description says "slender build, white hair, purple eyes, black eyeliner, fang"
+  → "A slender person with white hair, purple eyes, and black eyeliner, drinking a chocolate frappuccino"
 
 **EXAMPLES:**
 
-Original: "a taco with dogs surrounding it and eating it"
+Original: "a taco with dogs surrounding it"
 Feedback: "make it a quesadilla"
-Analysis: Taco and quesadilla are different foods → REPLACEMENT
-New Prompt: "a quesadilla with dogs surrounding it and eating it"
+Analysis: REPLACEMENT
+New Prompt: "a quesadilla with dogs surrounding it"
+
+Original: "a chocolate frappuccino in a glass"
+Feedback: "add csama drinking it"
+(csama: slender, pale skin, white hair, purple eyes, black eyeliner, fang)
+Analysis: ADDING PERSON → Put person FIRST, keep description SHORT
+New Prompt: "A slender person with pale skin, white shaggy hair, large purple eyes, and black winged eyeliner, drinking a chocolate frappuccino in a glass"
 
 Original: "a cow standing in a field"
 Feedback: "add csama milking the cow"
-(csama description: slender build, pale skin, white hair, purple eyes, wears black)
-Analysis: Adding a specific person → Use their description
-New Prompt: "a cow standing in a field, with a slender person with pale skin, white hair, and purple eyes wearing black, milking the cow"
-
-Original: "a quesadilla with dogs surrounding it"
-Feedback: "set it on fire"
-Analysis: User wants the same quesadilla but burning → MODIFICATION
-New Prompt: "a quesadilla on fire with dogs surrounding it"
+(csama: slender, pale skin, white hair, purple eyes)
+Analysis: ADDING PERSON → Put person FIRST
+New Prompt: "A slender person with pale skin, white hair, and purple eyes, milking a cow in a field"
 
 **ABSOLUTE RULES:**
-1. **ANALYZE INTENT** - Understand what the user actually wants based on meaning, not keywords
-2. **NEVER CREATE HYBRIDS** - If replacing, fully replace (no "taco-quesadilla", no "dragon with phoenix features")
-3. **PRESERVE UNMENTIONED ELEMENTS** - Keep dogs, fire, location, actions, etc. unless user specifically changes them
-4. **NO CREATIVITY** - Don't add anything the user didn't ask for
-5. **USE PERSON DESCRIPTIONS** - If adding a named person and their description is provided, include those visual details in the prompt
+1. **PERSON FIRST** - When adding a person, they become the PRIMARY subject (appear first in prompt)
+2. **SHORT DESCRIPTIONS** - Keep person description to 20-30 words max (key visual features only)
+3. **NEVER CREATE HYBRIDS** - If replacing, fully replace
+4. **PRESERVE OBJECTS** - Keep the original object but as secondary to the person
+5. **NO CREATIVITY** - Don't add anything the user didn't ask for
 
 Return ONLY the modified prompt (no explanations, no quotes)."""
 
