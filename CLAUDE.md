@@ -930,12 +930,12 @@ Per-channel conversation continuation - bot responds without @mentions when it d
 4. Example: "what's your favorite color?" → bot responds without @mention
 
 **Selective Detection (2025-12-05):**
-Bot is intentionally VERY selective about when to respond. It will NOT respond to:
+Bot is intentionally EXTREMELY selective about when to respond. It will NOT respond to:
+- **Messages addressing another user by name** (e.g., "yo mike", "hey sarah", "mistel you wanna...")
+- Questions directed at another person ("you wanna game later?" when talking to someone else)
 - Simple reactions: `:)`, `lol`, `nice`, `cool`, `ok`, `I like it`, `fair enough`
-- Emojis or short expressions that don't invite discussion
-- Messages that are self-contained and don't need a reply
-- User just expressing an opinion without asking for bot's input
-- **Key rule**: Just because the bot spoke recently does NOT mean the next message is for the bot
+- Messages where there's ANY chance it's meant for another human
+- **Golden rule**: If there is ANY chance the message is for another human, don't respond
 
 **Indirect Mention Detection (2025-12-04):**
 Bot now also responds when users talk ABOUT the bot's conversation, not just TO the bot:

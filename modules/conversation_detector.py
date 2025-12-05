@@ -134,35 +134,31 @@ Recent conversation history:
 
 Latest message (from {current_user}): "{current_message}"
 
-**CRITICAL: The bot should NOT respond to everything. Be VERY selective.**
+**CRITICAL: The bot should almost NEVER respond. Be EXTREMELY selective.**
 
-Score from 0.0 to 1.0:
+**=== INSTANT 0.0 - NEVER RESPOND ===**
+- Message addresses ANOTHER USER by name (e.g., "yo mike", "hey sarah", "mistel you wanna...")
+- Message is a question directed at someone else ("you wanna game?", "what are you doing later?")
+- Message starts with another person's name or nickname
+- User is clearly having a side conversation with someone who is NOT the bot
+- Simple reactions: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
 
-**HIGH SCORES (0.8-1.0) - Bot SHOULD respond:**
-- Direct questions TO the bot ("what do you think?", "can you help me?")
-- Directly addressing the bot by name or pronoun ("you're funny", "hey bot")
-- Asking for the bot's opinion or input on something specific
-- Continuing a back-and-forth conversation where bot's input is clearly expected
+**=== HIGH SCORES (0.8-1.0) - Bot SHOULD respond ===**
+- Message contains the bot's name "{bot_name}" or "fish" or "dr"
+- Direct question clearly aimed at the bot with no other target
+- User says "you" and context makes clear they mean the BOT, not another person
 
-**MEDIUM SCORES (0.5-0.7) - MAYBE respond:**
-- Talking ABOUT the bot in third person that might invite response ("the bot is weird")
-- Ambiguous messages that could be directed at bot or others
+**=== MEDIUM SCORES (0.5-0.7) - Maybe respond ===**
+- Talking ABOUT the bot in third person
+- Ambiguous but probably for bot
 
-**LOW SCORES (0.0-0.4) - Bot should NOT respond:**
-- Simple reactions/acknowledgments: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough", "true"
-- Emojis or short expressions that don't invite discussion
-- User talking to another user (not the bot)
-- General statements not directed at anyone specific
-- Messages that are self-contained and don't need a reply
-- User just expressing an opinion without asking for bot's input
-- Rhetorical statements or thinking out loud
+**=== LOW SCORES (0.1-0.4) - Probably don't respond ===**
+- Unclear who message is for
+- Could be for bot or others
 
-**IMPORTANT RULES:**
-- Just because the bot spoke recently does NOT mean the next message is for the bot
-- Simple positive/negative reactions are NOT conversation continuations
-- If the message can stand alone without a response, score LOW
-- When in doubt, score LOW - it's better to miss a message than to spam responses
-- Acknowledgments like "I like it" or "nice" after bot speaks = score 0.2 max
+**GOLDEN RULE: If there is ANY chance the message is for another human, score 0.0**
+
+The bot "{bot_name}" should only respond when CLEARLY and UNAMBIGUOUSLY being addressed.
 
 Return ONLY a single number between 0.0 and 1.0. No explanations."""
 
