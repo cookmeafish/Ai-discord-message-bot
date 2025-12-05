@@ -422,8 +422,10 @@ class EventsCog(commands.Cog):
         # Only log and respond to messages from active channels
         # (but bot still has access to ALL historical data when responding)
         if not is_active_channel:
-            self.logger.debug(f"Channel {message.channel.id} is not active, skipping message logging and response")
+            self.logger.info(f"CHANNEL CHECK: {message.channel.name} ({message.channel.id}) is NOT active - ignoring message from {message.author.name}")
             return
+        else:
+            self.logger.debug(f"CHANNEL CHECK: {message.channel.name} ({message.channel.id}) IS active")
 
         try:
             db_manager.log_message(message, directed_at_bot=was_directed_at_bot)
