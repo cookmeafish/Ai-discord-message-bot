@@ -3445,9 +3445,28 @@ Respond with ONLY the fact ID number or "NONE".
         
         # Get configurable context message count
         context_msg_count = self.response_limits.get('short_term_context_messages', 10)
-        
-        # Add conversation history
+
+        # CRITICAL FIX: Filter out bot messages that were sent AFTER the current user's message
+        # This prevents the AI from seeing its own response to a previous user (User A) when
+        # generating a response for the current user (User B), which would cause duplicate responses.
+        current_msg_timestamp = message.created_at.isoformat()
+        bot_user_id = self.emote_handler.bot.user.id
+
+        filtered_memory = []
         for msg_data in short_term_memory[-context_msg_count:]:
+            # Always include user messages
+            if msg_data["author_id"] != bot_user_id:
+                filtered_memory.append(msg_data)
+            else:
+                # For bot messages, only include if timestamp is BEFORE current user's message
+                msg_timestamp = msg_data.get("timestamp", "")
+                if msg_timestamp and msg_timestamp < current_msg_timestamp:
+                    filtered_memory.append(msg_data)
+                else:
+                    print(f"   FILTERED OUT bot message (timestamp {msg_timestamp} >= {current_msg_timestamp}): {msg_data.get('content', '')[:50]}")
+
+        # Add conversation history
+        for msg_data in filtered_memory:
             role = "assistant" if msg_data["author_id"] == self.emote_handler.bot.user.id else "user"
             clean_content = self._strip_discord_formatting(msg_data["content"])
 
