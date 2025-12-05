@@ -507,12 +507,11 @@ Create a detailed, visual description of "{subject}" using ALL available knowled
 
             # Build the full prompt with context
             # For refinements, the prompt already has style_prefix from original generation - don't add again
+            # Also, modify_prompt() now integrates user context DIRECTLY into the prompt,
+            # so we should NOT append it again here (would cause duplicate descriptions)
             if is_refinement:
-                full_prompt = user_prompt  # Already has style_prefix from cached prompt
-                # BUT: If we have new context (e.g., user facts for newly added person), append it
-                if final_context:
-                    print(f"Image Generator: Appending user context to refinement: {final_context[:100]}...")
-                    full_prompt = f"{full_prompt}. {final_context}"
+                full_prompt = user_prompt  # Already has style_prefix AND user context from modify_prompt()
+                print(f"Image Generator: Using refinement prompt as-is (user context already integrated)")
             else:
                 full_prompt = self._build_prompt(user_prompt, final_context)
             print(f"Generating image with prompt: {full_prompt}")
