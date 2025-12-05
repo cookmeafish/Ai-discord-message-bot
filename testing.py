@@ -91,6 +91,7 @@ class BotTestSuite:
         await self.test_image_refinement()
         await self.test_random_events()
         await self.test_sentiment_analysis_behavior()
+        await self.test_conversation_detection()
 
         # Final cleanup verification (catch-all)
         await self.test_cleanup_verification()
@@ -2615,6 +2616,141 @@ class BotTestSuite:
             )
         except Exception as e:
             self._log_test(category, "Minimum Messages Required", False, f"Error: {e}")
+
+        # Test 7: JSON parsing fix for +1 to 1 (AI sometimes returns invalid JSON)
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            has_regex_fix = "re.sub(r':\\s*\\+(" in memory_tasks_source
+            has_import_re = 'import re' in memory_tasks_source
+
+            json_fix_exists = has_regex_fix
+
+            self._log_test(
+                category,
+                "JSON Parsing Fix for +1",
+                json_fix_exists,
+                "Regex fix exists to convert +1 to 1 in JSON responses" if json_fix_exists else "Missing JSON parsing fix for +1 values"
+            )
+        except Exception as e:
+            self._log_test(category, "JSON Parsing Fix for +1", False, f"Error: {e}")
+
+        # Test 8: Tuple indices fix for find_contradictory_memory
+        try:
+            with open('cogs/memory_tasks.py', 'r', encoding='utf-8') as f:
+                memory_tasks_source = f.read()
+
+            # Check that we use tuple indexing [0] and [1] not dict keys ['id'] and ['fact']
+            uses_tuple_index_0 = "existing_facts[fact_index][0]" in memory_tasks_source
+            uses_tuple_index_1 = 'ef[1]' in memory_tasks_source
+            no_dict_access = "ef['fact']" not in memory_tasks_source and "ef['id']" not in memory_tasks_source
+
+            tuple_fix_exists = uses_tuple_index_0 and uses_tuple_index_1 and no_dict_access
+
+            self._log_test(
+                category,
+                "Tuple Indices Fix for Fact Saving",
+                tuple_fix_exists,
+                "Using tuple indices [0] and [1] for fact data (not dict keys)" if tuple_fix_exists else "Still using dict keys for tuple data"
+            )
+        except Exception as e:
+            self._log_test(category, "Tuple Indices Fix for Fact Saving", False, f"Error: {e}")
+
+    # ==================== CONVERSATION DETECTION TESTS ====================
+
+    async def test_conversation_detection(self):
+        """
+        Test the conversation detection module for proper indirect mention handling.
+        """
+        category = "Conversation Detection"
+
+        # Test 1: Conversation detector module exists
+        try:
+            from modules.conversation_detector import ConversationDetector
+
+            self._log_test(
+                category,
+                "Module Import",
+                True,
+                "ConversationDetector module imports successfully"
+            )
+        except Exception as e:
+            self._log_test(category, "Module Import", False, f"Error: {e}")
+
+        # Test 2: Indirect mention detection in prompt
+        try:
+            with open('modules/conversation_detector.py', 'r', encoding='utf-8') as f:
+                detector_source = f.read()
+
+            has_indirect_mention = 'indirect mention' in detector_source.lower() or 'Indirect mention' in detector_source
+            has_third_person = 'third person' in detector_source.lower()
+            has_comment_about = 'comment ABOUT' in detector_source or 'comments on' in detector_source.lower()
+
+            indirect_detection = has_indirect_mention and has_comment_about
+
+            self._log_test(
+                category,
+                "Indirect Mention Detection",
+                indirect_detection,
+                "Prompt includes rules for indirect mentions and comments about bot" if indirect_detection else "Missing indirect mention detection in prompt"
+            )
+        except Exception as e:
+            self._log_test(category, "Indirect Mention Detection", False, f"Error: {e}")
+
+        # Test 3: Score guidelines include indirect mentions at 0.7
+        try:
+            with open('modules/conversation_detector.py', 'r', encoding='utf-8') as f:
+                detector_source = f.read()
+
+            has_07_score = '0.7' in detector_source
+            has_indirect_rule = 'Indirect mention' in detector_source or 'talks about bot in third person' in detector_source
+
+            score_guidelines = has_07_score and has_indirect_rule
+
+            self._log_test(
+                category,
+                "Score Guidelines for Indirect Mentions",
+                score_guidelines,
+                "Score guidelines include 0.7 for indirect mentions" if score_guidelines else "Missing 0.7 score guideline for indirect mentions"
+            )
+        except Exception as e:
+            self._log_test(category, "Score Guidelines for Indirect Mentions", False, f"Error: {e}")
+
+        # Test 4: Important rules section exists
+        try:
+            with open('modules/conversation_detector.py', 'r', encoding='utf-8') as f:
+                detector_source = f.read()
+
+            has_important_rules = 'IMPORTANT RULES:' in detector_source
+            has_example_rules = 'looks like you' in detector_source.lower() or "comments on the bot's conversation" in detector_source
+
+            rules_exist = has_important_rules and has_example_rules
+
+            self._log_test(
+                category,
+                "Important Rules Section",
+                rules_exist,
+                "Prompt has IMPORTANT RULES section with examples" if rules_exist else "Missing IMPORTANT RULES section"
+            )
+        except Exception as e:
+            self._log_test(category, "Important Rules Section", False, f"Error: {e}")
+
+        # Test 5: Bot recently active check exists
+        try:
+            with open('modules/conversation_detector.py', 'r', encoding='utf-8') as f:
+                detector_source = f.read()
+
+            has_recently_active = 'is_bot_recently_active' in detector_source
+
+            self._log_test(
+                category,
+                "Bot Recently Active Check",
+                has_recently_active,
+                "is_bot_recently_active method exists for optimization" if has_recently_active else "Missing is_bot_recently_active method"
+            )
+        except Exception as e:
+            self._log_test(category, "Bot Recently Active Check", False, f"Error: {e}")
 
     # ==================== CLEANUP VERIFICATION TESTS ====================
 

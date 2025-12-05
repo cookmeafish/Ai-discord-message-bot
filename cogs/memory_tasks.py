@@ -113,8 +113,18 @@ IMPORTANT RULES:
             )
 
             result_text = response.choices[0].message.content.strip()
+            # DEBUG: Log raw sentiment analysis response
+            print(f"  🔍 Sentiment Analysis Response for user {user_id}:")
+            print(f"     Raw: {result_text[:300]}{'...' if len(result_text) > 300 else ''}")
+
             result_text = result_text.replace('```json', '').replace('```', '').strip()
+            # Fix invalid JSON: AI sometimes returns +1 instead of 1 (valid JSON doesn't allow + prefix)
+            import re
+            result_text = re.sub(r':\s*\+(\d)', r': \1', result_text)
             result = json.loads(result_text)
+
+            # DEBUG: Log parsed result
+            print(f"     Parsed: should_update={result.get('should_update')}, reason={result.get('reason', 'N/A')}")
 
             if result.get('should_update', False):
                 # current_metrics already fetched above for the prompt
@@ -131,6 +141,13 @@ IMPORTANT RULES:
                     ('intimidation', 'intimidation_change')
                 ]
 
+                # DEBUG: Log all proposed changes
+                print(f"     AI Proposed Changes:")
+                for metric_name, change_key in metric_changes:
+                    change = result.get(change_key, 0)
+                    if change != 0:
+                        print(f"       {metric_name}: {change:+d}")
+
                 for metric_name, change_key in metric_changes:
                     change = result.get(change_key, 0)
                     # CRITICAL: Clamp change to -2 to +2 to enforce non-additive behavior
@@ -142,12 +159,16 @@ IMPORTANT RULES:
 
                 if updates:
                     # Update with respect_locks=True to honor locked metrics
+                    print(f"  📊 Attempting to update metrics for user {user_id}...")
                     db_manager.update_relationship_metrics(user_id, respect_locks=True, **updates)
-                    print(f"  📊 Updated metrics for user {user_id}: {result.get('reason', 'sentiment analysis')}")
+                    print(f"     Reason: {result.get('reason', 'sentiment analysis')}")
                     for metric_name, new_value in updates.items():
                         old_value = current_metrics[metric_name]
-                        if old_value != new_value:
-                            print(f"     {metric_name}: {old_value} → {new_value}")
+                        print(f"     {metric_name}: {old_value} → {new_value}")
+                else:
+                    print(f"     No metric updates needed (all changes were 0 or already at limit)")
+            else:
+                print(f"     AI said should_update=False, skipping metric updates")
 
         except Exception as e:
             print(f"  ⚠️ Sentiment analysis failed for user {user_id}: {e}")
@@ -250,6 +271,13 @@ FACT: Finds building houses to be hard work
 FACT: Favorite food is pizza
 """
 
+                # DEBUG: Log messages being sent to AI
+                print(f"\n  📝 User {user_id} ({user_name}) - {len(messages_list)} messages:")
+                for msg in messages_list[:5]:  # Show first 5 messages
+                    print(f"     - {msg[:80]}{'...' if len(msg) > 80 else ''}")
+                if len(messages_list) > 5:
+                    print(f"     ... and {len(messages_list) - 5} more messages")
+
                 # Call OpenAI API
                 client = openai.AsyncOpenAI(api_key=self.bot.config_manager.get_secret("OPENAI_API_KEY"))
                 response = await client.chat.completions.create(
@@ -261,10 +289,14 @@ FACT: Favorite food is pizza
 
                 result = response.choices[0].message.content.strip()
 
+                # DEBUG: Log raw AI response for fact extraction
+                print(f"  🤖 AI Fact Extraction Response for user {user_id}:")
+                print(f"     Raw: {result[:200]}{'...' if len(result) > 200 else ''}")
+
                 # Parse extracted facts
                 facts = []
-                if result == "NO_FACTS":
-                    print(f"No facts extracted for user {user_id}")
+                if result == "NO_FACTS" or "NO_FACTS" in result:
+                    print(f"  ❌ No facts extracted for user {user_id} (AI returned NO_FACTS)")
                 else:
                     # Extract facts from response
                     for line in result.split('\n'):
@@ -273,6 +305,7 @@ FACT: Favorite food is pizza
                             fact = line.replace("FACT:", "").strip()
                             if fact:
                                 facts.append(fact)
+                                print(f"  ✅ Extracted fact: {fact}")
 
                 # Only run sentiment analysis if user has enough messages (minimum 3)
                 # This prevents metrics from changing for inactive users or based on just 1-2 messages
@@ -295,12 +328,13 @@ FACT: Favorite food is pizza
 
                     if existing_facts:
                         # Use AI to determine if there's a contradiction
+                        # Note: existing_facts is a list of tuples (fact_id, fact_text)
                         contradiction_prompt = f"""You are a memory contradiction detector. Compare a new fact with existing facts about a user.
 
 NEW FACT: {fact}
 
 EXISTING FACTS:
-{chr(10).join([f"{i+1}. {ef['fact']}" for i, ef in enumerate(existing_facts)])}
+{chr(10).join([f"{i+1}. {ef[1]}" for i, ef in enumerate(existing_facts)])}
 
 Determine if the new fact contradicts any existing fact. If it does:
 - Respond with ONLY the number (1, 2, 3, etc.) of the contradicted fact that should be replaced
@@ -326,7 +360,7 @@ Response (number or NO_CONTRADICTION):"""
                                 # AI identified a contradictory fact - update it
                                 fact_index = int(contradiction_result) - 1
                                 if 0 <= fact_index < len(existing_facts):
-                                    old_fact_id = existing_facts[fact_index]['id']
+                                    old_fact_id = existing_facts[fact_index][0]  # Tuple index 0 = fact_id
                                     db_manager.update_long_term_memory_fact(old_fact_id, fact)
                                     print(f"Updated contradictory memory for user {user_id}: {fact[:50]}...")
                                 else:

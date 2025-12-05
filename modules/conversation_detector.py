@@ -120,7 +120,7 @@ class ConversationDetector:
         Returns:
             float: Confidence score (0.0-1.0) that message is directed at bot
         """
-        system_prompt = f"""You are analyzing a Discord conversation to determine if the latest message is directed at a bot named "{bot_name}".
+        system_prompt = f"""You are analyzing a Discord conversation to determine if the latest message warrants a response from a bot named "{bot_name}".
 
 Recent conversation history:
 {conversation_history}
@@ -131,11 +131,20 @@ Determine if this message is:
 - A continuation of the conversation with the bot
 - A direct question/statement to the bot
 - A response to something the bot said
+- A comment ABOUT the bot's conversation that invites a response (e.g., "that's funny", "you're so weird")
+- Mentioning the bot indirectly in a way that expects acknowledgment
 
-Score from 0.0 to 1.0 (higher = more likely directed at bot):
-- 1.0 = Clearly talking to bot (references bot's previous message, asks bot a question, continues topic bot was discussing)
+Score from 0.0 to 1.0 (higher = more likely the bot should respond):
+- 1.0 = Clearly talking to/about bot (references bot's previous message, asks bot a question, comments on bot's behavior)
+- 0.7 = Indirect mention (talks about bot in third person, comments on bot's conversation with someone else)
 - 0.5 = Ambiguous (could be for bot or someone else)
-- 0.0 = Clearly NOT for bot (talking to another user, changing topic completely, general announcement)
+- 0.0 = Clearly NOT for bot (talking exclusively to another user, changing topic completely, general announcement)
+
+IMPORTANT RULES:
+- If someone comments on the bot's conversation (e.g., "looks like you're talking to X", "that was funny"), score 0.7+
+- If someone says something nice/mean about the bot (e.g., "it's so cute", "the bot is weird"), score 0.7+
+- If someone is ONLY talking to another human about unrelated topics, score 0.0
+- If someone is addressing another user by name about something unrelated to the bot, score 0.0
 
 Return ONLY a single number between 0.0 and 1.0. No explanations."""
 

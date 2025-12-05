@@ -753,13 +753,14 @@ Per-channel configuration stored in database (per-server):
   - AI determines if new fact contradicts any existing fact
   - If contradiction detected, old fact is **updated** instead of creating duplicate
   - If no contradiction, fact is added as new
-- **Batch Sentiment Analysis (2025-11-25, Updated 2025-12-01)**: During consolidation, analyzes user sentiment to update relationship metrics
+- **Batch Sentiment Analysis (2025-11-25, Updated 2025-12-04)**: During consolidation, analyzes user sentiment to update relationship metrics
   - **ONLY runs during memory consolidation** - never at startup or per-message
   - **HOLISTIC NON-ADDITIVE Analysis (2025-12-01)**: Analyzes OVERALL tone across ALL messages as a single unit
     - 50 rude messages = +1 or +2 anger (NOT +50)
     - 100 kind messages = +1 or +2 rapport (NOT +100)
     - Changes are assessed holistically, not per-message additively
   - **Hard-Capped Changes**: All metric changes are clamped to -2 to +2 range (enforced in code)
+  - **JSON Parsing Fix (2025-12-04)**: Handles invalid JSON like `+1` (AI sometimes returns `+1` instead of `1`)
   - **Analyzes SHORT-TERM memory only** - not influenced by long-term stored facts
   - **Metrics Updated**: rapport, trust, anger, respect, affection, familiarity, fear, intimidation
   - **Natural Decay for Negative Emotions**: If no hostility detected AND anger/fear/intimidation > 3, they decrease by 1
@@ -771,6 +772,7 @@ Per-channel configuration stored in database (per-server):
   - **Respects Locks**: Locked metrics are not modified
   - **Conservative increases, generous decreases**: +1 max for mild cases, -1/-2 for positive interactions
   - **Minimum 3 messages required**: Users with fewer than 3 messages are skipped to prevent rapid changes
+- **Fact Saving Bugfix (2025-12-04)**: Fixed tuple indexing error when saving extracted facts with contradiction detection
 - Facts are saved to (or updated in) that server's `long_term_memory` with source attribution
 - All short-term messages are then archived to `database/{ServerName}/archive/short_term_archive_YYYYMMDD_HHMMSS.json`
 - After archival, short-term table is cleared for that server
@@ -839,12 +841,12 @@ Per-channel configuration stored in database (per-server):
 
 ### Testing System
 - `/run_tests` - Comprehensive system validation (admin only, per-server)
-  - Runs 239 tests across 30 categories (updated 2025-12-01)
+  - Runs 246 tests across 31 categories (updated 2025-12-04)
   - Results sent via Discord DM to admin
   - Detailed JSON log saved to `logs/test_results_*.json`
   - Validates: database operations, AI integration, per-server isolation, input validation, security measures, and all core systems
   - Automatic test data cleanup after each run
-  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Random Events (6), Sentiment Analysis Behavior (6), Cleanup Verification (5) = 239 total tests
+  - **Test Categories**: Database Connection (3), Database Tables (6), Bot Identity (2), Relationship Metrics (6), Long-Term Memory (4), Short-Term Memory (3), Memory Consolidation (2), AI Integration (3), Config Manager (3), Emote System (2), Per-Server Isolation (4), Input Validation (4), Global State (3), User Management (3), Archive System (4), Image Rate Limiting (4), Channel Configuration (3), Formatting Handler (6), Image Generation (9), Admin Logging (3), Status Updates (6), Proactive Engagement (3), User Identification (7), User ID Resolution (3), Bot Name Stripping (3), Source Attribution (3), Memory Storage Targeting (3), Image Refinement (6), Random Events (6), Sentiment Analysis Behavior (8), Conversation Detection (5), Cleanup Verification (5) = 246 total tests
   - **Usage**: Recommended to run after major updates to ensure system stability
 
 **Status Update Tests** (2025-10-18):
@@ -898,8 +900,8 @@ Per-channel configuration stored in database (per-server):
 - `/status_config_set_source_server` - Choose which server's personality to use
 - `/status_config_view` - View current status configuration
 
-#### Conversation Continuation Configuration (NEW 2025-11-23)
-Per-channel conversation continuation - bot responds without @mentions when it detects users talking to it.
+#### Conversation Continuation Configuration (NEW 2025-11-23, Updated 2025-12-04)
+Per-channel conversation continuation - bot responds without @mentions when it detects users talking to it or about it.
 
 - `/channel_conversation_enable` - Configure conversation continuation for this channel
   - **Parameters:**
@@ -914,9 +916,16 @@ Per-channel conversation continuation - bot responds without @mentions when it d
 
 **How it works:**
 1. Bot analyzes last 10 messages (configurable) when you send a message
-2. AI scores message on 0.0-1.0 scale (how likely it's directed at bot)
+2. AI scores message on 0.0-1.0 scale (how likely bot should respond)
 3. Bot responds if score ≥ threshold
 4. Example: "what's your favorite color?" → bot responds without @mention
+
+**Indirect Mention Detection (2025-12-04):**
+Bot now also responds when users talk ABOUT the bot's conversation, not just TO the bot:
+- "Looks like you're talking to wittle cat" → bot may respond (score 0.7+)
+- "She's so lovely" (commenting on bot's behavior) → bot may respond
+- Comments about bot in third person are scored 0.7 (indirect mentions)
+- Still ignores messages clearly directed at other humans about unrelated topics
 
 **Use cases:**
 - Natural conversation flow without repeated @mentions
