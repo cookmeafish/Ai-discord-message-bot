@@ -3481,6 +3481,15 @@ Respond with ONLY the fact ID number or "NONE".
         # Use dynamic max_tokens based on conversation energy
         dynamic_max_tokens = energy_analysis['max_tokens']
 
+        # DEBUG: Log the actual messages being sent to API to diagnose duplicate responses
+        print(f"\n🔍 CASUAL_CHAT API REQUEST for {author.name} (ID: {author.id}):")
+        print(f"   Model: {main_response_config['model']}, max_tokens: {dynamic_max_tokens}, temp: {main_response_config['temperature']}")
+        print(f"   Message count: {len(messages_for_api)}")
+        for i, msg in enumerate(messages_for_api[-5:]):  # Last 5 messages
+            role = msg['role']
+            content_preview = msg['content'][:100].replace('\n', ' ')
+            print(f"   [{i}] {role}: {content_preview}...")
+
         try:
             response = await self.client.chat.completions.create(
                 model=main_response_config['model'],
@@ -3489,6 +3498,7 @@ Respond with ONLY the fact ID number or "NONE".
                 temperature=main_response_config['temperature']
             )
             ai_response_text = response.choices[0].message.content.strip()
+            print(f"   RESPONSE: {ai_response_text[:100]}...")
 
             if ai_response_text:
                 # Apply roleplay formatting

@@ -210,11 +210,13 @@ class EventsCog(commands.Cog):
                             # Normal text processing
                             short_term_memory = db_manager.get_short_term_memory()
                             # Count bot messages in context to verify previous responses are included
+                            # NOTE: short_term_memory uses 'author_id' key (not 'user_id')
                             bot_id = self.bot.user.id
-                            bot_msgs_in_context = sum(1 for m in short_term_memory if m.get('user_id') == bot_id)
+                            bot_msgs_in_context = sum(1 for m in short_term_memory if m.get('author_id') == bot_id)
                             recent_msgs = short_term_memory[-3:] if len(short_term_memory) >= 3 else short_term_memory
                             recent_summary = " | ".join([f"{m.get('nickname', 'unknown')}: {m.get('content', '')[:30]}" for m in recent_msgs])
                             self.logger.info(f"BATCHING: Context for {initial_message.author.name}: {len(short_term_memory)} msgs ({bot_msgs_in_context} from bot). Recent: [{recent_summary}]")
+
                             ai_response = await self.bot.ai_handler.generate_response(
                                 message=primary_message,
                                 short_term_memory=short_term_memory,
