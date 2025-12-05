@@ -98,6 +98,9 @@ class EventsCog(commands.Cog):
     def _get_channel_lock(self, channel_id):
         """Get or create a lock for the specified channel (one response at a time per channel)."""
         if channel_id not in EventsCog._channel_locks:
+            # This should NOT happen - lock should be created in _queue_message_for_batching
+            # If we get here, log a warning but create the lock anyway for safety
+            self.logger.warning(f"BATCHING: Channel lock missing for {channel_id} - creating fallback (this shouldn't happen!)")
             EventsCog._channel_locks[channel_id] = asyncio.Lock()
         return EventsCog._channel_locks[channel_id]
 
@@ -158,9 +161,9 @@ class EventsCog(commands.Cog):
 
         try:
             # Wait for channel lock (one user at a time per channel)
-            self.logger.debug(f"BATCHING: Waiting for channel lock (channel {channel_id})")
+            self.logger.info(f"BATCHING: Waiting for channel lock for {initial_message.author.name} (channel {channel_id})")
             async with channel_lock:
-                self.logger.debug(f"BATCHING: Acquired channel lock for {initial_message.author.name}")
+                self.logger.info(f"BATCHING: Acquired channel lock for {initial_message.author.name}")
 
                 async with initial_message.channel.typing():
                     regeneration_count = 0  # Counts NEW messages that triggered regeneration
@@ -206,11 +209,12 @@ class EventsCog(commands.Cog):
                         else:
                             # Normal text processing
                             short_term_memory = db_manager.get_short_term_memory()
-                            # Log recent messages to verify context includes bot responses
-                            recent_msgs = short_term_memory[-5:] if len(short_term_memory) >= 5 else short_term_memory
-                            self.logger.info(f"BATCHING: Fetched {len(short_term_memory)} messages for {initial_message.author.name}")
-                            for msg in recent_msgs:
-                                self.logger.debug(f"  CONTEXT: user={msg.get('user_id')} content={msg.get('content', '')[:50]}")
+                            # Count bot messages in context to verify previous responses are included
+                            bot_id = self.bot.user.id
+                            bot_msgs_in_context = sum(1 for m in short_term_memory if m.get('user_id') == bot_id)
+                            recent_msgs = short_term_memory[-3:] if len(short_term_memory) >= 3 else short_term_memory
+                            recent_summary = " | ".join([f"{m.get('nickname', 'unknown')}: {m.get('content', '')[:30]}" for m in recent_msgs])
+                            self.logger.info(f"BATCHING: Context for {initial_message.author.name}: {len(short_term_memory)} msgs ({bot_msgs_in_context} from bot). Recent: [{recent_summary}]")
                             ai_response = await self.bot.ai_handler.generate_response(
                                 message=primary_message,
                                 short_term_memory=short_term_memory,
