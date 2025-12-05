@@ -206,6 +206,11 @@ class EventsCog(commands.Cog):
                         else:
                             # Normal text processing
                             short_term_memory = db_manager.get_short_term_memory()
+                            # Log recent messages to verify context includes bot responses
+                            recent_msgs = short_term_memory[-5:] if len(short_term_memory) >= 5 else short_term_memory
+                            self.logger.info(f"BATCHING: Fetched {len(short_term_memory)} messages for {initial_message.author.name}")
+                            for msg in recent_msgs:
+                                self.logger.debug(f"  CONTEXT: user={msg.get('user_id')} content={msg.get('content', '')[:50]}")
                             ai_response = await self.bot.ai_handler.generate_response(
                                 message=primary_message,
                                 short_term_memory=short_term_memory,
@@ -243,10 +248,10 @@ class EventsCog(commands.Cog):
                                         # CRITICAL: Log bot's message to short-term memory BEFORE releasing lock
                                         if sent_message:
                                             try:
-                                                db_manager.log_message(sent_message, directed_at_bot=False)
-                                                self.logger.debug(f"BATCHING: Logged bot response to short-term memory (max regen)")
+                                                log_result = db_manager.log_message(sent_message, directed_at_bot=False)
+                                                self.logger.info(f"BATCHING: Logged bot response to DB (success={log_result}, msg_id={sent_message.id}) [max regen]")
                                             except Exception as log_err:
-                                                self.logger.error(f"Failed to log bot response: {log_err}")
+                                                self.logger.error(f"BATCHING: Failed to log bot response: {log_err}")
                                     except Exception as e:
                                         self.logger.error(f"Failed to send response: {e}")
 
@@ -323,10 +328,10 @@ class EventsCog(commands.Cog):
                                     # and doesn't generate a duplicate response
                                     if sent_message:
                                         try:
-                                            db_manager.log_message(sent_message, directed_at_bot=False)
-                                            self.logger.debug(f"BATCHING: Logged bot response to short-term memory")
+                                            log_result = db_manager.log_message(sent_message, directed_at_bot=False)
+                                            self.logger.info(f"BATCHING: Logged bot response to DB (success={log_result}, msg_id={sent_message.id})")
                                         except Exception as log_err:
-                                            self.logger.error(f"Failed to log bot response: {log_err}")
+                                            self.logger.error(f"BATCHING: Failed to log bot response: {log_err}")
                                 except Exception as e:
                                     self.logger.error(f"Failed to send response: {e}")
 
