@@ -134,24 +134,35 @@ Recent conversation history:
 
 Latest message (from {current_user}): "{current_message}"
 
-Determine if this message is:
-- A continuation of the conversation with the bot
-- A direct question/statement to the bot
-- A response to something the bot said
-- A comment ABOUT the bot's conversation that invites a response (e.g., "that's funny", "you're so weird")
-- Mentioning the bot indirectly in a way that expects acknowledgment
+**CRITICAL: The bot should NOT respond to everything. Be VERY selective.**
 
-Score from 0.0 to 1.0 (higher = more likely the bot should respond):
-- 1.0 = Clearly talking to/about bot (references bot's previous message, asks bot a question, comments on bot's behavior)
-- 0.7 = Indirect mention (talks about bot in third person, comments on bot's conversation with someone else)
-- 0.5 = Ambiguous (could be for bot or someone else)
-- 0.0 = Clearly NOT for bot (talking exclusively to another user, changing topic completely, general announcement)
+Score from 0.0 to 1.0:
 
-IMPORTANT RULES:
-- If someone comments on the bot's conversation (e.g., "looks like you're talking to X", "that was funny"), score 0.7+
-- If someone says something nice/mean about the bot (e.g., "it's so cute", "the bot is weird"), score 0.7+
-- If someone is ONLY talking to another human about unrelated topics, score 0.0
-- If someone is addressing another user by name about something unrelated to the bot, score 0.0
+**HIGH SCORES (0.8-1.0) - Bot SHOULD respond:**
+- Direct questions TO the bot ("what do you think?", "can you help me?")
+- Directly addressing the bot by name or pronoun ("you're funny", "hey bot")
+- Asking for the bot's opinion or input on something specific
+- Continuing a back-and-forth conversation where bot's input is clearly expected
+
+**MEDIUM SCORES (0.5-0.7) - MAYBE respond:**
+- Talking ABOUT the bot in third person that might invite response ("the bot is weird")
+- Ambiguous messages that could be directed at bot or others
+
+**LOW SCORES (0.0-0.4) - Bot should NOT respond:**
+- Simple reactions/acknowledgments: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough", "true"
+- Emojis or short expressions that don't invite discussion
+- User talking to another user (not the bot)
+- General statements not directed at anyone specific
+- Messages that are self-contained and don't need a reply
+- User just expressing an opinion without asking for bot's input
+- Rhetorical statements or thinking out loud
+
+**IMPORTANT RULES:**
+- Just because the bot spoke recently does NOT mean the next message is for the bot
+- Simple positive/negative reactions are NOT conversation continuations
+- If the message can stand alone without a response, score LOW
+- When in doubt, score LOW - it's better to miss a message than to spam responses
+- Acknowledgments like "I like it" or "nice" after bot speaks = score 0.2 max
 
 Return ONLY a single number between 0.0 and 1.0. No explanations."""
 

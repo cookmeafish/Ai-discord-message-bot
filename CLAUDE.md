@@ -929,6 +929,14 @@ Per-channel conversation continuation - bot responds without @mentions when it d
 3. Bot responds if score ≥ threshold
 4. Example: "what's your favorite color?" → bot responds without @mention
 
+**Selective Detection (2025-12-05):**
+Bot is intentionally VERY selective about when to respond. It will NOT respond to:
+- Simple reactions: `:)`, `lol`, `nice`, `cool`, `ok`, `I like it`, `fair enough`
+- Emojis or short expressions that don't invite discussion
+- Messages that are self-contained and don't need a reply
+- User just expressing an opinion without asking for bot's input
+- **Key rule**: Just because the bot spoke recently does NOT mean the next message is for the bot
+
 **Indirect Mention Detection (2025-12-04):**
 Bot now also responds when users talk ABOUT the bot's conversation, not just TO the bot:
 - "Looks like you're talking to wittle cat" → bot may respond (score 0.7+)
