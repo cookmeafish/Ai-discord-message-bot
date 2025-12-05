@@ -119,7 +119,7 @@ The bot has a configurable personality mode that controls immersion and language
    - Metrics only update via: Manual commands (`/user_set_metrics`), GUI User Manager, or memory consolidation
    - Prevents metrics from changing too rapidly during conversations
 
-**Message Batching System (2025-11-24, Updated 2025-11-30)**:
+**Message Batching System (2025-11-24, Updated 2025-12-04)**:
 - **Problem**: User sends "dr fish" then "wassup" quickly → bot responds twice instead of once
 - **Solution**: Atomic check-and-send approach with per-channel queuing
 - **Implementation** (`cogs/events.py`):
@@ -133,7 +133,7 @@ The bot has a configurable personality mode that controls immersion and language
   3. If not queued → Add user to queue, process with channel lock
   4. Generate response → Check for new messages before sending
   5. If new messages arrived → Regenerate (max 3 times)
-  6. **Atomic send**: Acquire batch_lock → final check → send → cleanup → release lock
+  6. **Atomic send**: Acquire batch_lock → final check → send → log bot response → cleanup → release lock
 - **Key Features**:
   - **Per-channel isolation**: Different channels process independently
   - **Per-user batching**: Same user's rapid messages combined into one response
@@ -142,6 +142,8 @@ The bot has a configurable personality mode that controls immersion and language
   - **Max 3 regenerations**: Prevents infinite loops (counts by messages, not loop iterations)
   - **Combined content**: All batched messages joined with newlines and passed to AI
   - **Race condition fix (2025-11-30)**: Send happens inside `_process_batched_response` while holding `batch_lock`, eliminating gap between final check and send where messages could be lost
+  - **Multi-user race condition fix (2025-12-04)**: Channel locks are now created atomically inside `_queue_message_for_batching` while holding `batch_lock`, preventing two simultaneous messages from creating separate lock objects
+  - **Context continuity fix (2025-12-04)**: Bot's response is explicitly logged to short-term memory BEFORE releasing channel lock, ensuring the next user in queue sees the complete conversation context
 - **Config** (`config.json`):
   ```json
   "message_batching": {

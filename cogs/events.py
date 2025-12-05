@@ -105,10 +105,19 @@ class EventsCog(commands.Cog):
         """
         Queue a message for batching. Returns True if this is a NEW queue entry
         (caller should process), False if added to existing batch (caller should return early).
+
+        CRITICAL: Channel lock is created here while holding batch_lock to prevent
+        race condition where two messages arriving simultaneously create separate locks.
         """
         async with EventsCog._batch_lock:
             key = (message.author.id, message.channel.id)
             channel_id = message.channel.id
+
+            # ATOMIC: Create channel lock while holding batch_lock to prevent race condition
+            # This ensures all messages for a channel use the SAME lock object
+            if channel_id not in EventsCog._channel_locks:
+                EventsCog._channel_locks[channel_id] = asyncio.Lock()
+                self.logger.debug(f"BATCHING: Created channel lock for channel {channel_id}")
 
             # Initialize channel tracking if needed
             if channel_id not in EventsCog._queued_users:
@@ -124,7 +133,9 @@ class EventsCog(commands.Cog):
 
             # New user for this channel - queue them
             EventsCog._queued_users[channel_id].add(message.author.id)
-            EventsCog._pending_messages[key] = [message]
+            # DON'T add message to pending here - it will be used as initial_message in processing
+            # Pending is only for ADDITIONAL messages that arrive during processing
+            EventsCog._pending_messages[key] = []
             self.logger.info(f"BATCHING: New batch started for {message.author.name} in channel {channel_id}")
             return True  # Caller should process
 
@@ -228,6 +239,14 @@ class EventsCog(commands.Cog):
                                                 final_response = ai_response
                                             sent_message = await primary_message.reply(final_response)
                                             self.logger.info(f"Sent response (max regen): {final_response[:50]}...")
+
+                                        # CRITICAL: Log bot's message to short-term memory BEFORE releasing lock
+                                        if sent_message:
+                                            try:
+                                                db_manager.log_message(sent_message, directed_at_bot=False)
+                                                self.logger.debug(f"BATCHING: Logged bot response to short-term memory (max regen)")
+                                            except Exception as log_err:
+                                                self.logger.error(f"Failed to log bot response: {log_err}")
                                     except Exception as e:
                                         self.logger.error(f"Failed to send response: {e}")
 
@@ -298,6 +317,16 @@ class EventsCog(commands.Cog):
                                             final_response = ai_response
                                         sent_message = await primary_message.reply(final_response)
                                         self.logger.info(f"Sent response: {final_response[:50]}...")
+
+                                    # CRITICAL: Log bot's message to short-term memory BEFORE releasing lock
+                                    # This ensures the next user in queue sees this response in their context
+                                    # and doesn't generate a duplicate response
+                                    if sent_message:
+                                        try:
+                                            db_manager.log_message(sent_message, directed_at_bot=False)
+                                            self.logger.debug(f"BATCHING: Logged bot response to short-term memory")
+                                        except Exception as log_err:
+                                            self.logger.error(f"Failed to log bot response: {log_err}")
                                 except Exception as e:
                                     self.logger.error(f"Failed to send response: {e}")
 
