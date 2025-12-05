@@ -144,6 +144,7 @@ The bot has a configurable personality mode that controls immersion and language
   - **Race condition fix (2025-11-30)**: Send happens inside `_process_batched_response` while holding `batch_lock`, eliminating gap between final check and send where messages could be lost
   - **Multi-user race condition fix (2025-12-04)**: Channel locks are now created atomically inside `_queue_message_for_batching` while holding `batch_lock`, preventing two simultaneous messages from creating separate lock objects
   - **Context continuity fix (2025-12-04)**: Bot's response is explicitly logged to short-term memory BEFORE releasing channel lock, ensuring the next user in queue sees the complete conversation context
+  - **Future message filtering (2025-12-04)**: When building API context, bot messages with timestamps >= current user's message are filtered out, preventing the AI from seeing its own response to a concurrent user and generating duplicates
 - **Config** (`config.json`):
   ```json
   "message_batching": {
