@@ -134,31 +134,28 @@ Recent conversation history:
 
 Latest message (from {current_user}): "{current_message}"
 
-**CRITICAL: The bot should almost NEVER respond. Be EXTREMELY selective.**
+**ANALYZE THE CONTEXT CAREFULLY.**
 
-**=== INSTANT 0.0 - NEVER RESPOND ===**
-- Message addresses ANOTHER USER by name (e.g., "yo mike", "hey sarah", "alex you wanna...")
-- Message is a question directed at someone else ("you wanna hang out?", "what are you doing later?")
-- Message starts with another person's name or nickname
-- User is clearly having a side conversation with someone who is NOT the bot
-- Simple reactions: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
+**=== SCORE 0.0 - DO NOT RESPOND ===**
+- Message starts with ANOTHER USER'S NAME (e.g., "yo mike", "hey sarah", "alex you wanna...")
+- User is clearly talking to someone else (not the bot)
+- Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it"
 
-**=== HIGH SCORES (0.8-1.0) - Bot SHOULD respond ===**
-- Message contains the bot's name "{bot_name}" or "fish" or "dr"
-- Direct question clearly aimed at the bot with no other target
-- User says "you" and context makes clear they mean the BOT, not another person
+**=== SCORE 0.8-1.0 - SHOULD RESPOND ===**
+- Message contains "{bot_name}" or "fish" or "dr"
+- User JUST had an exchange with the bot (bot's last message was to this user) AND user is now asking a question or continuing
+- User says "you" and the bot was the last one they talked to
+- Direct question with no other person mentioned as the target
 
-**=== MEDIUM SCORES (0.5-0.7) - Maybe respond ===**
-- Talking ABOUT the bot in third person
-- Ambiguous but probably for bot
-
-**=== LOW SCORES (0.1-0.4) - Probably don't respond ===**
-- Unclear who message is for
+**=== SCORE 0.3-0.6 - MAYBE RESPOND ===**
+- Ambiguous who the message is for
 - Could be for bot or others
 
-**GOLDEN RULE: If there is ANY chance the message is for another human, score 0.0**
+**KEY CONTEXT RULE:**
+Look at who the user was JUST talking to. If their previous message was to the bot and bot responded, then their next message is LIKELY still directed at the bot (score 0.8+), UNLESS they explicitly address someone else by name.
 
-The bot "{bot_name}" should only respond when CLEARLY and UNAMBIGUOUSLY being addressed.
+Example: User says "yo dr fish" → Bot says "Hey" → User says "you wanna play?" = Score 0.9 (continuing conversation with bot)
+Example: User says "yo dr fish" → Bot says "Hey" → User says "yo mike wanna play?" = Score 0.0 (now talking to mike)
 
 Return ONLY a single number between 0.0 and 1.0. No explanations."""
 
