@@ -221,24 +221,20 @@ Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
 
 **CRITICAL REMOVAL EXAMPLES:**
 
-Original: "a person with purple hair standing near a wooden house with trees"
-Feedback: "get rid of the house"
-Analysis: REMOVAL - delete ONLY the house, keep the person!
-New Prompt: "a person with purple hair standing with trees in the background"
-WRONG: "a cute cat" (this replaced the ENTIRE subject instead of just removing the house!)
-WRONG: "a wooden house with trees" (this removed the person instead of the house!)
+Original: "a warrior standing in front of a castle"
+Feedback: "remove the castle"
+Analysis: REMOVAL - delete ONLY the castle, keep the warrior!
+New Prompt: "a warrior standing"
+WRONG: "a castle" (removed the main subject!)
+WRONG: "a random animal" (replaced the entire image!)
 
-Original: "a handsome couple enjoying coffee at a cafe"
-Feedback: "remove the girl" or "no girlies"
-Analysis: REMOVAL - delete the girl, keep the man
-New Prompt: "a handsome man enjoying coffee at a cafe"
-WRONG: "two handsome men at a cafe" (this REPLACED instead of REMOVED)
+Original: "two knights in armor"
+Feedback: "remove one of them"
+Analysis: REMOVAL - delete one knight, keep the other
+New Prompt: "a knight in armor"
+WRONG: "two different characters" (replaced instead of removed)
 
-Original: "a cat and dog playing"
-Feedback: "remove the dog"
-Analysis: REMOVAL - delete the dog, keep the cat
-New Prompt: "a cat playing"
-WRONG: "a dog playing" (this kept the wrong animal!)
+**KEY PRINCIPLE**: The main subject (person/character) must ALWAYS be preserved. Only remove what was specifically requested.
 
 **ABSOLUTE RULES:**
 1. **PRESERVE MAIN SUBJECT** - When removing something, the main subject (person, character) MUST remain
