@@ -1971,6 +1971,23 @@ Examples:
                     prompt_lower = clean_prompt.lower()
                     print(f"AI Handler: Looking for users mentioned in prompt: '{prompt_lower}'")
 
+                    # PRIORITY -1: Check Discord @mentions FIRST (user explicitly tagged someone)
+                    # message.mentions contains User objects for anyone @mentioned in the message
+                    if message.mentions:
+                        for mentioned_user in message.mentions:
+                            # Skip if it's the bot itself
+                            if mentioned_user.id == message.guild.me.id:
+                                continue
+                            mentioned_users.append(mentioned_user)
+                            print(f"AI Handler: Found Discord @mention: {mentioned_user.display_name} (ID: {mentioned_user.id})")
+
+                        if mentioned_users:
+                            # Replace the Discord mention format with the username in the prompt for better AI understanding
+                            for user in mentioned_users:
+                                clean_prompt = re.sub(rf'<@!?{user.id}>', user.display_name, clean_prompt)
+                            prompt_lower = clean_prompt.lower()
+                            print(f"AI Handler: Updated prompt with usernames: '{clean_prompt}'")
+
                     # PRIORITY 0: Check for reflexive pronouns (yourself, you, self)
                     # These indicate the user wants to draw THE BOT (not themselves)
                     # BUT: Only treat as pure self-portrait if pronoun is the MAIN subject
