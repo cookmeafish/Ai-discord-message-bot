@@ -87,10 +87,13 @@ Example of topic change (NOT a refinement):
 
 **Indicators of refinement request** (ONLY if topic hasn't changed):
 ✅ Corrections: "no, I said...", "you forgot the...", "it's missing..."
+✅ Gender corrections: "she is a girl", "he's a boy", "they're female", "make them male", "wrong gender"
 ✅ Additions: "also add...", "can you include...", "with a sword too"
 ✅ Modifications: "make it bigger", "change the color to...", "make it hold..."
+✅ Removals: "remove the...", "get rid of...", "no background", "without the..."
 ✅ Add subject interacting with image: "make a gorilla drink that", "have a cat eat it"
 ✅ References to "that/it/the" about the IMAGE: "make X do Y with that", "add X to it"
+✅ Simple statements about the subject: "she is X", "he has Y", "it should be Z" (these are CORRECTIONS)
 
 **NOT a refinement request**:
 ❌ Response to bot's text message (not the image)
@@ -195,14 +198,15 @@ USER FEEDBACK: "{changes_requested}"
 Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
 
 **REMOVAL** = User wants to DELETE/REMOVE something from the image
-- Keywords: "remove", "get rid of", "no", "without", "delete", "take away", "no girlies", "no girl", "no man"
-- Action: COMPLETELY DELETE the unwanted element from the prompt
-- **CRITICAL**: KEEP the main subject! Only remove the specific thing mentioned!
-- DO NOT substitute with something else - just remove it entirely
-- DO NOT replace the entire image with something different
-- Example: "a girl near a house" + "remove the house" = "a girl" (house is GONE, girl remains!)
-- Example: "a couple at coffee" + "remove the girl" = "a person at a coffee shop" (girl is GONE, not replaced)
-- Example: "two men fighting" + "no fighting" = "two men standing" (action removed, people stay)
+- Keywords: "remove", "get rid of", "no", "without", "delete", "take away"
+- **IDENTIFY THE MAIN SUBJECT FIRST**: In most prompts, the PERSON/CHARACTER is the main subject, NOT backgrounds/objects
+- Action: DELETE the unwanted element, KEEP the main subject (usually the person/character)
+- **CRITICAL**: If prompt has "person + background element", the PERSON is the main subject!
+  - "person near tree" → main subject = PERSON
+  - "character in castle" → main subject = CHARACTER
+  - "girl with flowers" → main subject = GIRL
+- When user says "remove the [background]", KEEP the person, remove only the background
+- DO NOT remove the person and keep only the background - that's backwards!
 
 **REPLACEMENT** = User wants a DIFFERENT subject entirely
 - The new thing is a DIFFERENT CATEGORY/TYPE than the original
@@ -221,20 +225,19 @@ Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
 
 **CRITICAL REMOVAL EXAMPLES:**
 
-Original: "a warrior standing in front of a castle"
-Feedback: "remove the castle"
-Analysis: REMOVAL - delete ONLY the castle, keep the warrior!
-New Prompt: "a warrior standing"
-WRONG: "a castle" (removed the main subject!)
-WRONG: "a random animal" (replaced the entire image!)
+Original: "a knight in silver armor standing near a waterfall"
+Feedback: "remove the waterfall"
+Analysis: Main subject = KNIGHT. Remove waterfall, keep knight.
+New Prompt: "a knight in silver armor standing"
+WRONG: "a waterfall" (kept background, removed person - BACKWARDS!)
 
-Original: "two knights in armor"
-Feedback: "remove one of them"
-Analysis: REMOVAL - delete one knight, keep the other
-New Prompt: "a knight in armor"
-WRONG: "two different characters" (replaced instead of removed)
+Original: "a wizard casting spells in front of a tower"
+Feedback: "remove the tower"
+Analysis: Main subject = WIZARD. Remove tower, keep wizard.
+New Prompt: "a wizard casting spells"
+WRONG: "a tower" (kept building, removed person - BACKWARDS!)
 
-**KEY PRINCIPLE**: The main subject (person/character) must ALWAYS be preserved. Only remove what was specifically requested.
+**KEY PRINCIPLE**: PERSON/CHARACTER is almost always the main subject. Background elements (waterfalls, buildings, scenery) are NOT the main subject.
 
 **ABSOLUTE RULES:**
 1. **PRESERVE MAIN SUBJECT** - When removing something, the main subject (person, character) MUST remain
