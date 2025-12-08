@@ -136,16 +136,16 @@ Latest message (from {current_user}): "{current_message}"
 
 **ANALYZE THE CONTEXT CAREFULLY.**
 
-**=== IMPORTANT RULES ===**
+**IMPORTANT RULES:**
 1. If message starts with ANOTHER USER'S NAME → Score 0.0 (talking to someone else)
 2. If message is a simple reaction with no engagement → Score 0.0
-3. Indirect mentions of the bot (third person) only score 0.7 if they INVITE a response
+3. Indirect mentions or comments on the bot's conversation only score 0.7 if they INVITE a response
 
 **=== SCORE 0.0 - DO NOT RESPOND ===**
 - Message starts with ANOTHER USER'S NAME (e.g., "yo mike", "hey sarah", "alex you wanna...")
 - User is clearly talking to someone else (not the bot)
 - Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
-- Indirect mentions that are just observations (not inviting response):
+- Someone comment ABOUT the bot that is just an observation (not inviting response):
   - "lol she's weird" (just commenting)
   - "the bot is broken" (complaint, not engagement)
   - "he's funny" (observation to others)
@@ -154,7 +154,7 @@ Latest message (from {current_user}): "{current_message}"
 - User talks ABOUT the bot in third person AND seems to invite a response:
   - "What do you think, {bot_name}?" (directly asking)
   - "I wonder what she thinks about this" (inviting input)
-  - "Looks like someone has opinions" (playful, expecting reaction)
+  - "Looks like you're talking to someone" or similar (acknowledging bot's presence)
   - Rhetorical questions about the bot that expect engagement
 - Only score 0.7 if the indirect mention IMPLIES they want the bot to respond
 
