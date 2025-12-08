@@ -140,9 +140,12 @@ Latest message (from {current_user}): "{current_message}"
 1. If message starts with ANOTHER USER'S NAME → Score 0.0 (talking to someone else)
 2. If message is a simple reaction with no engagement → Score 0.0
 3. Indirect mentions or comments on the bot's conversation only score 0.7 if they INVITE a response
+4. If user JUST @mentioned another person, their follow-up is likely STILL to that person → Score 0.0
 
 **=== SCORE 0.0 - DO NOT RESPOND ===**
 - Message starts with ANOTHER USER'S NAME (e.g., "yo mike", "hey sarah", "alex you wanna...")
+- User JUST @mentioned someone else in a previous message - their next message is probably still to that person
+- User uses part of another user's name/nickname that was recently mentioned (e.g., "@wittle cat" then "yo wittle")
 - User is clearly talking to someone else (not the bot)
 - Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
 - Someone comment ABOUT the bot that is just an observation (not inviting response):
