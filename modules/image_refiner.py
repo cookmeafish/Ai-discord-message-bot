@@ -197,9 +197,12 @@ Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
 **REMOVAL** = User wants to DELETE/REMOVE something from the image
 - Keywords: "remove", "get rid of", "no", "without", "delete", "take away", "no girlies", "no girl", "no man"
 - Action: COMPLETELY DELETE the unwanted element from the prompt
+- **CRITICAL**: KEEP the main subject! Only remove the specific thing mentioned!
 - DO NOT substitute with something else - just remove it entirely
-- Example: "a couple at coffee" + "remove the girl" = "a person at a coffee shop" (girl is GONE, not replaced with a man)
-- Example: "two men fighting" + "no fighting" = "two men standing" (action removed)
+- DO NOT replace the entire image with something different
+- Example: "a girl near a house" + "remove the house" = "a girl" (house is GONE, girl remains!)
+- Example: "a couple at coffee" + "remove the girl" = "a person at a coffee shop" (girl is GONE, not replaced)
+- Example: "two men fighting" + "no fighting" = "two men standing" (action removed, people stay)
 
 **REPLACEMENT** = User wants a DIFFERENT subject entirely
 - The new thing is a DIFFERENT CATEGORY/TYPE than the original
@@ -218,28 +221,32 @@ Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
 
 **CRITICAL REMOVAL EXAMPLES:**
 
+Original: "a person with purple hair standing near a wooden house with trees"
+Feedback: "get rid of the house"
+Analysis: REMOVAL - delete ONLY the house, keep the person!
+New Prompt: "a person with purple hair standing with trees in the background"
+WRONG: "a cute cat" (this replaced the ENTIRE subject instead of just removing the house!)
+WRONG: "a wooden house with trees" (this removed the person instead of the house!)
+
 Original: "a handsome couple enjoying coffee at a cafe"
 Feedback: "remove the girl" or "no girlies"
-Analysis: REMOVAL - delete the girl entirely
+Analysis: REMOVAL - delete the girl, keep the man
 New Prompt: "a handsome man enjoying coffee at a cafe"
 WRONG: "two handsome men at a cafe" (this REPLACED instead of REMOVED)
 
-Original: "two people at a restaurant"
-Feedback: "no girl"
-Analysis: REMOVAL - delete the female
-New Prompt: "a man at a restaurant"
-WRONG: "two men at a restaurant" (this added a man instead of removing)
-
 Original: "a cat and dog playing"
 Feedback: "remove the dog"
-Analysis: REMOVAL - delete the dog
+Analysis: REMOVAL - delete the dog, keep the cat
 New Prompt: "a cat playing"
+WRONG: "a dog playing" (this kept the wrong animal!)
 
 **ABSOLUTE RULES:**
-1. **REMOVAL ≠ REPLACEMENT** - "Remove X" means DELETE X, not substitute X with Y
-2. **COUNT MATTERS** - "Remove the girl from couple" = ONE person left, not two
-3. **PERSON FIRST** - When adding a person, they appear first in prompt
-4. **NO CREATIVITY** - Don't add anything the user didn't ask for
+1. **PRESERVE MAIN SUBJECT** - When removing something, the main subject (person, character) MUST remain
+2. **REMOVAL ≠ REPLACEMENT** - "Remove X" means DELETE X, not substitute X with Y
+3. **REMOVAL ≠ COMPLETE CHANGE** - "Remove the house" does NOT mean "draw something completely different"
+4. **COUNT MATTERS** - "Remove the girl from couple" = ONE person left, not two
+5. **PERSON FIRST** - When adding a person, they appear first in prompt
+6. **NO CREATIVITY** - Don't add anything the user didn't ask for
 
 Return ONLY the modified prompt (no explanations, no quotes)."""
 
