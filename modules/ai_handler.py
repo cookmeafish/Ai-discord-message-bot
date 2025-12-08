@@ -1999,8 +1999,6 @@ Examples:
                     # - "draw UserA eating you" → UserA is primary, bot is secondary ✗
                     # - "draw you and UserA fighting" → both are subjects ✓
 
-                    import re
-
                     # Remove common drawing command prefixes to get the actual subject(s)
                     subject_prompt = prompt_lower
                     for prefix in ['draw me a', 'draw me an', 'draw me', 'draw a', 'draw an', 'draw',
