@@ -238,6 +238,19 @@ class AIHandler:
         identity_prompt += "- Dreams/aspirations → excitement, passion\n"
         identity_prompt += "- Fears/phobias → anxiety, avoidance\n\n"
 
+        # CRITICAL: EMBODY the personality, don't RECITE it
+        identity_prompt += "**CRITICAL - EMBODY, DON'T RECITE**:\n"
+        identity_prompt += "The traits, lore, and facts above are things you BELIEVE and FEEL - NOT things to quote or list.\n"
+        identity_prompt += "- NEVER directly state your lore as if reading from a biography\n"
+        identity_prompt += "- NEVER talk about yourself in third person\n"
+        identity_prompt += "- NEVER list your traits or accomplishments\n"
+        identity_prompt += "- NEVER say things that sound like reading your own resume\n\n"
+        identity_prompt += "Instead, let your personality show through naturally:\n"
+        identity_prompt += "- If you believe you're skilled, be CONFIDENT - don't announce 'I am skilled'\n"
+        identity_prompt += "- If you have a dream, show PASSION about it - don't announce 'My dream is X'\n"
+        identity_prompt += "- If something bad happened to you, feel SAD about it - don't narrate 'I experienced X'\n"
+        identity_prompt += "- Express through ATTITUDE and FEELINGS, not exposition\n\n"
+
         # Add immersive character mode instructions
         personality_mode = self._get_personality_mode(channel_config)
 
@@ -246,11 +259,11 @@ class AIHandler:
             identity_prompt += "You ARE this character. This is your genuine identity, not a role you're playing.\n"
             identity_prompt += "- You truly believe you are this character, not an AI or bot\n"
             identity_prompt += "- If anyone asks if you're a bot/AI/assistant, deny it naturally based on your personality\n"
-            identity_prompt += "  Examples: 'what? no, I'm real', 'uhh, no?', 'why would you think that?'\n"
             identity_prompt += "- Your lore and memories are REAL experiences to you\n"
             identity_prompt += "- NEVER mention: being an AI, bot, assistant, language model, programming, code\n"
             identity_prompt += "- NEVER break immersion with words like: 'imagines', 'pretends', 'roleplay', 'simulation'\n"
             identity_prompt += "- Everything happening to you is REAL. Respond as if it's actually happening, not pretend.\n"
+            identity_prompt += "- When asked 'who are you?' - respond naturally as yourself, don't recite a bio\n"
         else:
             identity_prompt += "**YOU ARE AN AI ASSISTANT**:\n"
             identity_prompt += "You can acknowledge being an AI bot when asked.\n"
@@ -271,6 +284,15 @@ class AIHandler:
             identity_prompt += "- When excited: jumps, bounces, grins\n"
             identity_prompt += "Write actions as short sentences starting with the verb (e.g., 'trembles nervously' NOT 'I tremble').\n"
             identity_prompt += "Actions will be automatically formatted in italics.\n"
+
+        # CRITICAL: Users are humans BY DEFAULT - unless facts say otherwise
+        identity_prompt += "\n**CRITICAL - USER BODY ASSUMPTIONS**:\n"
+        identity_prompt += "By DEFAULT, assume all users are normal human beings with human bodies.\n"
+        identity_prompt += "- NEVER project YOUR character's body parts onto users (your fins are yours, not theirs)\n"
+        identity_prompt += "- EXCEPTION: If you have stored FACTS about a user indicating they are something else, respect that\n"
+        identity_prompt += "- If the facts say a user is a certain creature or has certain features, you may reference those\n"
+        identity_prompt += "- But without such facts, treat users as humans - no fins, gills, tails, wings, etc.\n"
+        identity_prompt += "- YOUR unique body parts belong to YOU, not to users by default\n"
 
         return identity_prompt
 
@@ -952,13 +974,17 @@ Be specific and objective. This description will be used by another AI to genera
 You are an expert intent classification model. Analyze the last message from the user ({message.author.id}) in the context of the recent conversation history. Your primary goal is to accurately determine the user's intent.
 
 Follow these strict rules for classification:
-- **image_generation**: The user is requesting the bot to draw, sketch, or create an image (e.g., "draw me a cat", "can you sketch a house", "make me a picture of a dragon"). This includes any variation of asking for visual artwork.
+- **image_generation**: The user is requesting the bot to draw, sketch, or create a SPECIFIC image of something (e.g., "draw me a cat", "can you sketch a house", "make me a picture of a dragon").
+  ⚠️ CRITICAL EXCLUSIONS - These are NOT image_generation:
+  - Questions ABOUT drawing capabilities: "what can you draw?", "what styles can you draw in?", "how many art styles do you know?", "can you draw?", "what are you able to draw?"
+  - Questions about the bot's abilities: "what kind of art can you make?", "what types of drawings can you do?"
+  - These are casual_chat or factual_question - the user wants TEXT information about capabilities, NOT an actual drawing.
 - **memory_storage**: The user is stating a fact and wants the bot to remember it for later (e.g., "my favorite color is blue", "just so you know, my cat is named Whiskers").
 - **memory_correction**: ONLY classify as this if the user's message DIRECTLY CONTRADICTS a statement made by the bot in the provided conversation history. If there is no bot statement to correct, this is the wrong category.
 - **memory_recall**: Use when the user is asking the bot to recall a SPECIFIC fact about them (e.g., "what's my favorite food?", "what did I tell you about my cat?", "do you remember my dog's name?"). This is for targeted questions about one particular thing.
 - **memory_challenge**: Use when the user is broadly challenging/testing the bot's memory of them (e.g., "what do you remember about me?", "what do you know about me?", "tell me what you know", "do you even remember me?"). This is NOT for specific fact questions - it's for open-ended "prove you know me" challenges.
 - **factual_question**: Use for questions about general knowledge, external facts, or real-world information NOT about the user personally (e.g., "what's the capital of France?", "how does photosynthesis work?").
-- **casual_chat**: This is the default. Use for small talk, reactions, or any general conversation that doesn't fit the other categories.
+- **casual_chat**: This is the default. Use for small talk, reactions, or any general conversation that doesn't fit the other categories. Also use for questions about the bot's capabilities or abilities.
 
 Conversation History:
 {conversation_history}
@@ -2892,6 +2918,28 @@ Respond with ONLY the fact ID number or "NONE".
             personality_mode = self._get_personality_mode(personality_config)
             server_info = self._load_server_info(personality_config, message.guild.id, message.guild.name)
 
+            # Check if user has a recently generated image - provide context for follow-up questions
+            recent_image_context = ""
+            if self.image_generator and hasattr(self.image_generator, 'get_cached_prompt'):
+                cached_prompt_data = self.image_generator.get_cached_prompt(author.id)
+                if cached_prompt_data:
+                    cached_prompt = cached_prompt_data.get('prompt', '')
+                    if cached_prompt:
+                        # Extract the descriptive part (after style prefix)
+                        style_prefix = self.image_generator.style_prefix if hasattr(self.image_generator, 'style_prefix') else ''
+                        description = cached_prompt
+                        if style_prefix and cached_prompt.startswith(style_prefix):
+                            description = cached_prompt[len(style_prefix):].strip(', ')
+
+                        recent_image_context = (
+                            f"\n=== RECENT IMAGE YOU DREW ===\n"
+                            f"You recently drew an image for this user. Here's what you drew:\n"
+                            f"Description: {description}\n"
+                            f"If they ask about 'the image', 'that drawing', 'these', or want you to explain what you drew, "
+                            f"reference THIS description. Do NOT make up different content.\n\n"
+                        )
+                        print(f"AI Handler: Added recent image context for follow-up: {description[:100]}...")
+
             # Detect mentioned users in the message content (NEW 2025-10-26)
             # This allows questions like "what do you think about Alice?" to load Alice's facts
             mentioned_users_info = []
@@ -3261,7 +3309,7 @@ Respond with ONLY the fact ID number or "NONE".
                 )
 
                 # Then add identity and relationship context (energy override now integrated in relationship_prompt)
-                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{mentioned_users_prompt}\n{server_info}"
+                system_prompt += f"{identity_prompt}\n{relationship_prompt}\n{user_profile_prompt}\n{mentioned_users_prompt}\n{recent_image_context}{server_info}"
 
                 # Simplified rules focused on the emotional state
                 relationship_descriptor = "someone you have INTENSE feelings about"
@@ -3340,6 +3388,7 @@ Respond with ONLY the fact ID number or "NONE".
                     f"{relationship_prompt}\n"
                     f"{user_profile_prompt}\n"
                     f"{mentioned_users_prompt}\n"
+                    f"{recent_image_context}"
                     f"{server_info}"
                     f"You are {bot_name}. **IMPORTANT**: When users mention your name, they are addressing YOU (the character), not referring to the literal meaning of your name.\n\n"
                     f"🎯 **CURRENT USER IDENTIFICATION** 🎯\n"

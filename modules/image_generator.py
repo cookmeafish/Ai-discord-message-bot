@@ -190,10 +190,17 @@ class ImageGenerator:
                 database_context.append(provided_context)
                 print(f"Image Generator: Using provided database context: {provided_context[:200]}...")
 
+            # CRITICAL FIX: For simple generic subjects (1-2 words without specific names),
+            # SKIP conversation context entirely to prevent contamination
+            # Common generic subjects should NOT be influenced by random conversation
+            subject_word_count = len(subject.split())
+            is_simple_subject = subject_word_count <= 3 and not provided_context
+
             # Gather context from short-term memory (recent conversation)
+            # BUT ONLY for complex subjects or when we have database context
             subject_words = [word.lower() for word in subject.split() if len(word) > 2]
             conversation_context = []
-            if short_term_memory and subject_words:
+            if short_term_memory and subject_words and not is_simple_subject:
                 print(f"Image Generator: Checking {len(short_term_memory)} recent messages for context")
                 # Check last 20 messages for descriptions of the subject
                 for msg_dict in short_term_memory[-20:]:
@@ -206,6 +213,8 @@ class ImageGenerator:
                         if any(verb in msg_content_lower for verb in [' is ', ' are ', ' was ', ' were ', ' has ', ' have ']):
                             conversation_context.append(msg_content)
                             print(f"Image Generator: Found conversation context: {msg_content[:100]}")
+            elif is_simple_subject:
+                print(f"Image Generator: SKIPPING conversation context for simple subject '{subject}' to prevent contamination")
 
             # Build the AI prompt to enhance the description
             context_parts = []
@@ -346,54 +355,37 @@ Create a detailed, visual description using ONLY the database facts provided:
 **Your visual description:**"""
             else:
                 # No specific database person facts - can use full generic knowledge
-                enhancement_prompt = f"""You are helping to create a detailed visual description for an image generation AI.
+                enhancement_prompt = f"""🚨🚨🚨 CRITICAL: THE SUBJECT IS "{subject.upper()}" - DESCRIBE THIS EXACT THING 🚨🚨🚨
 
-**Subject to draw:** {subject}
+You MUST describe: "{subject}"
+You MUST NOT describe anything else.
 
-**Available context:**
+**Task:** Create a visual description of "{subject}" for an image generation AI.
+
+**IGNORE any "Available context" below if it doesn't match the subject "{subject}":**
 {combined_context}
 
-**Task:**
-Create a detailed, visual description of "{subject}" using ALL available knowledge:
-1. **USE YOUR FULL KNOWLEDGE** - If this is a famous person, celebrity, politician, character, etc., use everything you know about their appearance
-2. Any database/conversation facts above (if provided) can supplement your knowledge
-3. Provide specific visual details that would help an image AI draw accurately
+⚠️ ABSOLUTE RULES - FAILURE TO FOLLOW = IMMEDIATE REJECTION:
+1. **DESCRIBE ONLY "{subject}"** - Nothing else. If subject is "a hand", describe A HUMAN HAND.
+2. **IGNORE IRRELEVANT CONTEXT** - If conversation context doesn't match "{subject}", IGNORE IT COMPLETELY.
+3. **NO SUBSTITUTION** - "hand" = human hand, "sombrero" = Mexican sombrero, "dragon" = dragon
+4. **NO ADDING PEOPLE** - Unless "{subject}" explicitly mentions people, DO NOT ADD THEM
+5. **NO SCENES** - Unless "{subject}" mentions a scene, just describe the object/subject itself
 
-**CRITICAL - LITERAL INTERPRETATION REQUIRED:**
-- **BE 100% LITERAL** - If user says "sombrero", describe a TRADITIONAL MEXICAN SOMBRERO (wide brim, tall crown, straw/felt), NOT a baseball cap or any other hat type
-- **DO NOT SUBSTITUTE** - Never replace the subject with something similar but different
-- **PRESERVE THE SUBJECT** - "dragon" = dragon, "sombrero" = Mexican sombrero, "katana" = Japanese sword
-- **ADD DETAILS, NOT CHANGES** - Enhance with visual details, but keep the fundamental subject EXACTLY as requested
+**What to include:**
+- Physical appearance of "{subject}"
+- Colors, textures, materials relevant to "{subject}"
+- Visual details that help an AI draw "{subject}" accurately
 
-**ABSOLUTE RULES - VIOLATIONS WILL BE REJECTED:**
-- **NO PEOPLE** - Never add humans, chefs, handlers, characters unless EXPLICITLY in the subject
-- **NO SCENES** - Never add kitchens, backgrounds, forests, rooms unless EXPLICITLY requested
-- **NO CREATIVITY** - Only describe what's in the subject, nothing more
-- **NO SUBSTITUTION** - "sombrero" = wide-brimmed Mexican hat (NOT baseball cap, NOT trucker hat, NOT any other hat)
-- If subject is "an ice turtle" → describe ONLY the turtle
-- If subject is "a dragon" → describe ONLY the dragon
-- If subject is "a sombrero" → describe a TRADITIONAL MEXICAN SOMBRERO with wide brim
+**What NOT to include:**
+- Anything not directly related to "{subject}"
+- People (unless "{subject}" mentions people)
+- Backgrounds or scenes (unless requested)
+- Anything from conversation context that doesn't match "{subject}"
 
-**Requirements:**
-- **If this is a real person you know about** (politician, celebrity, historical figure, etc.): Describe their actual appearance in detail
-- **If this is a character from media** (anime, game, movie, etc.): Use your knowledge of that character's design
-- **If this is a generic subject** (dragon, house, tree, hat, etc.): Use the TRADITIONAL/TYPICAL form of that subject
-- Focus on VISUAL details only (appearance, colors, materials, style, physical features)
-- Be specific and detailed (not vague)
-- Keep it under 100 words
-- Don't mention "database", "conversation", or "knowledge" - just provide the description naturally
-- **CONTENT SAFETY**: Avoid words like "muscular", "bare", "naked", "revealing", "body" - keep descriptions PG-rated
+**Keep it under 100 words. Focus ONLY on "{subject}".**
 
-**Example output for famous person:**
-"A woman in her late 50s with shoulder-length dark brown hair, warm brown eyes, professional attire typically consisting of tailored pantsuits in navy or black, pearl necklace, confident smile"
-
-**Example output for generic subject (sombrero):**
-"A traditional Mexican sombrero with an extra-wide circular brim, tall conical crown, made of woven straw with colorful embroidered patterns along the brim edge, decorative tassels hanging from the rim"
-
-**Example output for generic subject (dragon):**
-"A large red dragon with golden eyes, massive wings spread wide, sharp talons, scales reflecting light, smoke curling from nostrils"
-
-**Your visual description:**"""
+Your description of "{subject}":"""
 
             print("Image Generator: Consulting GPT-4 for enhanced description...")
 

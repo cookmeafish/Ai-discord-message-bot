@@ -370,7 +370,10 @@ Do NOT explain why you're talking. Just jump in naturally."""
             )
 
             if response:
-                await interaction.followup.send(f"**[Test Event - {event_type}]**\n{response}")
+                # Send as a regular channel message (not followup) so it looks natural
+                await interaction.channel.send(response)
+                # Confirm to admin privately
+                await interaction.followup.send(f"Event triggered successfully ({event_type})", ephemeral=True)
             else:
                 await interaction.followup.send("Failed to generate event response.", ephemeral=True)
 
