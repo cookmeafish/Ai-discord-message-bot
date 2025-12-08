@@ -192,50 +192,54 @@ USER FEEDBACK: "{changes_requested}"
 
 **YOUR TASK: Analyze both the original prompt and the user's feedback to understand their intent.**
 
-Ask yourself: Is the user trying to REPLACE something, or MODIFY/ADD to it?
+Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
+
+**REMOVAL** = User wants to DELETE/REMOVE something from the image
+- Keywords: "remove", "get rid of", "no", "without", "delete", "take away", "no girlies", "no girl", "no man"
+- Action: COMPLETELY DELETE the unwanted element from the prompt
+- DO NOT substitute with something else - just remove it entirely
+- Example: "a couple at coffee" + "remove the girl" = "a person at a coffee shop" (girl is GONE, not replaced with a man)
+- Example: "two men fighting" + "no fighting" = "two men standing" (action removed)
 
 **REPLACEMENT** = User wants a DIFFERENT subject entirely
 - The new thing is a DIFFERENT CATEGORY/TYPE than the original
-- Example: taco → quesadilla (different food), dragon → phoenix (different creature), cat → dog (different animal)
-- Action: Swap out the old subject completely, preserve all surrounding context (actions, other elements, setting)
+- Example: taco → quesadilla (different food), dragon → phoenix (different creature)
+- Action: Swap out the old subject completely, preserve surrounding context
 
 **MODIFICATION** = User wants to CHANGE PROPERTIES of the existing subject
 - The subject stays the same, but gains new attributes
-- Example: dragon → blue dragon (same creature, new color), food → food on fire (same food, new state)
+- Example: dragon → blue dragon (same creature, new color)
 - Action: Keep the subject, add/change only the requested property
 
 **ADDING A PERSON** = User wants to add someone to the scene
 - If person descriptions are provided above, USE THEM in the modified prompt
-- DON'T just say "a person" or "someone" - describe them with the details given
-- **CRITICAL: PUT THE PERSON FIRST** - Image AI focuses on whatever appears first in the prompt
-- The person should be the PRIMARY subject, with the object as secondary
-- Keep person description SHORT (max 30 words) - just key visual features
+- **CRITICAL: PUT THE PERSON FIRST** - Image AI focuses on whatever appears first
+- Keep person description SHORT (max 30 words)
 
-**EXAMPLES:**
+**CRITICAL REMOVAL EXAMPLES:**
 
-Original: "a taco with dogs surrounding it"
-Feedback: "make it a quesadilla"
-Analysis: REPLACEMENT
-New Prompt: "a quesadilla with dogs surrounding it"
+Original: "a handsome couple enjoying coffee at a cafe"
+Feedback: "remove the girl" or "no girlies"
+Analysis: REMOVAL - delete the girl entirely
+New Prompt: "a handsome man enjoying coffee at a cafe"
+WRONG: "two handsome men at a cafe" (this REPLACED instead of REMOVED)
 
-Original: "a chocolate milkshake in a glass"
-Feedback: "add Alice drinking it"
-(Alice: tall, red hair, green eyes, freckles)
-Analysis: ADDING PERSON → Put person FIRST, keep description SHORT
-New Prompt: "A tall person with red hair, green eyes, and freckles, drinking a chocolate milkshake in a glass"
+Original: "two people at a restaurant"
+Feedback: "no girl"
+Analysis: REMOVAL - delete the female
+New Prompt: "a man at a restaurant"
+WRONG: "two men at a restaurant" (this added a man instead of removing)
 
-Original: "a cow standing in a field"
-Feedback: "add Bob petting the cow"
-(Bob: short, brown hair, glasses, beard)
-Analysis: ADDING PERSON → Put person FIRST
-New Prompt: "A short person with brown hair, glasses, and a beard, petting a cow in a field"
+Original: "a cat and dog playing"
+Feedback: "remove the dog"
+Analysis: REMOVAL - delete the dog
+New Prompt: "a cat playing"
 
 **ABSOLUTE RULES:**
-1. **PERSON FIRST** - When adding a person, they become the PRIMARY subject (appear first in prompt)
-2. **SHORT DESCRIPTIONS** - Keep person description to 20-30 words max (key visual features only)
-3. **NEVER CREATE HYBRIDS** - If replacing, fully replace
-4. **PRESERVE OBJECTS** - Keep the original object but as secondary to the person
-5. **NO CREATIVITY** - Don't add anything the user didn't ask for
+1. **REMOVAL ≠ REPLACEMENT** - "Remove X" means DELETE X, not substitute X with Y
+2. **COUNT MATTERS** - "Remove the girl from couple" = ONE person left, not two
+3. **PERSON FIRST** - When adding a person, they appear first in prompt
+4. **NO CREATIVITY** - Don't add anything the user didn't ask for
 
 Return ONLY the modified prompt (no explanations, no quotes)."""
 

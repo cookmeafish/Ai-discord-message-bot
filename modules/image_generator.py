@@ -355,37 +355,38 @@ Create a detailed, visual description using ONLY the database facts provided:
 **Your visual description:**"""
             else:
                 # No specific database person facts - can use full generic knowledge
-                enhancement_prompt = f"""🚨🚨🚨 CRITICAL: THE SUBJECT IS "{subject.upper()}" - DESCRIBE THIS EXACT THING 🚨🚨🚨
+                enhancement_prompt = f"""🚨🚨🚨 CRITICAL: DESCRIBE ONLY "{subject}" - NOTHING ELSE 🚨🚨🚨
 
-You MUST describe: "{subject}"
-You MUST NOT describe anything else.
+**SUBJECT TO DRAW:** "{subject}"
 
-**Task:** Create a visual description of "{subject}" for an image generation AI.
+⚠️ ABSOLUTE RULES - VIOLATION = REJECTED:
+1. **ONE SUBJECT ONLY** - If user asks for "{subject}", describe ONLY that ONE thing
+2. **NO EXTRA PEOPLE** - NEVER add romantic partners, companions, friends, couples, etc.
+3. **NO EXTRA SCENES** - Don't add coffee shops, restaurants, dates, or any setting not requested
+4. **NO ROMANTIC CONTEXT** - "handsome" means ATTRACTIVE APPEARANCE, not "on a date with someone"
+5. **LITERAL INTERPRETATION** - "draw X handsomely" = draw X looking attractive, ALONE
 
-**IGNORE any "Available context" below if it doesn't match the subject "{subject}":**
-{combined_context}
+**WHAT "HANDSOMELY/BEAUTIFULLY" MEANS:**
+- It describes HOW to draw the subject (attractively)
+- It does NOT mean "add a romantic partner" or "put them on a date"
+- Example: "draw Alice handsomely" = Alice looking handsome, ALONE, not Alice with a partner
 
-⚠️ ABSOLUTE RULES - FAILURE TO FOLLOW = IMMEDIATE REJECTION:
-1. **DESCRIBE ONLY "{subject}"** - Nothing else. If subject is "a hand", describe A HUMAN HAND.
-2. **IGNORE IRRELEVANT CONTEXT** - If conversation context doesn't match "{subject}", IGNORE IT COMPLETELY.
-3. **NO SUBSTITUTION** - "hand" = human hand, "sombrero" = Mexican sombrero, "dragon" = dragon
-4. **NO ADDING PEOPLE** - Unless "{subject}" explicitly mentions people, DO NOT ADD THEM
-5. **NO SCENES** - Unless "{subject}" mentions a scene, just describe the object/subject itself
+**WHAT TO INCLUDE:**
+- Physical appearance of "{subject}" ONLY
+- If subject is a PERSON: face, hair, clothing, expression, pose
+- If subject is an OBJECT: colors, textures, materials
+- Style/mood requested (handsome, cute, scary, etc.)
 
-**What to include:**
-- Physical appearance of "{subject}"
-- Colors, textures, materials relevant to "{subject}"
-- Visual details that help an AI draw "{subject}" accurately
+**WHAT TO NEVER INCLUDE:**
+❌ Additional people not mentioned in "{subject}"
+❌ Romantic partners, couples, companions
+❌ Coffee shops, restaurants, date scenes
+❌ Any scene, background, or setting not explicitly requested
+❌ Anything beyond what the user literally asked for
 
-**What NOT to include:**
-- Anything not directly related to "{subject}"
-- People (unless "{subject}" mentions people)
-- Backgrounds or scenes (unless requested)
-- Anything from conversation context that doesn't match "{subject}"
+**OUTPUT:** A description of "{subject}" ALONE (under 80 words).
 
-**Keep it under 100 words. Focus ONLY on "{subject}".**
-
-Your description of "{subject}":"""
+Your description:"""
 
             print("Image Generator: Consulting GPT-4 for enhanced description...")
 
