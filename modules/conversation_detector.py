@@ -136,26 +136,39 @@ Latest message (from {current_user}): "{current_message}"
 
 **ANALYZE THE CONTEXT CAREFULLY.**
 
+**=== IMPORTANT RULES ===**
+1. If message starts with ANOTHER USER'S NAME → Score 0.0 (talking to someone else)
+2. If message is a simple reaction with no engagement → Score 0.0
+3. Indirect mentions of the bot (third person) only score 0.7 if they INVITE a response
+
 **=== SCORE 0.0 - DO NOT RESPOND ===**
 - Message starts with ANOTHER USER'S NAME (e.g., "yo mike", "hey sarah", "alex you wanna...")
 - User is clearly talking to someone else (not the bot)
-- Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it"
+- Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
+- Indirect mentions that are just observations (not inviting response):
+  - "lol she's weird" (just commenting)
+  - "the bot is broken" (complaint, not engagement)
+  - "he's funny" (observation to others)
+
+**=== SCORE 0.7 - INDIRECT MENTION (MAYBE RESPOND) ===**
+- User talks ABOUT the bot in third person AND seems to invite a response:
+  - "What do you think, {bot_name}?" (directly asking)
+  - "I wonder what she thinks about this" (inviting input)
+  - "Looks like someone has opinions" (playful, expecting reaction)
+  - Rhetorical questions about the bot that expect engagement
+- Only score 0.7 if the indirect mention IMPLIES they want the bot to respond
 
 **=== SCORE 0.8-1.0 - SHOULD RESPOND ===**
-- Message contains "{bot_name}" or "fish" or "dr"
-- User JUST had an exchange with the bot (bot's last message was to this user) AND user is now asking a question or continuing
+- Message contains "{bot_name}" directly addressed
+- User JUST had an exchange with the bot AND is continuing the conversation
 - User says "you" and the bot was the last one they talked to
 - Direct question with no other person mentioned as the target
 
-**=== SCORE 0.3-0.6 - MAYBE RESPOND ===**
-- Ambiguous who the message is for
-- Could be for bot or others
+**=== SCORE 0.3-0.5 - AMBIGUOUS ===**
+- Could be for bot or others, unclear intent
 
 **KEY CONTEXT RULE:**
-Look at who the user was JUST talking to. If their previous message was to the bot and bot responded, then their next message is LIKELY still directed at the bot (score 0.8+), UNLESS they explicitly address someone else by name.
-
-Example: User says "yo dr fish" → Bot says "Hey" → User says "you wanna play?" = Score 0.9 (continuing conversation with bot)
-Example: User says "yo dr fish" → Bot says "Hey" → User says "yo mike wanna play?" = Score 0.0 (now talking to mike)
+Look at who the user was JUST talking to. If their previous message was to the bot and bot responded, their next message is LIKELY still directed at the bot (score 0.8+), UNLESS they explicitly address someone else.
 
 Return ONLY a single number between 0.0 and 1.0. No explanations."""
 
