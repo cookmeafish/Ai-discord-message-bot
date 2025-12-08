@@ -90,10 +90,13 @@ Example of topic change (NOT a refinement):
 ✅ Gender corrections: "she is a girl", "he's a boy", "they're female", "make them male", "wrong gender"
 ✅ Additions: "also add...", "can you include...", "with a sword too"
 ✅ Modifications: "make it bigger", "change the color to...", "make it hold..."
+✅ **Adding actions**: "make her eat", "have him hold", "make them do X", "eating a Y"
 ✅ Removals: "remove the...", "get rid of...", "no background", "without the..."
 ✅ Add subject interacting with image: "make a gorilla drink that", "have a cat eat it"
 ✅ References to "that/it/the" about the IMAGE: "make X do Y with that", "add X to it"
 ✅ Simple statements about the subject: "she is X", "he has Y", "it should be Z" (these are CORRECTIONS)
+
+**IMPORTANT - Mixed messages**: If the message starts with casual reaction ("omg so cute", "wow nice") but THEN includes a refinement request ("make her eat X", "add a Y"), it IS a refinement! Focus on the REQUEST part, ignore the reaction part.
 
 **NOT a refinement request**:
 ❌ Response to bot's text message (not the image)
@@ -218,6 +221,13 @@ Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
 - Example: dragon → blue dragon (same creature, new color)
 - Action: Keep the subject, add/change only the requested property
 
+**ADDING AN ACTION** = User wants the existing subject to DO something
+- Keywords: "make them", "make her", "make him", "have them", "eating", "holding", "wearing", "doing"
+- **CRITICAL**: KEEP the existing subject description EXACTLY, just add the action
+- The CHARACTER must remain the same - don't generate a different person!
+- Example: "girl in red dress" + "make her eat a shoe" = "girl in red dress eating a shoe"
+- Example: "knight in armor" + "have him hold a flower" = "knight in armor holding a flower"
+
 **ADDING A PERSON** = User wants to add someone to the scene
 - If person descriptions are provided above, USE THEM in the modified prompt
 - **CRITICAL: PUT THE PERSON FIRST** - Image AI focuses on whatever appears first
@@ -239,13 +249,25 @@ WRONG: "a tower" (kept building, removed person - BACKWARDS!)
 
 **KEY PRINCIPLE**: PERSON/CHARACTER is almost always the main subject. Background elements (waterfalls, buildings, scenery) are NOT the main subject.
 
+**ADDING ACTION EXAMPLES:**
+
+Original: "a cute girl in red dress with brown hair"
+Feedback: "make her eat a shoe"
+Analysis: ADDING ACTION - keep the girl, add action
+New Prompt: "a cute girl in red dress with brown hair eating a shoe"
+WRONG: "a person eating a shoe" (lost the character description!)
+WRONG: "a man eating food" (changed the character entirely!)
+
+Original: "a warrior in golden armor"
+Feedback: "have him ride a dragon"
+Analysis: ADDING ACTION - keep the warrior, add action
+New Prompt: "a warrior in golden armor riding a dragon"
+
 **ABSOLUTE RULES:**
-1. **PRESERVE MAIN SUBJECT** - When removing something, the main subject (person, character) MUST remain
-2. **REMOVAL ≠ REPLACEMENT** - "Remove X" means DELETE X, not substitute X with Y
-3. **REMOVAL ≠ COMPLETE CHANGE** - "Remove the house" does NOT mean "draw something completely different"
-4. **COUNT MATTERS** - "Remove the girl from couple" = ONE person left, not two
-5. **PERSON FIRST** - When adding a person, they appear first in prompt
-6. **NO CREATIVITY** - Don't add anything the user didn't ask for
+1. **PRESERVE CHARACTER IDENTITY** - The CHARACTER (appearance, clothing, gender) MUST stay EXACTLY the same
+2. **PRESERVE MAIN SUBJECT** - When removing backgrounds, the main subject (person, character) MUST remain
+3. **REMOVAL ≠ REPLACEMENT** - "Remove X" means DELETE X, not substitute X with Y
+4. **NO CREATIVITY** - Don't add anything the user didn't ask for
 
 Return ONLY the modified prompt (no explanations, no quotes)."""
 
