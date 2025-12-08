@@ -87,14 +87,17 @@ Example of topic change (NOT a refinement):
 
 **Indicators of refinement request** (ONLY if topic hasn't changed):
 ✅ Corrections: "no, I said...", "you forgot the...", "it's missing..."
-✅ Gender corrections: "she is a girl", "he's a boy", "they're female", "make them male", "wrong gender"
+✅ Gender corrections (ALWAYS a refinement if image was just generated):
+   - "she is a girl", "he's a boy", "they're female", "make them male", "wrong gender"
+   - "PersonName is a girl", "PersonName is a boy", "PersonName is female/male"
+   - Just stating gender = user wants it fixed in the image!
 ✅ Additions: "also add...", "can you include...", "with a sword too"
 ✅ Modifications: "make it bigger", "change the color to...", "make it hold..."
 ✅ **Adding actions**: "make her eat", "have him hold", "make them do X", "eating a Y"
 ✅ Removals: "remove the...", "get rid of...", "no background", "without the..."
 ✅ Add subject interacting with image: "make a gorilla drink that", "have a cat eat it"
 ✅ References to "that/it/the" about the IMAGE: "make X do Y with that", "add X to it"
-✅ Simple statements about the subject: "she is X", "he has Y", "it should be Z" (these are CORRECTIONS)
+✅ Simple statements about the subject: "she is X", "he has Y", "PersonName is X" (these are CORRECTIONS)
 
 **IMPORTANT - Mixed messages**: If the message starts with casual reaction ("omg so cute", "wow nice") but THEN includes a refinement request ("make her eat X", "add a Y"), it IS a refinement! Focus on the REQUEST part, ignore the reaction part.
 
