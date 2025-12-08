@@ -56,6 +56,38 @@ class ConversationDetector:
         # Check if bot's last message was a question - if so, user is likely answering
         bot_asked_question = self._did_bot_ask_question(recent_messages, bot_id, current_message.author.id)
         if bot_asked_question:
+            # BUT FIRST: Check if message is clearly addressing someone else
+            current_content_lower = current_message.content.lower().strip()
+
+            # Extract other usernames from conversation history (excluding bot and current user)
+            other_usernames = set()
+            for msg in recent_messages:
+                nickname = msg.get('nickname', '')
+                author_id = msg.get('author_id', '')
+                if nickname and str(author_id) != str(bot_id) and str(author_id) != str(current_message.author.id):
+                    # Add full name and first word of name (for partial matches)
+                    other_usernames.add(nickname.lower())
+                    first_word = nickname.lower().split()[0] if nickname.split() else ''
+                    if first_word and len(first_word) > 2:  # Avoid matching tiny words
+                        other_usernames.add(first_word)
+
+            # Check if message starts with greeting + another user's name
+            greeting_prefixes = ['yo ', 'hey ', 'hi ', 'hello ', 'sup ', 'ay ', 'ayo ']
+            for prefix in greeting_prefixes:
+                if current_content_lower.startswith(prefix):
+                    rest_of_msg = current_content_lower[len(prefix):].split()[0] if current_content_lower[len(prefix):].split() else ''
+                    if rest_of_msg in other_usernames:
+                        print(f"🚫 Bot asked a question BUT message starts with greeting to another user '{rest_of_msg}' - NOT responding")
+                        print(f"{'='*80}\n")
+                        return False
+
+            # Also check if message is JUST another user's name or starts with it
+            first_word = current_content_lower.split()[0] if current_content_lower.split() else ''
+            if first_word in other_usernames:
+                print(f"🚫 Bot asked a question BUT message starts with another user's name '{first_word}' - NOT responding")
+                print(f"{'='*80}\n")
+                return False
+
             print(f"🔔 Bot's last message to this user was a question - auto-responding")
             print(f"{'='*80}\n")
             return True
