@@ -189,7 +189,7 @@ class AIHandler:
 
         return self.formatter.format_actions(text, enable_formatting)
 
-    def _build_bot_identity_prompt(self, db_manager, channel_config, include_temporal=False):
+    def _build_bot_identity_prompt(self, db_manager, channel_config, include_temporal=False, minimal=False):
         """
         Builds a comprehensive prompt section about the bot's identity from the database.
         Returns a formatted string with traits, lore, and facts.
@@ -198,12 +198,13 @@ class AIHandler:
             db_manager: Server-specific database manager
             channel_config: Channel configuration for personality mode settings
             include_temporal: Whether to include current date/time (only when relevant)
+            minimal: If True, only include traits (for tone) - exclude lore/facts for simple greetings
         """
 
         # Get all bot identity entries from database
         traits = db_manager.get_bot_identity("trait")
-        lore = db_manager.get_bot_identity("lore")
-        facts = db_manager.get_bot_identity("fact")
+        lore = db_manager.get_bot_identity("lore") if not minimal else []
+        facts = db_manager.get_bot_identity("fact") if not minimal else []
 
         identity_prompt = "=== YOUR IDENTITY (INTERNAL CONTEXT - NOT TALKING POINTS) ===\n"
         identity_prompt += "The following is your INTERNAL self-knowledge. It shapes WHO YOU ARE, not WHAT YOU SAY.\n"
@@ -1801,8 +1802,21 @@ Examples:
         if needs_temporal:
             print(f"AI Handler: Temporal context ENABLED for this message")
 
+        # Detect simple greetings - these get minimal identity (no lore dump)
+        content_lower = actual_content.lower().strip()
+        simple_greeting_patterns = [
+            'how are you', 'how r u', 'how ru', 'hru', 'how you doing',
+            "what's up", 'whats up', 'wassup', 'sup', "how's it going",
+            'hows it going', 'how are things', 'how ya doing', 'howdy',
+            'what is up', 'how have you been', 'how u been'
+        ]
+        is_simple_greeting = any(pattern in content_lower for pattern in simple_greeting_patterns)
+        if is_simple_greeting:
+            print(f"AI Handler: Simple greeting detected - using minimal identity (no lore)")
+
         # Build bot identity from database (include date/time only when relevant)
-        identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config, include_temporal=needs_temporal)
+        # Use minimal identity for simple greetings to prevent lore dumps
+        identity_prompt = self._build_bot_identity_prompt(db_manager, personality_config, include_temporal=needs_temporal, minimal=is_simple_greeting)
 
         # Calculate conversation energy for dynamic response length (MUST be done before building relationship context)
         bot_id = channel.guild.me.id
