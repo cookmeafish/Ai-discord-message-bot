@@ -53,44 +53,10 @@ class ConversationDetector:
             print(f"{'='*80}\n")
             return False
 
-        # Check if bot's last message was a question - if so, user is likely answering
+        # Check if bot's last message was a question (used as context hint for AI)
         bot_asked_question = self._did_bot_ask_question(recent_messages, bot_id, current_message.author.id)
         if bot_asked_question:
-            # BUT FIRST: Check if message is clearly addressing someone else
-            current_content_lower = current_message.content.lower().strip()
-
-            # Extract other usernames from conversation history (excluding bot and current user)
-            other_usernames = set()
-            for msg in recent_messages:
-                nickname = msg.get('nickname', '')
-                author_id = msg.get('author_id', '')
-                if nickname and str(author_id) != str(bot_id) and str(author_id) != str(current_message.author.id):
-                    # Add full name and first word of name (for partial matches)
-                    other_usernames.add(nickname.lower())
-                    first_word = nickname.lower().split()[0] if nickname.split() else ''
-                    if first_word and len(first_word) > 2:  # Avoid matching tiny words
-                        other_usernames.add(first_word)
-
-            # Check if message starts with greeting + another user's name
-            greeting_prefixes = ['yo ', 'hey ', 'hi ', 'hello ', 'sup ', 'ay ', 'ayo ']
-            for prefix in greeting_prefixes:
-                if current_content_lower.startswith(prefix):
-                    rest_of_msg = current_content_lower[len(prefix):].split()[0] if current_content_lower[len(prefix):].split() else ''
-                    if rest_of_msg in other_usernames:
-                        print(f"🚫 Bot asked a question BUT message starts with greeting to another user '{rest_of_msg}' - NOT responding")
-                        print(f"{'='*80}\n")
-                        return False
-
-            # Also check if message is JUST another user's name or starts with it
-            first_word = current_content_lower.split()[0] if current_content_lower.split() else ''
-            if first_word in other_usernames:
-                print(f"🚫 Bot asked a question BUT message starts with another user's name '{first_word}' - NOT responding")
-                print(f"{'='*80}\n")
-                return False
-
-            print(f"🔔 Bot's last message to this user was a question - auto-responding")
-            print(f"{'='*80}\n")
-            return True
+            print(f"📝 Note: Bot's last message was a question - will factor into AI analysis")
 
         # Format conversation history for AI analysis
         context = self._format_conversation_history(recent_messages, bot_id, bot_name)
@@ -101,8 +67,8 @@ class ConversationDetector:
         current_user = current_message.author.display_name if hasattr(current_message.author, 'display_name') else current_message.author.name
         current_content = current_message.content
 
-        # Call GPT-4o-mini for classification
-        score = await self._classify_message_target(context, current_user, current_content, bot_name)
+        # Call GPT-4o-mini for classification (pass whether bot asked a question as context)
+        score = await self._classify_message_target(context, current_user, current_content, bot_name, bot_asked_question)
 
         # Log decision for debugging
         should_respond = score >= threshold
@@ -146,7 +112,7 @@ class ConversationDetector:
 
         return "\n".join(formatted_lines)
 
-    async def _classify_message_target(self, conversation_history, current_user, current_message, bot_name):
+    async def _classify_message_target(self, conversation_history, current_user, current_message, bot_name, bot_asked_question=False):
         """
         Uses GPT-4o-mini to classify if the message is directed at the bot.
 
@@ -155,18 +121,32 @@ class ConversationDetector:
             current_user: Name of user who sent current message
             current_message: Content of current message
             bot_name: Bot's display name
+            bot_asked_question: Whether bot's last message was a question
 
         Returns:
             float: Confidence score (0.0-1.0) that message is directed at bot
         """
+        # Add context about bot asking a question
+        question_context = ""
+        if bot_asked_question:
+            question_context = f"""
+**CONTEXT: The bot's last message ended with a question mark.**
+This MIGHT mean the user is answering the bot's question - BUT ONLY if the message is actually a response to that question.
+If the message is clearly addressing someone ELSE (contains another user's name, greeting to someone else), then it's NOT answering the bot's question.
+"""
+
         system_prompt = f"""You are analyzing a Discord conversation to determine if the latest message warrants a response from a bot named "{bot_name}".
 
 Recent conversation history:
 {conversation_history}
 
 Latest message (from {current_user}): "{current_message}"
-
+{question_context}
 **ANALYZE THE CONTEXT CAREFULLY.**
+
+**CRITICAL FIRST CHECK - SCAN FOR OTHER USERNAMES:**
+Look at EVERY name that appears before ":" in the conversation history. Those are REAL USERS in this chat.
+If the latest message contains ANY word that matches or partially matches one of those usernames → Score 0.0 immediately.
 
 **IMPORTANT RULES:**
 1. If message starts with ANOTHER USER'S NAME → Score 0.0 (talking to someone else)
@@ -198,15 +178,15 @@ Latest message (from {current_user}): "{current_message}"
 
 **=== SCORE 0.8-1.0 - SHOULD RESPOND ===**
 - Message contains "{bot_name}" directly addressed
-- User JUST had an exchange with the bot AND is continuing the conversation
-- User says "you" and the bot was the last one they talked to
+- User JUST had an exchange with the bot AND is continuing the conversation AND message doesn't address someone else
+- User says "you" and the bot was the last one they talked to AND no other user's name in message
 - Direct question with no other person mentioned as the target
 
 **=== SCORE 0.3-0.5 - AMBIGUOUS ===**
 - Could be for bot or others, unclear intent
 
 **KEY CONTEXT RULE:**
-Look at who the user was JUST talking to. If their previous message was to the bot and bot responded, their next message is LIKELY still directed at the bot (score 0.8+), UNLESS they explicitly address someone else.
+Look at who the user was JUST talking to. If their previous message was to the bot and bot responded, their next message is LIKELY still directed at the bot (score 0.8+), UNLESS they explicitly address someone else by name.
 
 Return ONLY a single number between 0.0 and 1.0. No explanations."""
 

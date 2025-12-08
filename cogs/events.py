@@ -419,6 +419,43 @@ class EventsCog(commands.Cog):
 
         was_directed_at_bot = is_mentioned or is_reply_to_bot or bot_name_mentioned
 
+        # OVERRIDE: Even if reply to bot, check if message is clearly addressing another user
+        # This prevents bot from responding to "yo [other_user]" even when replying to bot's message
+        if was_directed_at_bot and not is_mentioned:
+            content_lower = message.content.lower().strip()
+            greeting_prefixes = ['yo ', 'hey ', 'hi ', 'hello ', 'sup ', 'ay ', 'ayo ']
+
+            # Get other usernames from recent messages
+            try:
+                recent_msgs = db_manager.get_short_term_memory()[-20:]
+                other_usernames = set()
+                for msg in recent_msgs:
+                    nickname = msg.get('nickname', '')
+                    author_id = msg.get('author_id', '')
+                    if nickname and str(author_id) != str(self.bot.user.id) and str(author_id) != str(message.author.id):
+                        other_usernames.add(nickname.lower())
+                        first_word = nickname.lower().split()[0] if nickname.split() else ''
+                        if first_word and len(first_word) > 2:
+                            other_usernames.add(first_word)
+
+                # Check if message starts with greeting + another user's name
+                for prefix in greeting_prefixes:
+                    if content_lower.startswith(prefix):
+                        rest = content_lower[len(prefix):].split()[0] if content_lower[len(prefix):].split() else ''
+                        if rest in other_usernames:
+                            self.logger.info(f"OVERRIDE: Message starts with greeting to another user '{rest}' - not responding")
+                            was_directed_at_bot = False
+                            break
+
+                # Also check if first word is another user's name
+                if was_directed_at_bot:
+                    first_word = content_lower.split()[0] if content_lower.split() else ''
+                    if first_word in other_usernames:
+                        self.logger.info(f"OVERRIDE: Message starts with another user's name '{first_word}' - not responding")
+                        was_directed_at_bot = False
+            except Exception as e:
+                self.logger.debug(f"Could not check for other usernames: {e}")
+
         # Only log and respond to messages from active channels
         # (but bot still has access to ALL historical data when responding)
         if not is_active_channel:
