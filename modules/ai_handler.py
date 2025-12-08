@@ -417,7 +417,6 @@ class AIHandler:
             String containing server info, or empty string if not enabled
         """
         import os
-        import re
 
         # Check if server info is enabled for this channel
         if not channel_config.get('use_server_info', False):
@@ -1572,7 +1571,6 @@ Examples:
                             if member.bot:
                                 continue
                             # Use word boundary matching to prevent partial name matches (e.g., "bob" shouldn't match "bobby")
-                            import re
                             member_display_lower = member.display_name.lower()
                             member_name_lower = member.name.lower()
                             if (re.search(r'\b' + re.escape(subject_lower) + r'\b', member_display_lower) or
@@ -2198,7 +2196,6 @@ Examples:
                                                 if phrase in fact_text:
                                                     pattern_pos = fact_text.find(phrase)
                                                     text_after_pattern = fact_text[pattern_pos + len(phrase):]
-                                                    import re
                                                     # Check if any potential name appears after the pattern
                                                     matched_name = None
                                                     for name in potential_names:
@@ -3042,7 +3039,6 @@ Respond with ONLY the fact ID number or "NONE".
                         member_name_lower = member.name.lower()
 
                         # Check display name and username (exact word match)
-                        import re
                         display_match = any(re.search(r'\b' + re.escape(name) + r'\b', member_display_lower) for name in potential_names)
                         username_match = any(re.search(r'\b' + re.escape(name) + r'\b', member_name_lower) for name in potential_names)
 
