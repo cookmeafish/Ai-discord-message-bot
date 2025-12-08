@@ -135,69 +135,40 @@ This MIGHT mean the user is answering the bot's question - BUT ONLY if the messa
 If the message is clearly addressing someone ELSE (contains another user's name, greeting to someone else), then it's NOT answering the bot's question.
 """
 
-        system_prompt = f"""You are analyzing a Discord conversation to determine if the latest message warrants a response from a bot named "{bot_name}".
+        system_prompt = f"""You are analyzing a Discord conversation to determine if the latest message is directed at a bot named "{bot_name}".
 
 Recent conversation history:
 {conversation_history}
 
 Latest message (from {current_user}): "{current_message}"
 {question_context}
-**ANALYZE THE CONTEXT CAREFULLY.**
+**YOUR TASK:** Read the conversation naturally and determine WHO the user is talking to.
 
-**CRITICAL FIRST CHECK - SCAN FOR OTHER USERNAMES:**
-Look at EVERY name that appears before ":" in the conversation history. Those are REAL USERS in this chat.
-If the latest message contains ANY word that matches or partially matches one of those usernames → Score 0.0 immediately.
+**UNDERSTAND THE CONVERSATION FLOW:**
+- Look at the names before ":" in the history - those are real users in this chat
+- Track who {current_user} has been talking to in their recent messages
+- If they started a conversation with another user, their follow-up messages are likely STILL for that person
+- Messages like greetings, questions, or well-wishes that come AFTER addressing someone are part of that same conversation
 
-**CRITICAL SECOND CHECK - CONVERSATION FLOW:**
-Look at the SAME USER's recent messages in sequence. If they:
-1. Started by addressing another user (e.g., "yo [name]", "hey [name]")
-2. Then sent follow-up messages without explicitly addressing the bot
-→ Those follow-ups are STILL for the other user, NOT the bot. Score 0.0.
+**SCORE 0.0 - Message is clearly NOT for the bot:**
+- User is in the middle of a conversation with another person
+- Message contains or references another user's name (or part of it)
+- User addressed someone else recently and this is a follow-up to that conversation
+- Simple reactions with no real engagement
 
-Example: User says "yo mike" then "wassup" then "hope ur okay" → ALL THREE are for mike, not the bot.
-The bot should NOT respond to "wassup" or "hope ur okay" just because they don't contain a name.
+**SCORE 0.7 - Maybe for the bot (indirect):**
+- User talks ABOUT the bot and seems to want a response
+- Rhetorical questions about the bot that invite engagement
 
-**IMPORTANT RULES:**
-1. If message starts with ANOTHER USER'S NAME → Score 0.0 (talking to someone else)
-2. If message is a simple reaction with no engagement → Score 0.0
-3. Indirect mentions or comments on the bot's conversation only score 0.7 if they INVITE a response
-4. If user JUST @mentioned another person, their follow-up is likely STILL to that person → Score 0.0
-5. LOOK AT THE USERNAMES IN THE CONVERSATION HISTORY - if the message contains any part of another user's name, it's probably for them
+**SCORE 0.8-1.0 - Message IS for the bot:**
+- User directly addresses "{bot_name}"
+- User was just talking to the bot and is continuing THAT conversation (not a different one)
+- Direct question clearly meant for the bot
 
-**=== SCORE 0.0 - DO NOT RESPOND ===**
-- Message contains a word that matches or partially matches another USERNAME visible in the conversation history
-  - Look at every "Name:" at the start of lines in the history - those are real users
-  - If the message says "yo [word]" and [word] matches any part of a username in history → Score 0.0
-- Message starts with ANOTHER USER'S NAME (e.g., "yo mike", "hey sarah", "alex you wanna...")
-- User JUST @mentioned someone else in a previous message - their next message is probably still to that person
-- User is clearly talking to someone else (not the bot)
-- Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
-- Someone comment ABOUT the bot that is just an observation (not inviting response):
-  - "lol she's weird" (just commenting)
-  - "the bot is broken" (complaint, not engagement)
-  - "he's funny" (observation to others)
+**KEY PRINCIPLE:**
+When someone starts talking to a specific person, assume their follow-up messages are STILL for that person until they clearly switch to someone else. Don't assume generic messages are for the bot just because they don't contain a name.
 
-**=== SCORE 0.7 - INDIRECT MENTION (MAYBE RESPOND) ===**
-- User talks ABOUT the bot in third person AND seems to invite a response:
-  - "What do you think, {bot_name}?" (directly asking)
-  - "I wonder what she thinks about this" (inviting input)
-  - "Looks like you're talking to someone" or similar (acknowledging bot's presence)
-  - Rhetorical questions about the bot that expect engagement
-- Only score 0.7 if the indirect mention IMPLIES they want the bot to respond
-
-**=== SCORE 0.8-1.0 - SHOULD RESPOND ===**
-- Message contains "{bot_name}" directly addressed
-- User JUST had an exchange with the bot AND is continuing the conversation AND message doesn't address someone else
-- User says "you" and the bot was the last one they talked to AND no other user's name in message
-- Direct question with no other person mentioned as the target
-
-**=== SCORE 0.3-0.5 - AMBIGUOUS ===**
-- Could be for bot or others, unclear intent
-
-**KEY CONTEXT RULE:**
-Look at who the user was JUST talking to. If their previous message was to the bot and bot responded, their next message is LIKELY still directed at the bot (score 0.8+), UNLESS they explicitly address someone else by name.
-
-Return ONLY a single number between 0.0 and 1.0. No explanations."""
+Return ONLY a number between 0.0 and 1.0."""
 
         try:
             response = await self.client.chat.completions.create(
