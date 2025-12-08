@@ -141,11 +141,14 @@ Latest message (from {current_user}): "{current_message}"
 2. If message is a simple reaction with no engagement → Score 0.0
 3. Indirect mentions or comments on the bot's conversation only score 0.7 if they INVITE a response
 4. If user JUST @mentioned another person, their follow-up is likely STILL to that person → Score 0.0
+5. LOOK AT THE USERNAMES IN THE CONVERSATION HISTORY - if the message contains any part of another user's name, it's probably for them
 
 **=== SCORE 0.0 - DO NOT RESPOND ===**
+- Message contains a word that matches or partially matches another USERNAME visible in the conversation history
+  - Look at every "Name:" at the start of lines in the history - those are real users
+  - If the message says "yo [word]" and [word] matches any part of a username in history → Score 0.0
 - Message starts with ANOTHER USER'S NAME (e.g., "yo mike", "hey sarah", "alex you wanna...")
 - User JUST @mentioned someone else in a previous message - their next message is probably still to that person
-- User uses part of another user's name/nickname that was recently mentioned (e.g., "@some person" then "yo some")
 - User is clearly talking to someone else (not the bot)
 - Simple reactions with no question: ":)", "lol", "nice", "cool", "ok", "I like it", "fair enough"
 - Someone comment ABOUT the bot that is just an observation (not inviting response):
