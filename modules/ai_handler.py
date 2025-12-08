@@ -2439,6 +2439,30 @@ Respond with ONLY the extracted visual description, nothing else.
                             if context_parts:
                                 image_context = ". ".join(context_parts)
                                 print(f"AI Handler: Adding context to image generation: {image_context}")
+                            elif mentioned_users:
+                                # No database facts found - try to use username as visual hint
+                                # Only if username contains meaningful visual words
+                                visual_keywords = [
+                                    'cat', 'dog', 'wolf', 'fox', 'bunny', 'rabbit', 'bear', 'bird', 'owl', 'dragon',
+                                    'angel', 'demon', 'fairy', 'elf', 'knight', 'princess', 'prince', 'queen', 'king',
+                                    'witch', 'wizard', 'mage', 'ninja', 'samurai', 'pirate', 'vampire', 'ghost',
+                                    'pink', 'blue', 'red', 'green', 'purple', 'black', 'white', 'golden', 'silver',
+                                    'dark', 'light', 'shadow', 'moon', 'sun', 'star', 'fire', 'ice', 'thunder',
+                                    'cute', 'wittle', 'little', 'tiny', 'big', 'giant', 'fluffy', 'soft',
+                                    'fish', 'shark', 'dolphin', 'whale', 'snake', 'tiger', 'lion', 'panda'
+                                ]
+
+                                for member in mentioned_users:
+                                    display_name_lower = member.display_name.lower()
+                                    matching_keywords = [kw for kw in visual_keywords if kw in display_name_lower]
+
+                                    if matching_keywords:
+                                        # Username contains visual keywords - use as hint
+                                        image_context = f"draw based on the name '{member.display_name}' - interpret it visually"
+                                        print(f"AI Handler: Using username as visual hint: '{member.display_name}' (keywords: {matching_keywords})")
+                                        break
+                                    else:
+                                        print(f"AI Handler: Username '{member.display_name}' has no visual keywords - skipping username hint")
                             else:
                                 print(f"AI Handler: No context parts built (no facts found for mentioned users)")
 

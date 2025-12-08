@@ -189,87 +189,40 @@ Return ONLY valid JSON, no explanations."""
                 user_context_section += f"- **{name}**: {description}\n"
             user_context_section += "\n**CRITICAL**: When adding a person, include their description from above DIRECTLY in the prompt. Don't just say 'a person' - describe them!"
 
-        system_prompt = f"""You are intelligently modifying an image prompt based on user feedback.
+        system_prompt = f"""TASK: Modify an image prompt based on user feedback.
 
-ORIGINAL PROMPT: "{original_prompt}"
-
-USER FEEDBACK: "{changes_requested}"
+ORIGINAL: "{original_prompt}"
+FEEDBACK: "{changes_requested}"
 {user_context_section}
 
-**YOUR TASK: Analyze both the original prompt and the user's feedback to understand their intent.**
+STEP 1 - IDENTIFY THE MAIN SUBJECT IN THE ORIGINAL PROMPT:
+- If there's a PERSON/CHARACTER → they are the main subject
+- Objects, backgrounds, scenery are SECONDARY elements
 
-Ask yourself: Is the user trying to REMOVE, REPLACE, MODIFY, or ADD?
+STEP 2 - WHAT DOES THE USER WANT?
 
-**REMOVAL** = User wants to DELETE/REMOVE something from the image
-- Keywords: "remove", "get rid of", "no", "without", "delete", "take away"
-- **IDENTIFY THE MAIN SUBJECT FIRST**: In most prompts, the PERSON/CHARACTER is the main subject, NOT backgrounds/objects
-- Action: DELETE the unwanted element, KEEP the main subject (usually the person/character)
-- **CRITICAL**: If prompt has "person + background element", the PERSON is the main subject!
-  - "person near tree" → main subject = PERSON
-  - "character in castle" → main subject = CHARACTER
-  - "girl with flowers" → main subject = GIRL
-- When user says "remove the [background]", KEEP the person, remove only the background
-- DO NOT remove the person and keep only the background - that's backwards!
+If feedback contains "remove", "get rid of", "delete", "no", "without":
+→ This is REMOVAL
+→ KEEP the main subject, DELETE only what user specified
+→ Example: "girl near tree" + "remove tree" = "girl" (NOT "tree"!)
 
-**REPLACEMENT** = User wants a DIFFERENT subject entirely
-- The new thing is a DIFFERENT CATEGORY/TYPE than the original
-- Example: taco → quesadilla (different food), dragon → phoenix (different creature)
-- Action: Swap out the old subject completely, preserve surrounding context
+If feedback contains "make it", "change to", different category:
+→ This is REPLACEMENT
+→ Swap the specified thing, keep everything else
 
-**MODIFICATION** = User wants to CHANGE PROPERTIES of the existing subject
-- The subject stays the same, but gains new attributes
-- Example: dragon → blue dragon (same creature, new color)
-- Action: Keep the subject, add/change only the requested property
+If feedback contains "make her/him/them [verb]", "eating", "holding":
+→ This is ADDING ACTION
+→ Keep ENTIRE original description + add the action
+→ Example: "girl in red dress" + "make her eat" = "girl in red dress eating"
 
-**ADDING AN ACTION** = User wants the existing subject to DO something
-- Keywords: "make them", "make her", "make him", "have them", "eating", "holding", "wearing", "doing"
-- **CRITICAL**: KEEP the existing subject description EXACTLY, just add the action
-- The CHARACTER must remain the same - don't generate a different person!
-- Example: "girl in red dress" + "make her eat a shoe" = "girl in red dress eating a shoe"
-- Example: "knight in armor" + "have him hold a flower" = "knight in armor holding a flower"
+🚨 CRITICAL ERROR TO AVOID 🚨
+When user says "remove the X", you must OUTPUT THE PROMPT WITHOUT X.
+- "person near plant" + "remove plant" → OUTPUT: "person" (NOT "plant"!)
+- "knight with sword" + "remove sword" → OUTPUT: "knight" (NOT "sword"!)
 
-**ADDING A PERSON** = User wants to add someone to the scene
-- If person descriptions are provided above, USE THEM in the modified prompt
-- **CRITICAL: PUT THE PERSON FIRST** - Image AI focuses on whatever appears first
-- Keep person description SHORT (max 30 words)
+The output should be the REMAINING content after removal, not the thing being removed!
 
-**CRITICAL REMOVAL EXAMPLES:**
-
-Original: "a knight in silver armor standing near a waterfall"
-Feedback: "remove the waterfall"
-Analysis: Main subject = KNIGHT. Remove waterfall, keep knight.
-New Prompt: "a knight in silver armor standing"
-WRONG: "a waterfall" (kept background, removed person - BACKWARDS!)
-
-Original: "a wizard casting spells in front of a tower"
-Feedback: "remove the tower"
-Analysis: Main subject = WIZARD. Remove tower, keep wizard.
-New Prompt: "a wizard casting spells"
-WRONG: "a tower" (kept building, removed person - BACKWARDS!)
-
-**KEY PRINCIPLE**: PERSON/CHARACTER is almost always the main subject. Background elements (waterfalls, buildings, scenery) are NOT the main subject.
-
-**ADDING ACTION EXAMPLES:**
-
-Original: "a cute girl in red dress with brown hair"
-Feedback: "make her eat a shoe"
-Analysis: ADDING ACTION - keep the girl, add action
-New Prompt: "a cute girl in red dress with brown hair eating a shoe"
-WRONG: "a person eating a shoe" (lost the character description!)
-WRONG: "a man eating food" (changed the character entirely!)
-
-Original: "a warrior in golden armor"
-Feedback: "have him ride a dragon"
-Analysis: ADDING ACTION - keep the warrior, add action
-New Prompt: "a warrior in golden armor riding a dragon"
-
-**ABSOLUTE RULES:**
-1. **PRESERVE CHARACTER IDENTITY** - The CHARACTER (appearance, clothing, gender) MUST stay EXACTLY the same
-2. **PRESERVE MAIN SUBJECT** - When removing backgrounds, the main subject (person, character) MUST remain
-3. **REMOVAL ≠ REPLACEMENT** - "Remove X" means DELETE X, not substitute X with Y
-4. **NO CREATIVITY** - Don't add anything the user didn't ask for
-
-Return ONLY the modified prompt (no explanations, no quotes)."""
+OUTPUT: Return ONLY the modified prompt. No explanations."""
 
         try:
             # Calculate max_tokens dynamically based on original prompt length
