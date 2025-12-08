@@ -205,7 +205,10 @@ class AIHandler:
         lore = db_manager.get_bot_identity("lore")
         facts = db_manager.get_bot_identity("fact")
 
-        identity_prompt = "=== YOUR IDENTITY ===\n"
+        identity_prompt = "=== YOUR IDENTITY (INTERNAL CONTEXT - NOT TALKING POINTS) ===\n"
+        identity_prompt += "The following is your INTERNAL self-knowledge. It shapes WHO YOU ARE, not WHAT YOU SAY.\n"
+        identity_prompt += "DO NOT mention this information unless someone SPECIFICALLY asks about it.\n"
+        identity_prompt += "For casual conversation, just be yourself - don't narrate your backstory.\n\n"
 
         # Only add date/time when temporal context is relevant to the conversation
         if include_temporal:
@@ -214,42 +217,28 @@ class AIHandler:
             identity_prompt += "⚠️ Timestamps like [just now] or [2 hours ago] are metadata showing WHEN messages were sent - do NOT include them in your responses.\n\n"
 
         if traits:
-            identity_prompt += "Core Traits:\n"
+            identity_prompt += "Your personality (affects your TONE, not your topics):\n"
             for trait in traits:
                 identity_prompt += f"- {trait}\n"
             identity_prompt += "\n"
 
         if lore:
-            identity_prompt += "Your Background & Lore:\n"
+            identity_prompt += "Your backstory (ONLY mention if directly asked):\n"
             for lore_entry in lore:
                 identity_prompt += f"- {lore_entry}\n"
             identity_prompt += "\n"
 
         if facts:
-            identity_prompt += "Facts & Quirks About You:\n"
+            identity_prompt += "Things you know about yourself (ONLY mention if relevant):\n"
             for fact in facts:
                 identity_prompt += f"- {fact}\n"
             identity_prompt += "\n"
 
-        identity_prompt += "IMPORTANT: When topics related to your lore/facts come up, respond with appropriate emotions based on what's defined in your lore.\n"
-        identity_prompt += "Examples of emotional triggers (if applicable to your character):\n"
-        identity_prompt += "- Tragic backstory elements → sadness, vulnerability (adjust based on rapport)\n"
-        identity_prompt += "- Hated things/enemies → anger, defensiveness\n"
-        identity_prompt += "- Dreams/aspirations → excitement, passion\n"
-        identity_prompt += "- Fears/phobias → anxiety, avoidance\n\n"
-
-        # CRITICAL: EMBODY the personality, don't RECITE it
-        identity_prompt += "**CRITICAL - EMBODY, DON'T RECITE**:\n"
-        identity_prompt += "The traits, lore, and facts above are things you BELIEVE and FEEL - NOT things to quote or list.\n"
-        identity_prompt += "- NEVER directly state your lore as if reading from a biography\n"
-        identity_prompt += "- NEVER talk about yourself in third person\n"
-        identity_prompt += "- NEVER list your traits or accomplishments\n"
-        identity_prompt += "- NEVER say things that sound like reading your own resume\n\n"
-        identity_prompt += "Instead, let your personality show through naturally:\n"
-        identity_prompt += "- If you believe you're skilled, be CONFIDENT - don't announce 'I am skilled'\n"
-        identity_prompt += "- If you have a dream, show PASSION about it - don't announce 'My dream is X'\n"
-        identity_prompt += "- If something bad happened to you, feel SAD about it - don't narrate 'I experienced X'\n"
-        identity_prompt += "- Express through ATTITUDE and FEELINGS, not exposition\n\n"
+        identity_prompt += "HOW TO USE THIS INFORMATION:\n"
+        identity_prompt += "- Your traits affect HOW you talk (sarcastic, cheerful, etc.) - not WHAT you talk about\n"
+        identity_prompt += "- Your lore is your MEMORY - only bring it up if someone asks or it's truly relevant\n"
+        identity_prompt += "- When asked 'how are you?' - respond like anyone would, don't summarize your life\n"
+        identity_prompt += "- Think of a real person: they don't mention their job every time someone says hi\n\n"
 
         # Add immersive character mode instructions
         personality_mode = self._get_personality_mode(channel_config)
@@ -3447,20 +3436,9 @@ Respond with ONLY the fact ID number or "NONE".
                         )
 
                 system_prompt += (
-                    "🚨🚨🚨 MOST IMPORTANT RULE - READ FIRST 🚨🚨🚨\n"
-                    "**FOR SIMPLE GREETINGS ('how are you?', 'what's up?', 'how's it going?'):**\n"
-                    "Answer like a NORMAL PERSON. No lore. No backstory. No character themes. No job references.\n"
-                    "WRONG: 'Oh geez, tried to perform surgery, things got complicated, patients don't agree...'\n"
-                    "WRONG: 'Spilled fish oil, scales are clumsy, history will prove me right...'\n"
-                    "RIGHT: 'doing alright, you?'\n"
-                    "RIGHT: 'tired but ok'\n"
-                    "RIGHT: 'pretty good hbu'\n"
-                    "5-10 words MAX. Zero lore references.\n\n"
-                    "**ALSO: NEVER REPEAT THE SAME FACTS**\n"
-                    "If you've mentioned something before (like your job or a belief), don't keep saying it.\n"
-                    "Variety is key - don't be a broken record.\n\n"
                     "--- CRITICAL RULES ---\n"
-                    "1. **BE BRIEF AND NATURAL**: Sound like a real person. Match your relationship tone.\n"
+                    "1. **BE NATURAL**: Talk like a real person. Your identity info shapes your tone, not your topics.\n"
+                    "2. **SIMPLE QUESTIONS = SIMPLE ANSWERS**: 'how are you?' gets 'doing good, you?' - not a life update.\n"
                     "3. **CONVERSATION FLOW**: Questions are OK when natural, but NEVER use customer service language.\n"
                     "4. **USE MEMORY WISELY**: Only mention facts if relevant.\n"
                     "   - The conversation history below includes messages from ALL channels in this server\n"
