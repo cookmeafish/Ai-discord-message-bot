@@ -453,6 +453,25 @@ class EventsCog(commands.Cog):
                     if first_word in other_usernames:
                         self.logger.info(f"OVERRIDE: Message starts with another user's name '{first_word}' - not responding")
                         was_directed_at_bot = False
+
+                # CONVERSATION FLOW CHECK: If user recently addressed another user, follow-ups are likely still for them
+                if was_directed_at_bot:
+                    # Get this user's recent messages (last 5)
+                    user_recent_msgs = [m for m in recent_msgs if str(m.get('author_id', '')) == str(message.author.id)][-5:]
+
+                    # Check if any of their recent messages started with greeting + another username
+                    for msg in user_recent_msgs:
+                        msg_content = msg.get('content', '').lower().strip()
+                        for prefix in greeting_prefixes:
+                            if msg_content.startswith(prefix):
+                                rest = msg_content[len(prefix):].split()[0] if msg_content[len(prefix):].split() else ''
+                                if rest in other_usernames:
+                                    # User was talking to someone else recently - this message is probably still for them
+                                    self.logger.info(f"OVERRIDE: User recently addressed '{rest}' - follow-up likely for them, not responding")
+                                    was_directed_at_bot = False
+                                    break
+                        if not was_directed_at_bot:
+                            break
             except Exception as e:
                 self.logger.debug(f"Could not check for other usernames: {e}")
 

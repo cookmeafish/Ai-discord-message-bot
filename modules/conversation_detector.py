@@ -148,6 +148,15 @@ Latest message (from {current_user}): "{current_message}"
 Look at EVERY name that appears before ":" in the conversation history. Those are REAL USERS in this chat.
 If the latest message contains ANY word that matches or partially matches one of those usernames → Score 0.0 immediately.
 
+**CRITICAL SECOND CHECK - CONVERSATION FLOW:**
+Look at the SAME USER's recent messages in sequence. If they:
+1. Started by addressing another user (e.g., "yo [name]", "hey [name]")
+2. Then sent follow-up messages without explicitly addressing the bot
+→ Those follow-ups are STILL for the other user, NOT the bot. Score 0.0.
+
+Example: User says "yo mike" then "wassup" then "hope ur okay" → ALL THREE are for mike, not the bot.
+The bot should NOT respond to "wassup" or "hope ur okay" just because they don't contain a name.
+
 **IMPORTANT RULES:**
 1. If message starts with ANOTHER USER'S NAME → Score 0.0 (talking to someone else)
 2. If message is a simple reaction with no engagement → Score 0.0
