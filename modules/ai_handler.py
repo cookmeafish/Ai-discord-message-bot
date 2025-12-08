@@ -2332,24 +2332,24 @@ Respond with ONLY the extracted visual description, nothing else.
                                     # get_long_term_memory returns tuples: (fact, source_user_id, source_nickname)
                                     descriptive_facts = []
 
-                                    # CRITICAL: Detect gender from pronouns in ALL facts
+                                    # CRITICAL: Detect gender from pronouns AND gender words in ALL facts
                                     # This ensures image AI knows if person is male/female/other
                                     gender_detected = None
-                                    female_pronouns = [' she ', ' her ', ' hers ', ' herself ']
-                                    male_pronouns = [' he ', ' him ', ' his ', ' himself ']
+                                    female_indicators = [' she ', ' her ', ' hers ', ' herself ', ' girl', ' woman', ' female', 'is a girl', 'is a woman', 'is female']
+                                    male_indicators = [' he ', ' him ', ' his ', ' himself ', ' boy', ' man', ' male', 'is a boy', 'is a man', 'is male']
 
-                                    # Scan ALL facts for gender pronouns (not just first 5)
+                                    # Scan ALL facts for gender indicators (not just first 5)
                                     all_facts_text = " ".join([fact_tuple[0].lower() for fact_tuple in user_facts])
 
-                                    female_count = sum(all_facts_text.count(pronoun) for pronoun in female_pronouns)
-                                    male_count = sum(all_facts_text.count(pronoun) for pronoun in male_pronouns)
+                                    female_count = sum(all_facts_text.count(indicator) for indicator in female_indicators)
+                                    male_count = sum(all_facts_text.count(indicator) for indicator in male_indicators)
 
                                     if female_count > male_count:
                                         gender_detected = "woman"
-                                        print(f"AI Handler: Detected gender as FEMALE from pronouns (she/her count: {female_count})")
+                                        print(f"AI Handler: Detected gender as FEMALE (indicator count: {female_count})")
                                     elif male_count > female_count:
                                         gender_detected = "man"
-                                        print(f"AI Handler: Detected gender as MALE from pronouns (he/him count: {male_count})")
+                                        print(f"AI Handler: Detected gender as MALE (indicator count: {male_count})")
 
                                     # Exclude ONLY bot behavior instructions, NOT character descriptions
                                     # Instructions to bot: "Will always obey", "Must refer to", "Cannot talk to"
